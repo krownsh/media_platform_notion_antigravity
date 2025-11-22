@@ -37,7 +37,7 @@ const Layout = ({ children }) => {
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto relative">
-                <div className="max-w-7xl mx-auto p-8">
+                <div className="w-full p-6">
                     {children}
                 </div>
             </main>

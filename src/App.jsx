@@ -5,15 +5,17 @@ import Layout from './components/Layout';
 import UrlInput from './components/UrlInput';
 import CollectionBoard from './components/CollectionBoard';
 import RemixPanel from './components/RemixPanel';
+import PostDetailView from './components/PostDetailView';
 import { AnimatePresence } from 'framer-motion';
 
 function App() {
   const [remixPost, setRemixPost] = useState(null);
+  const [selectedPost, setSelectedPost] = useState(null);
 
   return (
     <Provider store={store}>
       <Layout>
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full mx-auto px-4">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
               Curate your <span className="text-gradient">Digital Mind</span>
@@ -32,13 +34,16 @@ function App() {
               <button className="text-sm text-gray-400 hover:text-white transition-colors">View All</button>
             </div>
             {/* Pass setRemixPost to children via Context or Props */}
-            <CollectionBoard onRemix={setRemixPost} />
+            <CollectionBoard onRemix={setRemixPost} onPostClick={setSelectedPost} />
           </div>
         </div>
 
         <AnimatePresence>
           {remixPost && (
             <RemixPanel post={remixPost} onClose={() => setRemixPost(null)} />
+          )}
+          {selectedPost && (
+            <PostDetailView post={selectedPost} onClose={() => setSelectedPost(null)} />
           )}
         </AnimatePresence>
       </Layout>

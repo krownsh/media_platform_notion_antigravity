@@ -6,12 +6,16 @@ import { reorderPosts } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
 import { Layers } from 'lucide-react';
 
-const CollectionBoard = ({ onRemix }) => {
+const CollectionBoard = ({ onRemix, onPostClick }) => {
     const { items, loading } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -50,14 +54,14 @@ const CollectionBoard = ({ onRemix }) => {
                 items={items.map(item => item.id)}
                 strategy={rectSortingStrategy}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-4 justify-center">
                     {items.map((post) => (
-                        <SortablePostCard key={post.id} post={post} onRemix={onRemix} />
+                        <SortablePostCard key={post.id} post={post} onRemix={onRemix} onClick={() => onPostClick(post)} />
                     ))}
 
                     {/* Loading Skeleton Card */}
                     {loading && (
-                        <div className="glass-card rounded-2xl overflow-hidden animate-pulse">
+                        <div className="glass-card rounded-2xl overflow-hidden animate-pulse w-[360px]">
                             <div className="aspect-[4/5] bg-white/5" />
                             <div className="p-4 space-y-3">
                                 <div className="h-4 bg-white/5 rounded w-3/4" />

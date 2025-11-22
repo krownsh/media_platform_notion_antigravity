@@ -1,5 +1,6 @@
 import { socialApiService } from './socialApiService.js';
 import { crawlerService } from './crawlerService/browser.js';
+import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
 
 /**
  * Orchestrator
@@ -17,7 +18,7 @@ class Orchestrator {
         if (url.includes('instagram.com')) return 'instagram';
         if (url.includes('facebook.com') || url.includes('fb.watch')) return 'facebook';
         if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
-        if (url.includes('threads.net')) return 'threads';
+        if (url.includes('threads.net') || url.includes('threads.com')) return 'threads';
         return 'unknown';
     }
 
@@ -27,9 +28,25 @@ class Orchestrator {
             throw new Error('Unknown platform');
         }
 
+        // Auto-correct threads.com to threads.net
+        if (platform === 'threads' && url.includes('threads.com')) {
+            url = url.replace('threads.com', 'threads.net');
+        }
+
         console.log(`[Orchestrator] Processing ${platform} URL: ${url}`);
 
-        // 1. Try API First
+        // Special handling for Threads (Direct Crawler)
+        if (platform === 'threads') {
+            console.log('[Orchestrator] Using specialized Threads Crawler...');
+            try {
+                const data = await scrapeThreadsPost(url);
+                return { source: 'crawler', data };
+            } catch (error) {
+                throw new Error(`Threads Crawler failed: ${error.message}`);
+            }
+        }
+
+        // 1. Try API First (For other platforms)
         let data = await socialApiService.fetchPost(platform, url);
 
         if (data) {

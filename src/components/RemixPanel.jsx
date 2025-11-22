@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Wand2, Copy, Share, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { aiService } from '../services/aiService';
 
 const RemixPanel = ({ post, onClose }) => {
     const [style, setStyle] = useState('viral-tweet');
@@ -11,10 +10,24 @@ const RemixPanel = ({ post, onClose }) => {
     const handleRemix = async () => {
         setLoading(true);
         try {
-            const remixedContent = await aiService.rewriteContent(post.content || post.title, style);
-            setResult(remixedContent);
+            const response = await fetch('http://localhost:3001/api/rewrite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: post.content || post.title,
+                    style: style
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Rewrite failed');
+            }
+
+            const data = await response.json();
+            setResult(data.result);
         } catch (error) {
             console.error('Remix failed:', error);
+            setResult('重寫失敗，請稍後再試。');
         } finally {
             setLoading(false);
         }
@@ -46,8 +59,8 @@ const RemixPanel = ({ post, onClose }) => {
                             key={s}
                             onClick={() => setStyle(s.toLowerCase().replace(' ', '-'))}
                             className={`p-3 rounded-xl text-sm font-medium transition-all border ${style === s.toLowerCase().replace(' ', '-')
-                                    ? 'bg-purple-500/20 border-purple-500 text-white'
-                                    : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
+                                ? 'bg-purple-500/20 border-purple-500 text-white'
+                                : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'
                                 }`}
                         >
                             {s}

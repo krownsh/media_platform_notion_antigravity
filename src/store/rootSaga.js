@@ -1,6 +1,5 @@
 import { all, takeLatest, call, put } from 'redux-saga/effects';
 import { addPostByUrl, fetchPostSuccess, fetchPostFailure } from '../features/postsSlice';
-import { aiService } from '../services/aiService';
 import { supabase } from '../api/supabaseClient';
 
 // Worker Saga: Handle adding a post by URL
@@ -9,7 +8,7 @@ function* handleFetchPost(action) {
     const { url } = action.payload;
 
     // 1. Call Backend API (Orchestrator) to get raw data
-    // Note: In a real app, this would call the Express server we built
+    // Backend now handles both crawling AND AI analysis automatically
     const response = yield call(fetch, 'http://localhost:3001/api/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,10 +22,10 @@ function* handleFetchPost(action) {
     const result = yield response.json();
     const postData = result.data;
 
-    // 2. Analyze with AI
-    const analysis = yield call([aiService, 'analyzePost'], postData);
+    // postData already includes analysis from backend (if available)
+    // No need to call aiService here anymore
 
-    // 3. Save to Supabase
+    // 2. Save to Supabase
     // Get current user
     const { data: { user } } = yield call([supabase.auth, 'getUser']);
 
@@ -43,7 +42,6 @@ function* handleFetchPost(action) {
 
     const finalPost = {
       ...postData,
-      analysis,
       id: crypto.randomUUID(), // Temp ID
       createdAt: new Date().toISOString(),
     };

@@ -3,7 +3,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import PostCard from './PostCard';
 
-const SortablePostCard = ({ post, onRemix }) => {
+const SortablePostCard = ({ post, onRemix, onClick }) => {
     const {
         attributes,
         listeners,
@@ -22,7 +22,7 @@ const SortablePostCard = ({ post, onRemix }) => {
 
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <PostCard post={post} onRemix={onRemix} />
+            <PostCard post={post} onRemix={onRemix} onClick={onClick} />
         </div>
     );
 };

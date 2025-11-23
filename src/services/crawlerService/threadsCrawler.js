@@ -30,9 +30,9 @@ export async function scrapeThreadsPost(url) {
     try {
         // 1. Try Puppeteer
         browser = await puppeteer.launch({
-            headless: false,
+            headless: true,
             defaultViewport: null,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized'],
+            args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
         const page = await browser.newPage();
 
@@ -44,11 +44,9 @@ export async function scrapeThreadsPost(url) {
         console.log('[ThreadsCrawler] Waiting for content to load...');
         try {
             await page.waitForSelector('div[data-pressable-container="true"]', { timeout: 20000 });
-            await new Promise(resolve => setTimeout(resolve, 3000));
             console.log('[ThreadsCrawler] Content loaded successfully');
         } catch (e) {
             console.log('[ThreadsCrawler] Timeout waiting for initial selectors, continuing anyway...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
         }
 
         // Extract meta data
@@ -113,21 +111,46 @@ export async function scrapeThreadsPost(url) {
                 const commentContainers = allContainers.slice(1);
 
                 const extractContent = (container) => {
-                    const contentCandidates = Array.from(container.querySelectorAll('span[dir="auto"], div[dir="auto"]'));
+                    // Clone the container to avoid modifying the live DOM
+                    const clone = container.cloneNode(true);
 
-                    const validContent = contentCandidates.filter(el => {
-                        const text = el.innerText.trim();
-                        if (!text) return false;
-                        if (el.closest('a[href^="/@"]')) return false;
-                        if (el.closest('time')) return false;
-                        if (el.closest('[role="button"]')) return false;
-                        if (['翻譯', 'Translate', 'See translation', '作者', '·', 'View replies'].some(kw => text === kw || text.endsWith(kw))) return false;
-                        const datePattern = /^(\d{4}-\d{2}-\d{2}|\d+[天dwymh])$/;
-                        if (datePattern.test(text)) return false;
-                        return true;
+                    // Remove UI elements that are not content
+                    const elementsToRemove = [
+                        'a[href^="/@"]',      // Author links
+                        'time',               // Timestamps  
+                        '[role="button"]',    // Buttons (Reply, Translate, etc.)
+                        'svg',                // Icons
+                        '[aria-label="讚"]',
+                        '[aria-label="留言"]',
+                        '[aria-label="轉發"]',
+                        '[aria-label="分享"]',
+                        '[aria-label="更多"]'
+                    ];
+
+                    elementsToRemove.forEach(selector => {
+                        clone.querySelectorAll(selector).forEach(el => el.remove());
                     });
 
-                    return validContent.map(el => el.innerText).join('\n\n').trim();
+                    // Get all text content
+                    let text = clone.innerText.trim();
+
+                    // Remove common UI text patterns
+                    const uiPatterns = [
+                        /翻譯\s*$/,
+                        /Translate\s*$/,
+                        /See translation\s*$/,
+                        /View replies\s*$/,
+                        /作者\s*$/,
+                        /已釘選\s*$/,
+                        /Pinned\s*$/,
+                        /^\d+[KMB萬億]?\s*$/  // Pure numbers like "400", "2.7萬"
+                    ];
+
+                    uiPatterns.forEach(pattern => {
+                        text = text.replace(pattern, '').trim();
+                    });
+
+                    return text;
                 };
 
                 // Extract Main Post Data

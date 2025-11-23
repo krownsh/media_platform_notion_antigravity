@@ -141,7 +141,7 @@ const PostDetailView = ({ post, onClose }) => {
                 animate={{ scale: 1, opacity: 1, x: 0 }}
                 exit={{ scale: 0.9, opacity: 0, x: 100 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                className="relative w-full max-w-6xl h-[85vh] bg-black border border-white/10 rounded-xl overflow-hidden flex flex-col md:flex-row shadow-2xl"
+                className="relative w-full max-w-7xl h-[85vh] bg-black border border-white/10 rounded-xl overflow-hidden flex flex-col md:flex-row shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close Button */}
@@ -152,8 +152,8 @@ const PostDetailView = ({ post, onClose }) => {
                     <X size={20} />
                 </button>
 
-                {/* Left Side - Image Section */}
-                <div className="w-full md:w-[60%] h-[40vh] md:h-full bg-[#050505] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-white/10 group overflow-hidden">
+                {/* Left Side - Image Section (45%) */}
+                <div className="w-full md:w-[45%] h-[40vh] md:h-full bg-[#050505] relative flex items-center justify-center border-b md:border-b-0 md:border-r border-white/10 group overflow-hidden">
                     {images.length > 0 ? (
                         <div className="relative w-full h-full flex items-center justify-center">
                             <motion.div
@@ -210,8 +210,8 @@ const PostDetailView = ({ post, onClose }) => {
                     )}
                 </div>
 
-                {/* Right Side - Content & Comments */}
-                <div className="w-full md:w-[40%] h-full flex flex-col bg-[#111]">
+                {/* Middle - Comments Section (30%) */}
+                <div className="w-full md:w-[30%] h-full flex flex-col bg-[#111] border-r border-white/10">
                     {/* Header */}
                     <div className="p-4 border-b border-white/10 flex items-center justify-between flex-shrink-0 bg-[#111]">
                         <div className="flex items-center gap-3">
@@ -240,37 +240,17 @@ const PostDetailView = ({ post, onClose }) => {
                         </button>
                     </div>
 
-                    {/* Scrollable Content Area */}
+                    {/* Scrollable Comments Area */}
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                         {/* Caption/Post Content */}
                         <div className="mb-6">
-                            <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-orange-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white opacity-0">
-                                    {/* Placeholder for alignment */}
-                                </div>
-                                <div className="flex-1 -ml-11">
-                                    <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                                        {post.content || title}
-                                    </p>
-                                    <div className="mt-2 text-xs text-gray-500">
-                                        {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                    </div>
-                                </div>
+                            <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                                {post.content || title}
+                            </p>
+                            <div className="mt-2 text-xs text-gray-500">
+                                {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                             </div>
                         </div>
-
-                        {/* AI Summary */}
-                        {analysis?.summary && (
-                            <div className="mb-6 ml-0 md:ml-0 bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <Sparkles size={14} className="text-purple-400" />
-                                    <span className="text-xs font-bold text-purple-400 uppercase tracking-wider">AI Summary</span>
-                                </div>
-                                <p className="text-sm text-gray-300 leading-relaxed">
-                                    {analysis.summary}
-                                </p>
-                            </div>
-                        )}
 
                         {/* Comments Divider */}
                         <div className="h-px bg-white/10 my-4" />
@@ -295,6 +275,59 @@ const PostDetailView = ({ post, onClose }) => {
                                 Post
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                {/* Right Side - AI Summary Section (25%) */}
+                <div className="w-full md:w-[25%] h-full flex flex-col bg-[#0a0a0a]">
+                    {/* AI Summary Header */}
+                    <div className="p-4 border-b border-purple-500/20 flex-shrink-0 bg-gradient-to-b from-purple-500/10 to-transparent">
+                        <div className="flex items-center gap-2">
+                            <Sparkles size={16} className="text-purple-400" />
+                            <span className="text-sm font-bold text-purple-400 uppercase tracking-wider">AI Summary</span>
+                        </div>
+                    </div>
+
+                    {/* AI Summary Content */}
+                    <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        {analysis?.summary ? (
+                            <div className="space-y-4">
+                                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                                    <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                        {analysis.summary}
+                                    </p>
+                                </div>
+
+                                {/* Additional AI Insights */}
+                                {analysis?.keyPoints && analysis.keyPoints.length > 0 && (
+                                    <div className="space-y-2">
+                                        <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider">Key Points</h4>
+                                        <ul className="space-y-2">
+                                            {analysis.keyPoints.map((point, idx) => (
+                                                <li key={idx} className="text-xs text-gray-400 flex items-start gap-2">
+                                                    <span className="text-purple-400 mt-0.5">•</span>
+                                                    <span>{point}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {analysis?.sentiment && (
+                                    <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+                                        <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">Sentiment</h4>
+                                        <p className="text-xs text-gray-400">{analysis.sentiment}</p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full">
+                                <div className="text-center text-gray-500">
+                                    <Sparkles size={32} className="mx-auto mb-2 opacity-30" />
+                                    <p className="text-xs">No AI analysis available</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </motion.div>

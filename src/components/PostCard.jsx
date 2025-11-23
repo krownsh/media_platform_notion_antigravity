@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, ExternalLink, MessageSquare, Heart, Share2, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+
 
 // Custom Threads Icon
 const ThreadsIcon = ({ size = 12, className = "" }) => (
@@ -10,7 +11,7 @@ const ThreadsIcon = ({ size = 12, className = "" }) => (
 );
 
 const PostCard = ({ post, onRemix, onClick }) => {
-    const { platform, title, screenshot, analysis, originalUrl } = post;
+    const { platform, title, screenshot, analysis } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     // Helper function to proxy Instagram/Threads images

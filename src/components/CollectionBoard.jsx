@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { reorderPosts } from '../features/postsSlice';
+import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
+import { reorderPosts, fetchPosts } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
 import { Layers } from 'lucide-react';
 
 const CollectionBoard = ({ onRemix, onPostClick }) => {
     const { items, loading } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
+
+    useEffect(() => {
+        dispatch(fetchPosts());
+    }, [dispatch]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {

@@ -45,7 +45,7 @@ export async function scrapeThreadsPost(url) {
         try {
             await page.waitForSelector('div[data-pressable-container="true"]', { timeout: 20000 });
             console.log('[ThreadsCrawler] Content loaded successfully');
-        } catch (e) {
+        } catch (_e) {
             console.log('[ThreadsCrawler] Timeout waiting for initial selectors, continuing anyway...');
         }
 

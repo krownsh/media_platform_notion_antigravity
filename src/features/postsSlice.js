@@ -24,8 +24,21 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
+        // Fetch all posts
+        fetchPosts(state) {
+            state.loading = true;
+            state.error = null;
+        },
+        fetchPostsSuccess(state, action) {
+            state.loading = false;
+            state.items = action.payload;
+        },
+        fetchPostsFailure(state, action) {
+            state.loading = false;
+            state.error = action.payload;
+        },
         // Action to trigger Saga
-        addPostByUrl(state, action) {
+        addPostByUrl(state) {
             // Payload: { url: string }
             state.loading = true;
             state.error = null;
@@ -38,5 +51,5 @@ const postsSlice = createSlice({
     },
 });
 
-export const { fetchPostStart, fetchPostSuccess, fetchPostFailure, addPostByUrl, reorderPosts } = postsSlice.actions;
+export const { fetchPostStart, fetchPostSuccess, fetchPostFailure, fetchPosts, fetchPostsSuccess, fetchPostsFailure, addPostByUrl, reorderPosts } = postsSlice.actions;
 export default postsSlice.reducer;

@@ -47,30 +47,30 @@ class SocialApiService {
     }
   }
 
-  async fetchInstagram(url) {
+  async fetchInstagram(_url) {
     // TODO: Implement Instagram Graph API logic
     // 1. Extract Shortcode from URL
     // 2. Call /media endpoint
     // 3. Return normalized object
-    
+
     // Mock implementation for now
     if (!this.apiKeys.instagram) {
       throw new Error('Missing Instagram Access Token');
     }
-    return null; 
+    return null;
   }
 
-  async fetchFacebook(url) {
+  async fetchFacebook(_url) {
     // TODO: Implement Facebook Graph API
     return null;
   }
 
-  async fetchTwitter(url) {
+  async fetchTwitter(_url) {
     // TODO: Implement Twitter v2 API
     return null;
   }
 
-  async fetchThreads(url) {
+  async fetchThreads(_url) {
     // TODO: Implement Threads API (if available)
     return null;
   }

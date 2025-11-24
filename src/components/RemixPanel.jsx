@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap } from 'lucide-react';
+import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MODELS = [
@@ -42,19 +42,63 @@ const RemixPanel = ({ post, onClose }) => {
     });
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
-
-    // Ensure images is an array
     const [editableJson, setEditableJson] = useState('');
 
-    // Ensure images is an array
-    const images = Array.isArray(post.images) ? post.images : (post.image ? [post.image] : []);
+    const [activeImages, setActiveImages] = useState([]);
 
     useEffect(() => {
-        const initialJson = post.full_json ? JSON.stringify(post.full_json, null, 2) : JSON.stringify(post, null, 2);
-        setEditableJson(initialJson);
+        // Ensure images is an array
+        const imgs = Array.isArray(post.images) ? post.images : (post.image ? [post.image] : []);
+        setActiveImages(imgs);
+
+        // Logic to populate editableJson: Use full_json if available, otherwise construct a fallback
+        let initialData = post.full_json || post.fullJson;
+
+        if (!initialData) {
+            // Construct fallback data from available fields
+            initialData = [{
+                main_text: post.content || '',
+                author: post.author || 'Unknown',
+                postedAt: post.postedAt || '',
+                replies: post.comments ? post.comments.map(c => ({
+                    text: c.text || c.content,
+                    author: c.user || c.author,
+                    postedAt: c.postedAt || c.commented_at
+                })) : []
+            }];
+        } else {
+            // Strip images from existing JSON to avoid redundancy with the carousel
+            try {
+                // Deep copy to avoid mutating original prop
+                const dataCopy = JSON.parse(JSON.stringify(initialData));
+                if (Array.isArray(dataCopy)) {
+                    dataCopy.forEach(item => delete item.images);
+                } else if (typeof dataCopy === 'object') {
+                    delete dataCopy.images;
+                }
+                initialData = dataCopy;
+            } catch (e) {
+                console.warn("Failed to strip images from JSON", e);
+            }
+        }
+
+        setEditableJson(JSON.stringify(initialData, null, 2));
     }, [post]);
 
+    const handleRemoveImage = (indexToRemove) => {
+        setActiveImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
+        // If we remove an image and the current start index would hide the last remaining images, adjust it
+        if (imgStartIndex > 0 && imgStartIndex >= activeImages.length - 1) {
+            setImgStartIndex(Math.max(0, imgStartIndex - 1));
+        }
+    };
+
     const handleRemix = async () => {
+        if (activeImages.length > 4) {
+            alert('Please select at most 4 images. Remove unwanted images from the list.');
+            return;
+        }
+
         setLoading(true);
         setResult(null);
         try {
@@ -72,7 +116,7 @@ const RemixPanel = ({ post, onClose }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sourceJson: sourceJson,
-                    sourceImages: images,
+                    sourceImages: activeImages,
                     userParams: {
                         ...params,
                         model: selectedModel
@@ -96,38 +140,66 @@ const RemixPanel = ({ post, onClose }) => {
 
     // Auto-generate prompt preview
     const promptPreview = `
-You are an expert Social Media Content Curator.
-Your task is to take a "Source Post" (which may include text JSON and a visual image) and **INTERNALIZE** it, then **RE-EXPRESS** it as a casual, spontaneous daily share.
+You are a seasoned Industry Veteran and Thought Leader.
+Your task is to take a "Source Post" (provided as a JSON object) and **INTERNALIZE** it, then **RE-EXPRESS** it as a deep, professional insight shared casually.
+
+**Input Data Structure:**
+- **Source JSON**: Contains text content (\`main_text\`, \`author\`, \`replies\`).
+- **Images**: Visual context provided as attachments.
+
+**Input JSON Fields:**
+- \`main_text\`: The core content/insight of the original post.
+- \`author\`: The original creator.
+- \`replies\`: A list of comments. **Use these to identify what resonated with the audience, find interesting counter-points, or add social proof.**
 
 **The Goal:**
-The user wants to share this learning/insight on their personal feed.
-It should **NOT** feel like a formal article, a lecture, or a "content farm" post.
-It should feel like a **"Quick Note"**, a **"Sudden Realization"**, or a **"Daily Vlog"** in text form.
+The user wants to share this insight on their personal feed.
+It must sound like a **Seasoned Expert** (資深專家) sharing a thought, NOT a beginner learning something new.
+The vibe is: **"I've seen this pattern many times, and here's what you need to know."**
 
 **CRITICAL REQUIREMENT:**
 **ALL OUTPUT fields MUST BE in Traditional Chinese (繁體中文, Taiwan usage).**
 
-- Tone (語氣): ${params.style || 'Casual & Authentic'} (Use natural language, conversational fillers)
+- Tone (語氣): ${params.style || 'Professional & Casual'} (Calm, Insightful, Conversational)
 - Focus (核心領域): ${params.focus || 'Auto-detect'}
-- Perspective (切入觀點): ${params.perspective || 'Daily Observer'}
+- Perspective (切入觀點): ${params.perspective || 'Industry Observer'}
 
 **Style Guidelines:**
-1. **Casual Vibe**: Write as if texting a friend or posting a quick thought on Threads/Instagram. Avoid stiff transitions like "Firstly", "In conclusion".
-2. **Emojis & Kaomoji**: **MUST** use emojis (✨, 🚀, 💡) and Kaomoji (e.g., (´・ω・\`), (≧▽≦), (nod)) naturally to add emotion and personality.
-3. **Short & Punchy**: Keep sentences relatively short. No walls of text. Use line breaks for readability.
+1. **Expert Authority**: You already know this concept inside out. Do NOT say "I just learned..." (最近研究...) or "Wow!" (天啊!). Instead, say "I noticed..." (看到這個...) or "This reminds me..." (這讓我想起...).
+2. **No Newbie Language**: STRICTLY FORBIDDEN phrases: "天啊", "筆記一下", "簡單說", "避坑小貼士", "感覺像...".
+3. **Conversational but Deep**: Use a tone that suggests experience. E.g., "其實很多人忽略了...", "這才是核心邏輯...".
+4. **Calm & Composed**: Use minimal emojis (max 1-2). No "😱" or "✨". Use neutral ones like ☕, 📉, 💡.
 
 **Process:**
-1. **Visual & Textual Synthesis**: Analyze images and text to find the "Aha!" moment.
-2. **Internalize**: What is the one cool thing here?
-3. **Re-teach with Persona**: Share that one cool thing. Start with a hook like "天啊...", "最近發現...", or just dive straight into the feeling.
-4. **No Drift**: Stick to the topic.
-5. **Visual Creation**: The 'imagePrompt' should describe a *new* image that represents this internalized knowledge. It should be a synthesis of the source image's information and the user's style.
+1. **Analyze Main Text**: Identify the core concept.
+2. **Internalize**: Connect this to broader industry knowledge.
+3. **Re-teach with Authority**: Frame the insight as an observation.
+   - **Bad Opening**: "天啊！最近發現主力洗盤好可怕！" (Newbie)
+   - **Good Opening**: "聊聊主力洗盤。其實這就是心理戰的極致表現。" (Expert)
+4. **Visual Creation**: The 'imagePrompt' should describe a *new* image that represents this internalized knowledge. It should be a synthesis of the source image's information and the user's style.
 
 **Output Requirements:**
 You must respond with a JSON object containing two fields:
 1. "remixed_content": The new post content (in Traditional Chinese). It should be standalone and ready to post.
 2. "image_prompt": A detailed prompt for an AI image generator (like Midjourney/DALL-E). This prompt must be a **Visual Reorganization** of the knowledge point.
     `.trim();
+
+    // Image Carousel State
+    const [imgStartIndex, setImgStartIndex] = useState(0);
+    const MAX_VISIBLE_IMAGES = 3;
+    const visibleImages = activeImages.slice(imgStartIndex, imgStartIndex + MAX_VISIBLE_IMAGES);
+
+    const nextImages = () => {
+        if (imgStartIndex + MAX_VISIBLE_IMAGES < activeImages.length) {
+            setImgStartIndex(prev => prev + 1);
+        }
+    };
+
+    const prevImages = () => {
+        if (imgStartIndex > 0) {
+            setImgStartIndex(prev => prev - 1);
+        }
+    };
 
     return (
         <motion.div
@@ -158,12 +230,12 @@ You must respond with a JSON object containing two fields:
                     </button>
                 </div>
 
-                {/* Body - 3 Columns */}
-                <div className="flex-1 grid grid-cols-12 divide-x divide-white/10 overflow-hidden">
+                {/* Body - Flex Layout (37% - 26% - 37%) */}
+                <div className="flex-1 flex overflow-hidden divide-x divide-white/10">
 
-                    {/* Column 1: Source Material (Span 3) */}
-                    <div className="col-span-3 flex flex-col bg-black/20 overflow-hidden">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    {/* Column 1: Source Material (37%) */}
+                    <div className="w-[37%] flex flex-col bg-black/20 overflow-hidden">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
                             <h3 className="font-semibold text-white flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center border border-blue-500/30">1</span>
                                 Source Material
@@ -171,149 +243,183 @@ You must respond with a JSON object containing two fields:
                             <span className="text-xs text-gray-500">JSON + Images</span>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                            {/* Images */}
-                            {images.length > 0 && (
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-gray-400 uppercase tracking-wider">Source Images</label>
-                                    <div className={`grid gap - 2 ${images.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} `}>
-                                        {images.map((img, idx) => (
-                                            <div key={idx} className="aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5 relative group">
-                                                <img src={img} alt={`Source ${idx} `} className="w-full h-full object-cover" />
-                                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <ImageIcon className="text-white/80" size={20} />
-                                                </div>
+                        <div className="flex-1 flex flex-col p-4 space-y-4 overflow-hidden">
+                            {/* Images - Horizontal Carousel (Fixed Height) */}
+                            {activeImages.length > 0 && (
+                                <div className="space-y-2 shrink-0">
+                                    <div className="flex items-center justify-between">
+                                        <label className={`text-xs font-medium uppercase tracking-wider ${activeImages.length > 4 ? 'text-red-400' : 'text-gray-400'}`}>
+                                            Source Images ({activeImages.length}) {activeImages.length > 4 && '(Max 4)'}
+                                        </label>
+                                        {activeImages.length > MAX_VISIBLE_IMAGES && (
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={prevImages}
+                                                    disabled={imgStartIndex === 0}
+                                                    className="p-1 hover:bg-white/10 rounded disabled:opacity-30 transition-colors"
+                                                >
+                                                    <ChevronLeft size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={nextImages}
+                                                    disabled={imgStartIndex + MAX_VISIBLE_IMAGES >= activeImages.length}
+                                                    className="p-1 hover:bg-white/10 rounded disabled:opacity-30 transition-colors"
+                                                >
+                                                    <ChevronRight size={14} />
+                                                </button>
                                             </div>
-                                        ))}
+                                        )}
+                                    </div>
+
+                                    <div className="flex gap-3 relative overflow-hidden">
+                                        <AnimatePresence mode="popLayout">
+                                            {visibleImages.map((img, idx) => (
+                                                <motion.div
+                                                    key={`${img}-${imgStartIndex + idx}`}
+                                                    initial={{ opacity: 0, x: 20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    exit={{ opacity: 0, x: -20 }}
+                                                    className="w-1/3 aspect-square rounded-lg overflow-hidden border border-white/10 bg-white/5 relative group flex-shrink-0"
+                                                >
+                                                    <img src={img} alt={`Source ${imgStartIndex + idx}`} className="w-full h-full object-cover" />
+                                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <ImageIcon className="text-white/80" size={20} />
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleRemoveImage(imgStartIndex + idx)}
+                                                        className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+                                                        title="Remove image"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
                                     </div>
                                 </div>
                             )}
 
-                            {/* JSON */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex justify-between">
+                            {/* JSON (Flex Grow to fill remaining space) */}
+                            <div className="flex-1 flex flex-col min-h-0">
+                                <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex justify-between mb-2 shrink-0">
                                     Full JSON Data
                                     <span className="text-[10px] text-gray-500 lowercase">(editable)</span>
                                 </label>
                                 <textarea
                                     value={editableJson}
                                     onChange={(e) => setEditableJson(e.target.value)}
-                                    className="w-full h-96 bg-black/40 rounded-lg p-3 border border-white/10 font-mono text-xs text-gray-300 resize-none focus:outline-none focus:border-blue-500/50 transition-colors custom-scrollbar"
+                                    className="w-full flex-1 bg-black/40 rounded-lg p-3 border border-white/10 font-mono text-xs text-gray-300 resize-none focus:outline-none focus:border-blue-500/50 transition-colors custom-scrollbar"
                                     spellCheck="false"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Column 2: Configuration (Span 5) */}
-                    <div className="col-span-5 flex flex-col bg-gradient-to-b from-white/5 to-transparent overflow-hidden">
-                        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    {/* Column 2: Configuration (26%) - Fixed Ratio Layout */}
+                    <div className="w-[26%] flex flex-col bg-gradient-to-b from-white/5 to-transparent overflow-hidden">
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0">
                             <h3 className="font-semibold text-white flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 text-xs flex items-center justify-center border border-purple-500/30">2</span>
-                                AI Model & Prompt
+                                Settings
                             </h3>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                        {/* Main Content Area - Flex Column with Ratios */}
+                        <div className="flex-1 flex flex-col overflow-hidden">
 
-                            {/* Model Selection */}
-                            <div className="space-y-3">
-                                <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                    <Brain size={16} className="text-purple-400" />
-                                    Model Engine
-                                </label>
-                                <div className="grid grid-cols-1 gap-2">
-                                    {MODELS.map(model => (
-                                        <button
-                                            key={model.id}
-                                            onClick={() => setSelectedModel(model.id)}
-                                            className={`flex items - center justify - between p - 3 rounded - xl border transition - all text - left ${selectedModel === model.id
-                                                ? 'bg-purple-500/20 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
-                                                : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
-                                                } `}
+                            {/* Top 10%: Model Selection */}
+                            <div className="h-[10%] px-4 border-b border-white/10 flex flex-col justify-center shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <label className="flex items-center gap-2 text-xs font-medium text-gray-300 shrink-0">
+                                        <Brain size={14} className="text-purple-400" />
+                                        Model
+                                    </label>
+                                    <div className="relative flex-1">
+                                        <select
+                                            value={selectedModel}
+                                            onChange={(e) => setSelectedModel(e.target.value)}
+                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500/50 appearance-none cursor-pointer hover:bg-white/5 transition-colors"
                                         >
-                                            <div>
-                                                <div className="font-medium text-white text-sm">{model.name}</div>
-                                                <div className="text-xs text-gray-400 mt-0.5">{model.desc}</div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                {model.type === 'free' && <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-[10px] font-medium border border-green-500/20">Free</span>}
-                                                {model.type === 'paid' && <span className="px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 text-[10px] font-medium border border-yellow-500/20">Paid</span>}
-                                                {model.capabilities.includes('vision') && <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-medium border border-blue-500/20">Vision</span>}
-                                            </div>
-                                        </button>
-                                    ))}
+                                            {MODELS.map(model => (
+                                                <option key={model.id} value={model.id} className="bg-gray-900 text-white">
+                                                    {model.name} {model.type === 'free' ? '(Free)' : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                            <ChevronRight size={12} className="rotate-90" />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Prompt Lab */}
-                            <div className="space-y-4">
-                                <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-                                    <Sparkles size={16} className="text-pink-400" />
-                                    Prompt 煉成實驗室
+                            {/* Middle 25%: Parameters */}
+                            <div className="h-[25%] px-4 border-b border-white/10 flex flex-col justify-center shrink-0 overflow-hidden">
+                                <div className="flex items-center gap-2 text-xs font-medium text-gray-300 mb-2 shrink-0">
+                                    <Sparkles size={14} className="text-pink-400" />
+                                    Params
                                 </div>
 
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="text-xs text-gray-500 mb-1 block">語氣口吻 (Tone)</label>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[10px] text-gray-500 w-16 shrink-0">Tone</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g. 資深股市玩家經驗分享"
+                                            placeholder="Casual..."
                                             value={params.style}
                                             onChange={(e) => setParams({ ...params, style: e.target.value })}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all"
+                                            className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-500/50"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 mb-1 block">核心領域 (Core Focus) 自動偵測 / 跨界設定</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[10px] text-gray-500 w-16 shrink-0">Focus</label>
                                         <input
                                             type="text"
-                                            placeholder="留空則由 AI 自動分析"
+                                            placeholder="Auto..."
                                             value={params.focus}
                                             onChange={(e) => setParams({ ...params, focus: e.target.value })}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all"
+                                            className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-500/50"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-xs text-gray-500 mb-1 block">切入觀點 (Perspective)</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[10px] text-gray-500 w-16 shrink-0">Perspective</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g. 一位走過彎路的資深導師"
+                                            placeholder="Observer..."
                                             value={params.perspective}
                                             onChange={(e) => setParams({ ...params, perspective: e.target.value })}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all"
+                                            className="flex-1 bg-black/20 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-purple-500/50"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Prompt Preview */}
-                            <div className="space-y-2">
-                                <div className="text-xs font-mono text-gray-500 flex items-center gap-2">
-                                    <Zap size={12} /> 完整 PROMPT 預覽 (即時生成)
+                            {/* Bottom 65%: Prompt Preview */}
+                            <div className="h-[65%] p-4 overflow-hidden flex flex-col">
+                                <div className="text-[10px] font-mono text-gray-500 flex items-center gap-2 mb-2 shrink-0">
+                                    <Zap size={10} /> Prompt Preview
                                 </div>
-                                <div className="bg-black/40 rounded-xl p-4 border border-white/10 text-xs font-mono text-blue-300 whitespace-pre-wrap overflow-x-auto max-h-[200px]">
+                                <div className="flex-1 bg-black/40 rounded-lg p-3 border border-white/10 text-[10px] font-mono text-blue-300 whitespace-pre-wrap overflow-y-auto custom-scrollbar">
                                     {promptPreview}
                                 </div>
                             </div>
-
                         </div>
 
                         {/* Action Bar */}
-                        <div className="p-6 border-t border-white/10 bg-black/20">
+                        <div className="p-4 border-t border-white/10 bg-black/20 shrink-0">
                             <button
                                 onClick={handleRemix}
                                 disabled={loading}
-                                className="w-full py-4 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20"
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                             >
-                                {loading ? <RefreshCw className="animate-spin" size={20} /> : <Wand2 size={20} />}
-                                {loading ? 'Remixing Content...' : 'Start Remix Transformation'}
+                                {loading ? <RefreshCw className="animate-spin" size={16} /> : <Wand2 size={16} />}
+                                {loading ? '...' : 'Remix'}
                             </button>
                         </div>
                     </div>
 
-                    {/* Column 3: Output (Span 4) */}
-                    <div className="col-span-4 flex flex-col bg-black/20 overflow-hidden">
+                    {/* Column 3: Output (37%) */}
+                    <div className="w-[37%] flex flex-col bg-black/20 overflow-hidden">
                         <div className="p-4 border-b border-white/10 flex items-center justify-between">
                             <h3 className="font-semibold text-white flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-green-500/20 text-green-400 text-xs flex items-center justify-center border border-green-500/30">3</span>
@@ -328,7 +434,7 @@ You must respond with a JSON object containing two fields:
                                         <Wand2 size={32} className="opacity-20" />
                                     </div>
                                     <p className="text-sm text-center max-w-[200px]">
-                                        Configure your settings and click Start to generate your remixed content.
+                                        Ready to Remix
                                     </p>
                                 </div>
                             )}
@@ -346,20 +452,55 @@ You must respond with a JSON object containing two fields:
                                     animate={{ opacity: 1, y: 0 }}
                                     className="space-y-6"
                                 >
-                                    {/* Image Prompt / Placeholder */}
+                                    {/* Image Prompt / Generated Image */}
                                     <div className="space-y-2">
                                         <label className="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                             <ImageIcon size={12} /> Visual Concept
                                         </label>
-                                        <div className="aspect-video bg-gradient-to-br from-gray-900 to-black rounded-xl border border-white/10 flex flex-col items-center justify-center p-6 text-center group relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-                                            <p className="text-xs text-gray-400 italic relative z-10 line-clamp-4 group-hover:line-clamp-none transition-all">
-                                                "{result.image_prompt}"
-                                            </p>
-                                            <button className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition-colors relative z-10 flex items-center gap-2">
-                                                <Copy size={12} /> Copy Prompt
-                                            </button>
-                                        </div>
+
+                                        {result.generated_image ? (
+                                            <div className="aspect-square w-full bg-black rounded-xl border border-white/10 overflow-hidden relative group">
+                                                <img
+                                                    src={result.generated_image}
+                                                    alt="AI Generated"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 p-6 backdrop-blur-sm">
+                                                    <p className="text-[10px] text-gray-300 text-center line-clamp-4">
+                                                        "{result.image_prompt}"
+                                                    </p>
+                                                    <div className="flex gap-2">
+                                                        <a
+                                                            href={result.generated_image}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs text-white backdrop-blur-sm transition-colors flex items-center gap-1"
+                                                        >
+                                                            <ExternalLink size={12} /> Open
+                                                        </a>
+                                                        <button
+                                                            onClick={() => navigator.clipboard.writeText(result.image_prompt)}
+                                                            className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg text-xs text-white backdrop-blur-sm transition-colors flex items-center gap-1"
+                                                        >
+                                                            <Copy size={12} /> Prompt
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="aspect-video bg-gradient-to-br from-gray-900 to-black rounded-xl border border-white/10 flex flex-col items-center justify-center p-6 text-center group relative overflow-hidden">
+                                                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+                                                <p className="text-xs text-gray-400 italic relative z-10 line-clamp-4 group-hover:line-clamp-none transition-all">
+                                                    "{result.image_prompt}"
+                                                </p>
+                                                <button
+                                                    onClick={() => navigator.clipboard.writeText(result.image_prompt)}
+                                                    className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs text-white transition-colors relative z-10 flex items-center gap-2"
+                                                >
+                                                    <Copy size={12} /> Copy Prompt
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Text Content */}

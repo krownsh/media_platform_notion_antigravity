@@ -15,6 +15,26 @@ import { supabase } from '../api/supabaseClient';
 // Worker Saga: Fetch all posts
 function* handleFetchPosts() {
   try {
+    // 1. Ensure user is authenticated
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+
+    if (!user) {
+      console.log('[Saga] No user found during fetchPosts, attempting sign in...');
+      const { data: authData, error: authError } = yield call(() =>
+        supabase.auth.signInWithPassword({
+          email: 'bgkong1205@gmail.com',
+          password: 'A123123a'
+        })
+      );
+
+      if (authError) {
+        console.warn('[Saga] Sign-in failed during fetchPosts:', authError);
+      } else {
+        console.log('[Saga] ✅ Signed in successfully for fetchPosts');
+      }
+    }
+
+    // 2. Fetch posts
     const { data, error } = yield call(() =>
       supabase
         .from('posts')

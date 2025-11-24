@@ -1,4 +1,4 @@
-import { supabase } from './src/api/supabaseClient.js';
+import { supabase } from './server/supabaseClient.js';
 
 async function testConnection() {
     console.log('Testing Supabase connection...');
@@ -6,7 +6,9 @@ async function testConnection() {
     try {
         // Test 1: Check if client is configured
         console.log('\n1. Checking Supabase client configuration...');
-        console.log('Supabase URL:', 'http://64.181.223.48:8000');
+        // Note: In Node.js environment, import.meta.env is not available directly without setup.
+        // This test script might need to load .env manually if run with 'node'.
+        // However, since we import 'supabase' from the client file, let's see what it has.
         console.log('Client configured:', !!supabase);
 
         // Test 2: Try to query posts table

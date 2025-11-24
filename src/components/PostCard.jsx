@@ -273,7 +273,7 @@ const PostCard = ({ post, onRemix, onClick }) => {
 
                 {/* Footer Info (Date) - Pushed to bottom */}
                 <div className="mt-auto pt-2 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
-                    <span>{post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : 'Just now'}</span>
+                    <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
                     {post.comments && post.comments.length > 0 && (
                         <span className="flex items-center gap-1">
                             <MessageSquare size={10} />

@@ -1,4 +1,4 @@
-import { scrapeThreadsPost } from '../src/services/crawlerService/threadsCrawler.js';
+import { scrapeThreadsPost } from './services/crawlerService/threadsCrawler.js';
 
 const url = 'https://www.threads.net/@w0955313233/post/DRE83NWEy6J';
 

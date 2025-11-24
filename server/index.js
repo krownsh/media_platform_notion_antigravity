@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { orchestrator } from '../src/services/orchestrator.js';
+import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
+import { supabase } from './supabaseClient.js';
 
 dotenv.config();
 
@@ -120,6 +121,82 @@ app.get('/api/proxy-image', async (req, res) => {
     } catch (error) {
         console.error('Error proxying image:', error);
         res.status(500).json({ error: 'Failed to load image' });
+    }
+});
+
+// ========== Annotations (筆記) API ==========
+
+// Helper function to check if Supabase is configured (including fallback)
+const isSupabaseConfigured = () => {
+    const url = process.env.VITE_SUPABASE_URL || 'http://64.181.223.48:8000';
+    const key = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+    return url && key;
+};
+
+// Get annotations for a post
+app.get('/api/posts/:postId/annotations', async (req, res) => {
+    const { postId } = req.params;
+
+    if (!postId) {
+        return res.status(400).json({ error: 'Post ID is required' });
+    }
+
+    if (!isSupabaseConfigured()) {
+        console.warn('[Annotations] Supabase not configured, returning empty annotations');
+        return res.json({ annotations: [] });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_annotations')
+            .select('*')
+            .eq('post_id', postId)
+            .eq('type', 'note')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.json({ annotations: data || [] });
+    } catch (error) {
+        console.error('Error fetching annotations:', error);
+        res.status(500).json({ error: 'Failed to fetch annotations' });
+    }
+});
+
+// Add annotation to a post
+app.post('/api/posts/:postId/annotations', async (req, res) => {
+    const { postId } = req.params;
+    const { content, userId } = req.body;
+
+    if (!postId || !content || !userId) {
+        return res.status(400).json({ error: 'Post ID, content, and userId are required' });
+    }
+
+    if (!isSupabaseConfigured()) {
+        console.warn('[Annotations] Supabase not configured, cannot save annotation');
+        return res.status(503).json({
+            error: 'Database not configured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file to enable note-taking feature.'
+        });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('user_annotations')
+            .insert({
+                post_id: postId,
+                user_id: userId,
+                content: content,
+                type: 'note'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        res.json({ annotation: data });
+    } catch (error) {
+        console.error('Error creating annotation:', error);
+        res.status(500).json({ error: 'Failed to create annotation: ' + error.message });
     }
 });
 

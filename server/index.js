@@ -88,6 +88,23 @@ app.post('/api/rewrite', async (req, res) => {
     }
 });
 
+// Remix Content Endpoint (New)
+app.post('/api/remix', async (req, res) => {
+    const { sourceJson, sourceImages, userParams } = req.body;
+
+    if (!sourceJson) {
+        return res.status(400).json({ error: 'sourceJson is required' });
+    }
+
+    try {
+        const result = await aiService.remixContent(sourceJson, sourceImages, userParams || {});
+        res.json({ result });
+    } catch (error) {
+        console.error('Error remixing content:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Image Proxy Endpoint to bypass CORS
 app.get('/api/proxy-image', async (req, res) => {
     const { url } = req.query;

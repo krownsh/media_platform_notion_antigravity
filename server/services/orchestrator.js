@@ -72,6 +72,48 @@ class Orchestrator {
         }
     }
 
+    // Helper: Upload image to Supabase Storage
+    async uploadImageToBucket(url) {
+        try {
+            // Skip if already a Supabase URL
+            if (url.includes('supabase.co')) return url;
+
+            console.log(`[Orchestrator] Uploading image to bucket: ${url}`);
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+
+            const buffer = await response.arrayBuffer();
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            const extension = contentType.split('/')[1] || 'jpg';
+            const filename = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
+            const filePath = `threads_images/${filename}`;
+
+            // Upload to 'post_images' bucket (assuming it exists)
+            const { error } = await supabase.storage
+                .from('post_images')
+                .upload(filePath, buffer, {
+                    contentType: contentType,
+                    upsert: false
+                });
+
+            if (error) {
+                // If bucket doesn't exist or other error, log and return original
+                console.warn(`[Orchestrator] Storage upload failed: ${error.message}`);
+                return url;
+            }
+
+            // Get Public URL
+            const { data: publicUrlData } = supabase.storage
+                .from('post_images')
+                .getPublicUrl(filePath);
+
+            return publicUrlData.publicUrl;
+        } catch (error) {
+            console.warn(`[Orchestrator] Image processing failed: ${error.message}`);
+            return url; // Fallback to original URL
+        }
+    }
+
     async processUrl(url) {
         const platform = this.identifyPlatform(url);
         if (platform === 'unknown') {
@@ -89,7 +131,24 @@ class Orchestrator {
         if (platform === 'threads') {
             console.log('[Orchestrator] Using specialized Threads Crawler...');
             try {
-                const data = await scrapeThreadsPost(url);
+                let data = await scrapeThreadsPost(url);
+
+                // Upload Images to Bucket
+                if (data.images && data.images.length > 0) {
+                    console.log('[Orchestrator] Processing images...');
+                    const newImages = [];
+                    for (const imgUrl of data.images) {
+                        const newUrl = await this.uploadImageToBucket(imgUrl);
+                        newImages.push(newUrl);
+                    }
+                    data.images = newImages;
+
+                    // Update images in full_json
+                    if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
+                        data.full_json[0].images = data.images;
+                    }
+                }
+
                 await this.upsertPost(data);
                 return { source: 'crawler', data };
             } catch (error) {

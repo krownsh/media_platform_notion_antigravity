@@ -219,42 +219,20 @@ export async function scrapeThreadsPost(url) {
             console.error('[ThreadsCrawler] DOM Scraping failed (continuing with meta data):', domError.message);
         }
 
-        // Construct Full JSON for AI
+        // Construct Full JSON for AI (New nested structure)
         const fullJsonData = [
             {
-                index: 0,
-                text: detailedData.content || metaData.description || '',
+                main_text: detailedData.content || metaData.description || '',
                 author: detailedData.author || 'Unknown',
-                authorHandle: detailedData.authorHandle || 'unknown',
                 postedAt: detailedData.postedAt || '',
                 images: [...new Set([...(metaData.image ? [metaData.image] : []), ...detailedData.images])],
-                outerHTML: `Main post content: ${detailedData.content || metaData.description || ''}`
-            },
-            ...detailedData.comments.flatMap((comment, idx) => {
-                const items = [{
-                    index: idx + 1,
+                replies: detailedData.comments.map(comment => ({
                     text: comment.text,
                     author: comment.user,
-                    authorHandle: comment.handle,
                     postedAt: comment.postedAt,
-                    outerHTML: `Comment by ${comment.user}: ${comment.text}`
-                }];
-
-                if (comment.replies && comment.replies.length > 0) {
-                    comment.replies.forEach((reply, replyIdx) => {
-                        items.push({
-                            index: idx + 1 + replyIdx + 0.1,
-                            text: reply.text,
-                            author: reply.user,
-                            authorHandle: reply.handle,
-                            postedAt: reply.postedAt,
-                            outerHTML: `Reply by ${reply.user}: ${reply.text}`
-                        });
-                    });
-                }
-
-                return items;
-            })
+                    images: [] // Currently no images in comments, but keep field for future
+                }))
+            }
         ];
 
         const finalData = {

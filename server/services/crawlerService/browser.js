@@ -67,6 +67,7 @@ class CrawlerService {
                 success: true,
                 platform,
                 originalUrl: url,
+                original_url: url, // snake_case for database upsert
                 title,
                 screenshot: `data:image/jpeg;base64,${screenshotBase64}`,
                 html, // Store this for backup

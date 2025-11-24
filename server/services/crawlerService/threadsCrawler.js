@@ -260,12 +260,14 @@ export async function scrapeThreadsPost(url) {
         const finalData = {
             platform: 'threads',
             originalUrl: url,
+            original_url: url, // snake_case for database upsert
             scrapedAt: new Date().toISOString(),
 
             author: detailedData.author || 'Unknown',
             authorHandle: detailedData.authorHandle || 'unknown',
             avatar: detailedData.avatar || '',
             postedAt: detailedData.postedAt || '',
+            posted_at: detailedData.postedAt || '',
 
             content: detailedData.content || metaData.description || '',
 

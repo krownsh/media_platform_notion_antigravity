@@ -44,6 +44,7 @@ function* handleFetchPosts() {
       postedAt: post.posted_at,
       originalUrl: post.original_url,
       createdAt: post.created_at,
+      fullJson: post.full_json,
 
       // Transform media array
       images: post.post_media
@@ -143,7 +144,8 @@ function* handleFetchPost(action) {
       createdAt: new Date().toISOString(),
       images: postData.images || [],
       comments: postData.comments || [],
-      analysis: postData.analysis || null
+      analysis: postData.analysis || null,
+      fullJson: postData.full_json || postData.fullJson || null
     };
 
     console.log('[Saga] Transformed post for display:', transformedPost);
@@ -165,6 +167,7 @@ function* handleFetchPost(action) {
             author_avatar_url: transformedPost.avatar,
             content: transformedPost.content,
             posted_at: transformedPost.postedAt ? new Date(transformedPost.postedAt) : new Date(),
+            full_json: transformedPost.fullJson || null
           }).select().single()
         );
 

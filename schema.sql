@@ -260,6 +260,16 @@ CREATE TABLE public.user_annotations (
 
 COMMENT ON TABLE public.user_annotations IS 'User notes and highlights on posts.';
 
+-- -----------------------------------------------------------------
+-- 9. 新增 full_json 欄位到 posts 表
+-- 用於儲存 Threads 完整的貼文 JSON（raw data）
+-- -----------------------------------------------------------------
+ALTER TABLE public.posts
+    ADD COLUMN full_json JSONB;
+
+-- 建立 GIN 索引（若未來需要根據 JSON 內欄位搜尋）
+CREATE INDEX IF NOT EXISTS idx_posts_full_json ON public.posts USING gin (full_json);
+
 -- RLS for user_annotations
 ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
 

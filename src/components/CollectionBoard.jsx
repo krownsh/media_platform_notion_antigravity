@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { reorderPosts, fetchPosts } from '../features/postsSlice';
+import { reorderPosts, fetchPosts, deletePost } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
 import { Layers } from 'lucide-react';
 
@@ -36,6 +36,12 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
         }
     };
 
+    const handleDelete = (postId) => {
+        if (window.confirm('Are you sure you want to delete this post?')) {
+            dispatch(deletePost(postId));
+        }
+    };
+
     if (items.length === 0 && !loading) {
         return (
             <div className="flex flex-col items-center justify-center py-20 text-gray-500">
@@ -60,7 +66,13 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
             >
                 <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-4 justify-center">
                     {items.map((post) => (
-                        <SortablePostCard key={post.id} post={post} onRemix={onRemix} onClick={() => onPostClick(post)} />
+                        <SortablePostCard
+                            key={post.id}
+                            post={post}
+                            onRemix={onRemix}
+                            onClick={() => onPostClick(post)}
+                            onDelete={() => handleDelete(post.id)}
+                        />
                     ))}
 
                     {/* Loading Skeleton Card */}

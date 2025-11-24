@@ -72,6 +72,22 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
+        // Delete post actions
+        deletePost(state) {
+            state.loading = true;
+        },
+        deletePostSuccess(state, action) {
+            // action.payload: postId
+            state.loading = false;
+            state.items = state.items.filter(item => item.id !== action.payload && item.dbId !== action.payload);
+            if (state.currentPost && (state.currentPost.id === action.payload || state.currentPost.dbId === action.payload)) {
+                state.currentPost = null;
+            }
+        },
+        deletePostFailure(state, action) {
+            state.loading = false;
+            state.error = action.payload;
+        },
     },
 });
 
@@ -86,6 +102,9 @@ export const {
     reorderPosts,
     addAnnotation,
     addAnnotationSuccess,
-    addAnnotationFailure
+    addAnnotationFailure,
+    deletePost,
+    deletePostSuccess,
+    deletePostFailure
 } = postsSlice.actions;
 export default postsSlice.reducer;

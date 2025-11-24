@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, ExternalLink, MessageSquare, Heart, Share2, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 // Custom Threads Icon
@@ -10,9 +10,10 @@ const ThreadsIcon = ({ size = 12, className = "" }) => (
     </svg>
 );
 
-const PostCard = ({ post, onRemix, onClick }) => {
+const PostCard = ({ post, onRemix, onClick, onDelete }) => {
     const { platform, title, screenshot, analysis } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const [showMenu, setShowMenu] = useState(false);
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -28,29 +29,23 @@ const PostCard = ({ post, onRemix, onClick }) => {
         const platformName = p?.toLowerCase();
         if (platformName === 'instagram') {
             return {
-                icon: <Instagram size={10} className="text-white" />,
-                bg: 'bg-gradient-to-tr from-[#FFD600] via-[#FF0169] to-[#D300C5]',
-                border: 'border-transparent',
+                icon: <Instagram size={12} className="text-white" />,
+                headerBg: 'bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]',
                 label: 'Instagram',
-                text: 'text-white'
             };
         }
         if (platformName === 'twitter' || platformName === 'x') {
             return {
-                icon: <Twitter size={10} className="text-white" />,
-                bg: 'bg-black',
-                border: 'border-white/20',
+                icon: <Twitter size={12} className="text-white" />,
+                headerBg: 'bg-black',
                 label: 'X',
-                text: 'text-white'
             };
         }
         // Default to Threads
         return {
-            icon: <ThreadsIcon size={10} className="text-white" />,
-            bg: 'bg-[#101010]',
-            border: 'border-[#333]',
+            icon: <ThreadsIcon size={12} className="text-white" />,
+            headerBg: 'bg-[#101010]',
             label: 'Threads',
-            text: 'text-white'
         };
     };
 
@@ -79,46 +74,80 @@ const PostCard = ({ post, onRemix, onClick }) => {
             animate={{ opacity: 1, y: 0 }}
             onClick={onClick}
             className="glass-card rounded-xl overflow-hidden group relative w-[360px] h-[560px] flex-shrink-0 bg-black/40 border border-white/10 shadow-xl flex flex-col cursor-pointer"
+            onMouseLeave={() => setShowMenu(false)}
         >
-            {/* Header / Author Info - Fixed Height */}
-            <div className="p-3 flex items-center justify-between border-b border-white/5 h-[60px] flex-shrink-0">
-                <div className="flex items-center gap-2.5">
-                    {post.avatar ? (
-                        <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/10" />
-                    ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-xs font-bold text-white">
-                            {post.author?.[0] || 'U'}
-                        </div>
-                    )}
-                    <div className="flex flex-col justify-center">
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-semibold text-white leading-none truncate max-w-[180px]">
-                                {post.author || 'Unknown'}
-                            </span>
-                            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full ${platformStyle.bg} ${platformStyle.border} border`}>
-                                {platformStyle.icon}
-                                <span className={`text-[9px] font-bold uppercase tracking-wider ${platformStyle.text} leading-none`}>
-                                    {platformStyle.label}
-                                </span>
-                            </div>
-                        </div>
-                        <span className="text-xs text-gray-400 leading-none mt-1">
-                            @{post.authorHandle || 'unknown'}
-                            {post.postedAt && (
-                                <>
-                                    <span className="mx-1">•</span>
-                                    {new Date(post.postedAt).toLocaleDateString()}
-                                </>
-                            )}
-                        </span>
-                    </div>
+            {/* Platform Header Strip */}
+            <div className={`w-full h-8 px-3 flex items-center justify-between flex-shrink-0 ${platformStyle.headerBg} border-b border-white/5`}>
+                <div className="flex items-center gap-2">
+                    {platformStyle.icon}
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white leading-none">
+                        {platformStyle.label}
+                    </span>
+                    <span className="w-0.5 h-0.5 rounded-full bg-white/50" />
+                    <span className="text-[10px] text-white/70 font-medium leading-none">Uncategorized</span>
                 </div>
-                <button
-                    className="p-1.5 rounded-full hover:bg-white/10 text-gray-400 transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <MoreHorizontal size={18} />
-                </button>
+
+                {/* Menu */}
+                <div className="relative">
+                    <button
+                        className="p-1 rounded-full hover:bg-white/20 text-white/80 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowMenu(!showMenu);
+                        }}
+                    >
+                        <MoreHorizontal size={16} />
+                    </button>
+
+                    <AnimatePresence>
+                        {showMenu && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                                transition={{ duration: 0.1 }}
+                                className="absolute right-0 top-full mt-1 w-32 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+                            >
+                                <button
+                                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMenu(false);
+                                        onDelete && onDelete();
+                                    }}
+                                >
+                                    <Trash2 size={14} />
+                                    Delete
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+
+            {/* Author Info */}
+            <div className="p-3 border-b border-white/5 flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-black/20">
+                {post.avatar ? (
+                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-xs font-bold text-white">
+                        {post.author?.[0] || 'U'}
+                    </div>
+                )}
+                <div className="flex flex-col justify-center">
+                    <span className="text-sm font-semibold text-white leading-none truncate max-w-[180px]">
+                        {post.author || 'Unknown'}
+                    </span>
+                    <span className="text-xs text-gray-400 leading-none mt-1">
+                        @{post.authorHandle || 'unknown'}
+                        {post.postedAt && (
+                            <>
+                                <span className="mx-1">•</span>
+                                {new Date(post.postedAt).toLocaleDateString()}
+                            </>
+                        )}
+                    </span>
+                </div>
             </div>
 
             {/* Image Carousel Section - Fixed Height (Aspect Video is relative to width, so it's fixed) */}
@@ -190,27 +219,7 @@ const PostCard = ({ post, onRemix, onClick }) => {
             </div>
 
             {/* Action Bar - Fixed Height */}
-            <div className="px-3 py-2.5 flex items-center justify-between border-b border-white/5 h-[50px] flex-shrink-0">
-                <div className="flex items-center gap-4">
-                    <button
-                        className="hover:text-red-500 text-white transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <Heart size={22} />
-                    </button>
-                    <button
-                        className="hover:text-blue-400 text-white transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <MessageSquare size={22} />
-                    </button>
-                    <button
-                        className="hover:text-green-400 text-white transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <Share2 size={22} />
-                    </button>
-                </div>
+            <div className="px-3 py-2.5 flex items-center justify-end border-b border-white/5 h-[50px] flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={(e) => {
@@ -238,13 +247,13 @@ const PostCard = ({ post, onRemix, onClick }) => {
             {/* Content Section - Flexible Height but constrained */}
             <div className="p-3 flex-1 flex flex-col overflow-hidden">
                 {/* Caption - Fixed Height for 3 lines */}
-                <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap line-clamp-3 h-[4.5rem] mb-2 flex-shrink-0">
+                <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap line-clamp-3 h-[4.5rem] mb-1 flex-shrink-0">
                     <span className="font-semibold text-white mr-2">{post.author}</span>
                     {post.content || title}
                 </div>
 
                 {/* Tags - Fixed Height for 1 line */}
-                <div className="flex flex-wrap gap-1.5 h-[26px] mb-2 flex-shrink-0 overflow-hidden">
+                <div className="flex flex-wrap gap-1.5 h-[26px] mb-1 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 5).map((tag, i) => (
                         <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-medium text-blue-300 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
@@ -274,12 +283,6 @@ const PostCard = ({ post, onRemix, onClick }) => {
                 {/* Footer Info (Date) - Pushed to bottom */}
                 <div className="mt-auto pt-2 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
                     <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
-                    {post.comments && post.comments.length > 0 && (
-                        <span className="flex items-center gap-1">
-                            <MessageSquare size={10} />
-                            {post.comments.length}
-                        </span>
-                    )}
                 </div>
             </div>
         </motion.div>

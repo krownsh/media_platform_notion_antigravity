@@ -8,7 +8,10 @@ import {
   fetchPostsFailure,
   addAnnotation,
   addAnnotationSuccess,
-  addAnnotationFailure
+  addAnnotationFailure,
+  deletePost,
+  deletePostSuccess,
+  deletePostFailure
 } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 
@@ -320,11 +323,51 @@ function* handleAddAnnotation(action) {
   }
 }
 
+// Worker Saga: Delete post
+function* handleDeletePost(action) {
+  try {
+    const postId = action.payload;
+    console.log('[Saga] Deleting post:', postId);
+
+    // 1. Delete from Supabase (if it has a DB ID)
+    // We try to delete by id (which is the UUID in Supabase)
+    // If the post only exists in Redux (not saved yet), this step might fail or do nothing, which is fine.
+
+    // Check if it's a valid UUID (simple check)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
+
+    if (isUuid) {
+      const { error } = yield call(() =>
+        supabase.from('posts').delete().eq('id', postId)
+      );
+
+      if (error) {
+        console.error('[Saga] Failed to delete post from DB:', error);
+        // We might still want to remove it from UI even if DB delete fails?
+        // For now, let's assume if DB delete fails, we shouldn't remove it from UI.
+        throw error;
+      } else {
+        console.log('[Saga] ✅ Post deleted from DB');
+      }
+    } else {
+      console.log('[Saga] Post ID is not a UUID, skipping DB delete (local only?)');
+    }
+
+    // 2. Update Redux store
+    yield put(deletePostSuccess(postId));
+
+  } catch (error) {
+    console.error('[Saga] Error deleting post:', error);
+    yield put(deletePostFailure(error.message));
+  }
+}
+
 // Watcher Saga
 function* watchPosts() {
   yield takeLatest(addPostByUrl.type, handleFetchPost);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
+  yield takeLatest(deletePost.type, handleDeletePost);
 }
 
 export default function* rootSaga() {

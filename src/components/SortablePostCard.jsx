@@ -2,8 +2,9 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import PostCard from './PostCard';
+import CollectionCard from './CollectionCard';
 
-const SortablePostCard = ({ post, onRemix, onClick, onDelete }) => {
+const SortablePostCard = ({ post, onRemix, onClick, onDelete, onRename }) => {
     const {
         attributes,
         listeners,
@@ -22,7 +23,20 @@ const SortablePostCard = ({ post, onRemix, onClick, onDelete }) => {
 
     return (
         <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            <PostCard post={post} onRemix={onRemix} onClick={onClick} onDelete={onDelete} />
+            {post.type === 'collection' ? (
+                <CollectionCard
+                    collection={post}
+                    onClick={onClick}
+                    onRename={onRename}
+                />
+            ) : (
+                <PostCard
+                    post={post}
+                    onRemix={onRemix}
+                    onClick={onClick}
+                    onDelete={onDelete}
+                />
+            )}
         </div>
     );
 };

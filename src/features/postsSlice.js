@@ -88,6 +88,43 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
+        createCollection(state, action) {
+            const { sourceId, targetId, name } = action.payload;
+            const sourceItem = state.items.find(i => i.id === sourceId);
+            const targetItem = state.items.find(i => i.id === targetId);
+
+            if (!sourceItem || !targetItem) return;
+
+            const newCollection = {
+                id: `collection_${Date.now()}`,
+                type: 'collection',
+                name: name || 'New Collection',
+                items: [targetItem, sourceItem]
+            };
+
+            // Replace target with collection and remove source
+            state.items = state.items.map(item => {
+                if (item.id === targetId) return newCollection;
+                return item;
+            }).filter(item => item.id !== sourceId);
+        },
+        addToCollection(state, action) {
+            const { sourceId, targetId } = action.payload;
+            const sourceItem = state.items.find(i => i.id === sourceId);
+            const collection = state.items.find(i => i.id === targetId);
+
+            if (!sourceItem || !collection || collection.type !== 'collection') return;
+
+            collection.items.push(sourceItem);
+            state.items = state.items.filter(i => i.id !== sourceId);
+        },
+        updateCollectionName(state, action) {
+            const { collectionId, name } = action.payload;
+            const collection = state.items.find(i => i.id === collectionId);
+            if (collection) {
+                collection.name = name;
+            }
+        }
     },
 });
 
@@ -105,6 +142,9 @@ export const {
     addAnnotationFailure,
     deletePost,
     deletePostSuccess,
-    deletePostFailure
+    deletePostFailure,
+    createCollection,
+    addToCollection,
+    updateCollectionName
 } = postsSlice.actions;
 export default postsSlice.reducer;

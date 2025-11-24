@@ -1,14 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { reorderPosts, fetchPosts, deletePost } from '../features/postsSlice';
+import { reorderPosts, fetchPosts, deletePost, createCollection, addToCollection, updateCollectionName } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
 import { Layers } from 'lucide-react';
 
 const CollectionBoard = ({ onRemix, onPostClick }) => {
     const { items, loading } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
+
+    const [activeId, setActiveId] = useState(null);
+    const [mergeTargetId, setMergeTargetId] = useState(null);
+    const hoverTimerRef = useRef(null);
+    const lastOverIdRef = useRef(null);
 
     useEffect(() => {
         dispatch(fetchPosts());
@@ -25,8 +30,63 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
         })
     );
 
+    const handleDragStart = (event) => {
+        setActiveId(event.active.id);
+    };
+
+    const handleDragOver = (event) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) {
+            resetMergeTimer();
+            return;
+        }
+
+        if (over.id !== lastOverIdRef.current) {
+            resetMergeTimer();
+            lastOverIdRef.current = over.id;
+
+            // Start timer for merge
+            hoverTimerRef.current = setTimeout(() => {
+                setMergeTargetId(over.id);
+            }, 2000);
+        }
+    };
+
+    const resetMergeTimer = () => {
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = null;
+        }
+        setMergeTargetId(null);
+    };
+
     const handleDragEnd = (event) => {
         const { active, over } = event;
+
+        // Capture merge target before resetting
+        const currentMergeTargetId = mergeTargetId;
+
+        resetMergeTimer();
+        lastOverIdRef.current = null;
+        setActiveId(null);
+
+        if (!over) return;
+
+        // Check if we were in a merge state (hovered for 2s)
+        // We check currentMergeTargetId which was set by the timer
+        // Also ensure we are still over that target
+        if (currentMergeTargetId === over.id && active.id !== over.id) {
+            const targetItem = items.find(i => i.id === over.id);
+            if (targetItem) {
+                if (targetItem.type === 'collection') {
+                    dispatch(addToCollection({ sourceId: active.id, targetId: over.id }));
+                } else {
+                    dispatch(createCollection({ sourceId: active.id, targetId: over.id }));
+                }
+            }
+            return;
+        }
 
         if (active.id !== over.id) {
             const oldIndex = items.findIndex((item) => item.id === active.id);
@@ -40,6 +100,10 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
         if (window.confirm('Are you sure you want to delete this post?')) {
             dispatch(deletePost(postId));
         }
+    };
+
+    const handleRename = (collectionId, name) => {
+        dispatch(updateCollectionName({ collectionId, name }));
     };
 
     if (items.length === 0 && !loading) {
@@ -58,6 +122,8 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
         <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
             <SortableContext
@@ -66,13 +132,18 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
             >
                 <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-4 justify-center">
                     {items.map((post) => (
-                        <SortablePostCard
+                        <div
                             key={post.id}
-                            post={post}
-                            onRemix={onRemix}
-                            onClick={() => onPostClick(post)}
-                            onDelete={() => handleDelete(post.id)}
-                        />
+                            className={`transition-all duration-300 rounded-2xl ${mergeTargetId === post.id ? 'ring-2 ring-blue-500 scale-105 z-10' : ''}`}
+                        >
+                            <SortablePostCard
+                                post={post}
+                                onRemix={onRemix}
+                                onClick={() => post.type === 'collection' ? null : onPostClick(post)}
+                                onDelete={() => handleDelete(post.id)}
+                                onRename={handleRename}
+                            />
+                        </div>
                     ))}
 
                     {/* Loading Skeleton Card */}

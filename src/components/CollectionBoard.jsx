@@ -1,19 +1,27 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, pointerWithin, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { reorderPosts, fetchPosts, deletePost, createCollection, addToCollection, updateCollectionName } from '../features/postsSlice';
+import { reorderPosts, fetchPosts, createCollection, movePostToCollection } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
-import { Layers } from 'lucide-react';
+import CollectionFolder from './CollectionFolder';
+import CollectionModal from './CollectionModal';
+import { Layers, Plus } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const CollectionBoard = ({ onRemix, onPostClick }) => {
-    const { items, loading } = useSelector((state) => state.posts);
+    const { items, collections, loading } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
 
     const [activeId, setActiveId] = useState(null);
-    const [mergeTargetId, setMergeTargetId] = useState(null);
-    const hoverTimerRef = useRef(null);
-    const lastOverIdRef = useRef(null);
+    const [selectedCollectionId, setSelectedCollectionId] = useState(null);
+    const [newCollectionName, setNewCollectionName] = useState('');
+    const [isCreating, setIsCreating] = useState(false);
+
+    // Animation State
+    const [dropAnimation, setDropAnimation] = useState(null); // { item, startRect, targetRect }
 
     useEffect(() => {
         dispatch(fetchPosts());
@@ -30,137 +38,244 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
         })
     );
 
+    // Filter posts:
+    const uncategorizedPosts = items.filter(p => !p.collectionId);
+    const selectedCollection = collections.find(c => c.id === selectedCollectionId);
+    const selectedCollectionPosts = selectedCollection
+        ? items.filter(p => p.collectionId === selectedCollection.id)
+        : [];
+
     const handleDragStart = (event) => {
         setActiveId(event.active.id);
     };
 
-    const handleDragOver = (event) => {
-        const { active, over } = event;
-
-        if (!over || active.id === over.id) {
-            resetMergeTimer();
-            return;
-        }
-
-        if (over.id !== lastOverIdRef.current) {
-            resetMergeTimer();
-            lastOverIdRef.current = over.id;
-
-            // Start timer for merge
-            hoverTimerRef.current = setTimeout(() => {
-                setMergeTargetId(over.id);
-            }, 2000);
-        }
-    };
-
-    const resetMergeTimer = () => {
-        if (hoverTimerRef.current) {
-            clearTimeout(hoverTimerRef.current);
-            hoverTimerRef.current = null;
-        }
-        setMergeTargetId(null);
-    };
-
     const handleDragEnd = (event) => {
         const { active, over } = event;
-
-        // Capture merge target before resetting
-        const currentMergeTargetId = mergeTargetId;
-
-        resetMergeTimer();
-        lastOverIdRef.current = null;
+        const activeItemData = items.find(i => i.id === active.id);
         setActiveId(null);
 
         if (!over) return;
 
-        // Check if we were in a merge state (hovered for 2s)
-        // We check currentMergeTargetId which was set by the timer
-        // Also ensure we are still over that target
-        if (currentMergeTargetId === over.id && active.id !== over.id) {
-            const targetItem = items.find(i => i.id === over.id);
-            if (targetItem) {
-                if (targetItem.type === 'collection') {
-                    dispatch(addToCollection({ sourceId: active.id, targetId: over.id }));
-                } else {
-                    dispatch(createCollection({ sourceId: active.id, targetId: over.id }));
-                }
+        // Case 1: Dragging a Post into a Collection Folder (Top Section)
+        if (over.data.current?.type === 'collection') {
+            const collectionId = over.data.current.collection.id;
+
+            // Trigger "Suck In" Animation
+            if (activeItemData && active.rect.current?.translated && over.rect) {
+                setDropAnimation({
+                    item: activeItemData,
+                    startRect: active.rect.current.translated,
+                    targetRect: over.rect
+                });
+
+                // Clear animation after it finishes (approx 500ms)
+                setTimeout(() => setDropAnimation(null), 500);
             }
+
+            dispatch(movePostToCollection({ postId: active.id, collectionId }));
             return;
         }
 
+        // Case 2: Dragging a Post to "Remove Zone" (Inside Modal)
+        if (over.id === 'remove-zone') {
+            dispatch(movePostToCollection({ postId: active.id, collectionId: null }));
+            return;
+        }
+
+        // Case 3: Reordering Posts (Standard DnD)
         if (active.id !== over.id) {
             const oldIndex = items.findIndex((item) => item.id === active.id);
             const newIndex = items.findIndex((item) => item.id === over.id);
-
             dispatch(reorderPosts({ oldIndex, newIndex }));
         }
     };
 
-    const handleDelete = (postId) => {
-        if (window.confirm('Are you sure you want to delete this post?')) {
-            dispatch(deletePost(postId));
+    const handleCreateCollection = (e) => {
+        e.preventDefault();
+        if (newCollectionName.trim()) {
+            dispatch(createCollection({ name: newCollectionName }));
+            setNewCollectionName('');
+            setIsCreating(false);
         }
     };
 
-    const handleRename = (collectionId, name) => {
-        dispatch(updateCollectionName({ collectionId, name }));
-    };
-
-    if (items.length === 0 && !loading) {
-        return (
-            <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-                    <Layers size={32} className="opacity-50" />
-                </div>
-                <p className="text-lg font-medium">Your collection is empty</p>
-                <p className="text-sm">Paste a URL above to start building your knowledge base.</p>
-            </div>
-        );
-    }
+    // Helper to find the active item for DragOverlay
+    const activeItem = items.find(i => i.id === activeId);
 
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
-            <SortableContext
-                items={items.map(item => item.id)}
-                strategy={rectSortingStrategy}
-            >
-                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-4 justify-center">
-                    {items.map((post) => (
-                        <div
-                            key={post.id}
-                            className={`transition-all duration-300 rounded-2xl ${mergeTargetId === post.id ? 'ring-2 ring-blue-500 scale-105 z-10' : ''}`}
-                        >
-                            <SortablePostCard
-                                post={post}
-                                onRemix={onRemix}
-                                onClick={() => post.type === 'collection' ? null : onPostClick(post)}
-                                onDelete={() => handleDelete(post.id)}
-                                onRename={handleRename}
-                            />
-                        </div>
-                    ))}
+            <div className="flex flex-col gap-8 pb-20">
 
-                    {/* Loading Skeleton Card */}
-                    {loading && (
-                        <div className="glass-card rounded-2xl overflow-hidden animate-pulse w-[360px]">
-                            <div className="aspect-[4/5] bg-white/5" />
-                            <div className="p-4 space-y-3">
-                                <div className="h-4 bg-white/5 rounded w-3/4" />
-                                <div className="h-3 bg-white/5 rounded w-full" />
-                                <div className="h-3 bg-white/5 rounded w-1/2" />
+                {/* --- Top Section: Folders --- */}
+                <div className="bg-[#1A1A1A]/50 border-b border-white/5 p-6 -mx-6 md:-mx-8 lg:-mx-12 sticky top-0 z-30 backdrop-blur-md">
+                    <div className="max-w-[1600px] mx-auto w-full">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Layers size={20} className="text-blue-400" />
+                                Collections
+                            </h2>
+                            <button
+                                onClick={() => setIsCreating(true)}
+                                className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                                <Plus size={16} /> New Folder
+                            </button>
+                        </div>
+
+                        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                            {/* Create Input */}
+                            {isCreating && (
+                                <form onSubmit={handleCreateCollection} className="min-w-[160px] p-4 rounded-xl border border-blue-500/50 bg-blue-500/10 flex flex-col items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Folder Name"
+                                        value={newCollectionName}
+                                        onChange={e => setNewCollectionName(e.target.value)}
+                                        autoFocus
+                                        className="w-full bg-transparent border-b border-blue-400 text-sm text-center outline-none pb-1"
+                                        onBlur={() => !newCollectionName && setIsCreating(false)}
+                                    />
+                                    <button type="submit" className="text-xs text-blue-300 hover:text-white">Press Enter</button>
+                                </form>
+                            )}
+
+                            {/* Folder List */}
+                            {collections.map(collection => {
+                                const folderPosts = items.filter(p => p.collectionId === collection.id);
+                                const previewImages = folderPosts
+                                    .flatMap(p => p.images || [])
+                                    .slice(0, 4);
+
+                                return (
+                                    <div key={collection.id} className="min-w-[140px]">
+                                        <CollectionFolder
+                                            collection={collection}
+                                            postCount={folderPosts.length}
+                                            previewImages={previewImages}
+                                            onClick={() => setSelectedCollectionId(collection.id)}
+                                        />
+                                    </div>
+                                );
+                            })}
+
+                            {collections.length === 0 && !isCreating && (
+                                <div className="text-sm text-gray-500 italic py-4">
+                                    No collections yet. Create one to organize your posts.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* --- Bottom Section: Uncategorized Posts --- */}
+                <div className="max-w-[1600px] mx-auto w-full px-4">
+                    <h2 className="text-lg font-semibold text-white mb-6 pl-2 border-l-4 border-gray-700">
+                        Uncategorized Posts
+                    </h2>
+
+                    {uncategorizedPosts.length === 0 && !loading ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                            <p className="text-lg font-medium">All caught up!</p>
+                            <p className="text-sm">All posts are organized in folders.</p>
+                        </div>
+                    ) : (
+                        <SortableContext items={uncategorizedPosts.map(item => item.id)} strategy={rectSortingStrategy}>
+                            <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center">
+                                {uncategorizedPosts.map((post) => (
+                                    <SortablePostCard
+                                        key={post.id}
+                                        post={post}
+                                        onRemix={onRemix}
+                                        onClick={() => onPostClick(post)}
+                                        onDelete={() => { }}
+                                        onRename={() => { }}
+                                    />
+                                ))}
                             </div>
+                        </SortableContext>
+                    )}
+
+                    {loading && (
+                        <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center mt-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="glass-card rounded-2xl overflow-hidden animate-pulse w-[360px] h-[400px] bg-white/5" />
+                            ))}
                         </div>
                     )}
                 </div>
-            </SortableContext>
+
+                {/* --- Modal --- */}
+                {selectedCollection && (
+                    <CollectionModal
+                        collection={selectedCollection}
+                        posts={selectedCollectionPosts}
+                        onClose={() => setSelectedCollectionId(null)}
+                        onPostClick={onPostClick}
+                        onRemix={onRemix}
+                    />
+                )}
+
+                {/* --- Drag Overlay --- */}
+                {createPortal(
+                    <DragOverlay>
+                        {activeItem ? (
+                            <div className="w-[360px] opacity-90 rotate-3 scale-105 pointer-events-none">
+                                <SortablePostCard
+                                    post={activeItem}
+                                    onRemix={() => { }}
+                                    onClick={() => { }}
+                                    isOverlay
+                                />
+                            </div>
+                        ) : null}
+                    </DragOverlay>,
+                    document.body
+                )}
+
+                {/* --- Suck In Animation --- */}
+                {createPortal(
+                    <AnimatePresence>
+                        {dropAnimation && (
+                            <motion.div
+                                initial={{
+                                    position: 'fixed',
+                                    left: dropAnimation.startRect.left,
+                                    top: dropAnimation.startRect.top,
+                                    width: 360, // Assuming card width
+                                    scale: 1,
+                                    opacity: 1,
+                                    zIndex: 9999
+                                }}
+                                animate={{
+                                    left: dropAnimation.targetRect.left + (dropAnimation.targetRect.width / 2) - 180, // Center horizontally (180 is half of 360)
+                                    top: dropAnimation.targetRect.top + (dropAnimation.targetRect.height / 2) - 200, // Center vertically (approx)
+                                    scale: 0.1,
+                                    opacity: 0
+                                }}
+                                transition={{ duration: 0.4, ease: "easeInOut" }}
+                                className="pointer-events-none"
+                            >
+                                <SortablePostCard
+                                    post={dropAnimation.item}
+                                    onRemix={() => { }}
+                                    onClick={() => { }}
+                                    isOverlay
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
+
+            </div>
         </DndContext>
     );
 };
 
 export default CollectionBoard;
+

@@ -2,9 +2,14 @@ import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import PostCard from './PostCard';
-import CollectionCard from './CollectionCard';
 
-const SortablePostCard = ({ post, onRemix, onClick, onDelete, onRename }) => {
+const SortablePostCard = ({
+    post,
+    onRemix,
+    onClick,
+    onDelete,
+    isOverlay = false
+}) => {
     const {
         attributes,
         listeners,
@@ -18,25 +23,30 @@ const SortablePostCard = ({ post, onRemix, onClick, onDelete, onRename }) => {
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 50 : 'auto',
-        opacity: isDragging ? 0.5 : 1,
+        opacity: isDragging ? 0.45 : 1,
     };
 
-    return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-            {post.type === 'collection' ? (
-                <CollectionCard
-                    collection={post}
-                    onClick={onClick}
-                    onRename={onRename}
-                />
-            ) : (
+    if (isOverlay) {
+        return (
+            <div className="relative">
                 <PostCard
                     post={post}
                     onRemix={onRemix}
                     onClick={onClick}
                     onDelete={onDelete}
                 />
-            )}
+            </div>
+        );
+    }
+
+    return (
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="relative">
+            <PostCard
+                post={post}
+                onRemix={onRemix}
+                onClick={onClick}
+                onDelete={onDelete}
+            />
         </div>
     );
 };

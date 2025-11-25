@@ -10,6 +10,7 @@ export const supabase = isConfigured
     : {
         auth: {
             getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+            signInWithPassword: () => Promise.resolve({ data: { user: null }, error: { message: 'Supabase not configured' } }),
             signInWithOAuth: () => Promise.resolve({ error: { message: 'Supabase not configured' } }),
             signOut: () => Promise.resolve({ error: null }),
             onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),

@@ -1,7 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-    items: [], // List of posts
+    items: [], // List of posts (uncategorized or all, depending on view)
+    collections: [], // List of collections (folders)
     loading: false,
     error: null,
     currentPost: null, // Currently viewed/processing post
@@ -24,14 +25,15 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
-        // Fetch all posts
+        // Fetch all posts and collections
         fetchPosts(state) {
             state.loading = true;
             state.error = null;
         },
         fetchPostsSuccess(state, action) {
             state.loading = false;
-            state.items = action.payload;
+            state.items = action.payload.posts;
+            state.collections = action.payload.collections;
         },
         fetchPostsFailure(state, action) {
             state.loading = false;
@@ -88,39 +90,51 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
-        createCollection(state, action) {
-            const { sourceId, targetId, name } = action.payload;
-            const sourceItem = state.items.find(i => i.id === sourceId);
-            const targetItem = state.items.find(i => i.id === targetId);
-
-            if (!sourceItem || !targetItem) return;
-
-            const newCollection = {
-                id: `collection_${Date.now()}`,
-                type: 'collection',
-                name: name || 'New Collection',
-                items: [targetItem, sourceItem]
-            };
-
-            // Replace target with collection and remove source
-            state.items = state.items.map(item => {
-                if (item.id === targetId) return newCollection;
-                return item;
-            }).filter(item => item.id !== sourceId);
+        // Collection Actions
+        createCollection(state) {
+            // Don't set loading to true to avoid full page skeleton flicker
         },
-        addToCollection(state, action) {
-            const { sourceId, targetId } = action.payload;
-            const sourceItem = state.items.find(i => i.id === sourceId);
-            const collection = state.items.find(i => i.id === targetId);
-
-            if (!sourceItem || !collection || collection.type !== 'collection') return;
-
-            collection.items.push(sourceItem);
-            state.items = state.items.filter(i => i.id !== sourceId);
+        createCollectionSuccess(state, action) {
+            state.loading = false;
+            state.collections.unshift(action.payload);
         },
-        updateCollectionName(state, action) {
+        createCollectionFailure(state, action) {
+            state.loading = false;
+            state.error = action.payload;
+        },
+        deleteCollection(state) {
+            state.loading = true;
+        },
+        deleteCollectionSuccess(state, action) {
+            state.loading = false;
+            state.collections = state.collections.filter(c => c.id !== action.payload);
+            // Move posts from deleted collection back to main list (handled by backend usually, but UI update needed)
+            // Ideally, fetchPosts should be called again or we optimistically update
+        },
+        deleteCollectionFailure(state, action) {
+            state.loading = false;
+            state.error = action.payload;
+        },
+        movePostToCollection(state) {
+            // Trigger Saga
+        },
+        movePostToCollectionSuccess(state, action) {
+            const { postId, collectionId } = action.payload;
+            // Update the post in items
+            const postIndex = state.items.findIndex(p => p.id === postId);
+            if (postIndex !== -1) {
+                state.items[postIndex].collectionId = collectionId;
+            }
+        },
+        movePostToCollectionFailure(state, action) {
+            state.error = action.payload;
+        },
+        updateCollectionName(state) {
+            // Trigger Saga
+        },
+        updateCollectionNameSuccess(state, action) {
             const { collectionId, name } = action.payload;
-            const collection = state.items.find(i => i.id === collectionId);
+            const collection = state.collections.find(c => c.id === collectionId);
             if (collection) {
                 collection.name = name;
             }
@@ -144,7 +158,15 @@ export const {
     deletePostSuccess,
     deletePostFailure,
     createCollection,
-    addToCollection,
-    updateCollectionName
+    createCollectionSuccess,
+    createCollectionFailure,
+    deleteCollection,
+    deleteCollectionSuccess,
+    deleteCollectionFailure,
+    movePostToCollection,
+    movePostToCollectionSuccess,
+    movePostToCollectionFailure,
+    updateCollectionName,
+    updateCollectionNameSuccess
 } = postsSlice.actions;
 export default postsSlice.reducer;

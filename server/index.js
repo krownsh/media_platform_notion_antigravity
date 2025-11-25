@@ -29,8 +29,8 @@ app.post('/api/process', async (req, res) => {
     try {
         const result = await orchestrator.processUrl(url);
 
-        // If it's a Threads post with full_json, run AI analysis
-        if (result.data && result.data.full_json && result.data.platform === 'threads') {
+        // If it's a Threads or Twitter post with full_json, run AI analysis
+        if (result.data && result.data.full_json && (result.data.platform === 'threads' || result.data.platform === 'twitter')) {
             console.log('[Server] Running AI analysis for Threads post...');
             try {
                 const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);

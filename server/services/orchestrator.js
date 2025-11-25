@@ -1,6 +1,7 @@
 import { socialApiService } from './socialApiService.js';
 import { crawlerService } from './crawlerService/browser.js';
 import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
+import { scrapeTwitterPost } from './crawlerService/twitterCrawler.js';
 import { supabase } from '../supabaseClient.js'; // corrected relative path
 
 /**
@@ -153,6 +154,35 @@ class Orchestrator {
                 return { source: 'crawler', data };
             } catch (error) {
                 throw new Error(`Threads Crawler failed: ${error.message}`);
+            }
+        }
+
+        // Special handling for Twitter (Direct Crawler)
+        if (platform === 'twitter') {
+            console.log('[Orchestrator] Using specialized Twitter Crawler...');
+            try {
+                let data = await scrapeTwitterPost(url);
+
+                // Upload Images to Bucket
+                if (data.images && data.images.length > 0) {
+                    console.log('[Orchestrator] Processing images...');
+                    const newImages = [];
+                    for (const imgUrl of data.images) {
+                        const newUrl = await this.uploadImageToBucket(imgUrl);
+                        newImages.push(newUrl);
+                    }
+                    data.images = newImages;
+
+                    // Update images in full_json
+                    if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
+                        data.full_json[0].images = data.images;
+                    }
+                }
+
+                await this.upsertPost(data);
+                return { source: 'crawler', data };
+            } catch (error) {
+                throw new Error(`Twitter Crawler failed: ${error.message}`);
             }
         }
 

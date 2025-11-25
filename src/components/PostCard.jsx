@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2 } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { useSelector, useDispatch } from 'react-redux';
+import { movePostToCollection } from '../features/postsSlice';
 
 // Custom Threads Icon
 const ThreadsIcon = ({ size = 12, className = "" }) => (
@@ -10,10 +11,22 @@ const ThreadsIcon = ({ size = 12, className = "" }) => (
     </svg>
 );
 
-const PostCard = ({ post, onRemix, onClick, onDelete }) => {
+const PostCard = ({
+    post,
+    onRemix,
+    onClick,
+    onDelete,
+    isMergeTarget = false,
+    mergeProgress = 0,
+    mergeReady = false,
+}) => {
     const { platform, title, screenshot, analysis } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
+    const [showMoveMenu, setShowMoveMenu] = useState(false);
+
+    const dispatch = useDispatch();
+    const { collections } = useSelector(state => state.posts);
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -37,8 +50,8 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
         if (platformName === 'twitter' || platformName === 'x') {
             return {
                 icon: <Twitter size={12} className="text-white" />,
-                headerBg: 'bg-black',
-                label: 'X',
+                headerBg: 'bg-[#1DA1F2]', // Twitter Blue
+                label: 'Twitter', // Or 'X' if preferred, but user asked for "Twitter style"
             };
         }
         // Default to Threads
@@ -67,15 +80,37 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
         }
     };
 
+    const handleMoveToCollection = (e, collectionId) => {
+        e.stopPropagation();
+        dispatch(movePostToCollection({ postId: post.id, collectionId }));
+        setShowMenu(false);
+        setShowMoveMenu(false);
+    };
+
     return (
         <motion.div
             layout
             initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            animate={{
+                opacity: 1,
+                y: 0,
+                scale: isMergeTarget ? 0.97 : 1,
+                rotate: isMergeTarget ? -0.4 : 0
+            }}
+            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
             onClick={onClick}
             className="glass-card rounded-xl overflow-hidden group relative w-[360px] h-[560px] flex-shrink-0 bg-black/40 border border-white/10 shadow-xl flex flex-col cursor-pointer"
-            onMouseLeave={() => setShowMenu(false)}
+            onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
+            {isMergeTarget && (
+                <div className="absolute inset-0 pointer-events-none rounded-xl">
+                    <div className="absolute inset-0 rounded-xl bg-blue-500/5" />
+                    <div
+                        className="absolute inset-2 rounded-xl border border-blue-400/60"
+                        style={{ opacity: mergeReady ? 1 : mergeProgress * 0.9 }}
+                    />
+                </div>
+            )}
             {/* Platform Header Strip */}
             <div className={`w-full h-8 px-3 flex items-center justify-between flex-shrink-0 ${platformStyle.headerBg} border-b border-white/5`}>
                 <div className="flex items-center gap-2">
@@ -84,7 +119,9 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
                         {platformStyle.label}
                     </span>
                     <span className="w-0.5 h-0.5 rounded-full bg-white/50" />
-                    <span className="text-[10px] text-white/70 font-medium leading-none">Uncategorized</span>
+                    <span className="text-[10px] text-white/70 font-medium leading-none">
+                        {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || 'Uncategorized' : 'Uncategorized'}
+                    </span>
                 </div>
 
                 {/* Menu */}
@@ -94,6 +131,7 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowMenu(!showMenu);
+                            setShowMoveMenu(false);
                         }}
                     >
                         <MoreHorizontal size={16} />
@@ -106,10 +144,54 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                 transition={{ duration: 0.1 }}
-                                className="absolute right-0 top-full mt-1 w-32 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+                                className="absolute right-0 top-full mt-1 w-48 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
                             >
+                                {/* Move To Submenu Trigger */}
+                                <div className="relative">
+                                    <button
+                                        className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/5 flex items-center justify-between transition-colors"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMoveMenu(!showMoveMenu);
+                                        }}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <FolderInput size={14} />
+                                            Move to...
+                                        </div>
+                                        <ChevronRight size={12} />
+                                    </button>
+
+                                    {/* Submenu */}
+                                    {showMoveMenu && (
+                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                                            {post.collectionId && (
+                                                <button
+                                                    className="w-full px-3 py-2 text-left text-xs text-red-300 hover:bg-white/5 flex items-center gap-2 transition-colors border-b border-white/5"
+                                                    onClick={(e) => handleMoveToCollection(e, null)}
+                                                >
+                                                    <FolderMinus size={12} /> Remove from Folder
+                                                </button>
+                                            )}
+                                            {collections.length > 0 ? (
+                                                collections.map(collection => (
+                                                    <button
+                                                        key={collection.id}
+                                                        className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/5 truncate"
+                                                        onClick={(e) => handleMoveToCollection(e, collection.id)}
+                                                    >
+                                                        {collection.name}
+                                                    </button>
+                                                ))
+                                            ) : (
+                                                <div className="px-3 py-2 text-xs text-gray-500 italic">No folders</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button
-                                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors"
+                                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors border-t border-white/5"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setShowMenu(false);
@@ -117,7 +199,7 @@ const PostCard = ({ post, onRemix, onClick, onDelete }) => {
                                     }}
                                 >
                                     <Trash2 size={14} />
-                                    Delete
+                                    Delete Post
                                 </button>
                             </motion.div>
                         )}

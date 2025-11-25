@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder, Home } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded }) => (
     <div
@@ -18,21 +20,40 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded 
 );
 
 const Layout = ({ children }) => {
-    const { items } = useSelector((state) => state.posts);
-    const collections = items.filter(item => item.type === 'collection');
-    const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(false);
+    const { items, collections } = useSelector((state) => state.posts);
+    const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
+    const [expandedCollections, setExpandedCollections] = useState(new Set());
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const toggleCollection = (id) => {
+        // Navigate to collection on click
+        navigate(`/collection/${id}`);
+    };
 
     return (
         <div className="flex h-screen overflow-hidden text-white">
             {/* Sidebar */}
             <aside className="w-64 flex-shrink-0 glass-panel flex flex-col border-r border-white/5">
-                <div className="p-6">
+                <div className="p-6 cursor-pointer" onClick={() => navigate('/')}>
                     <h1 className="text-2xl font-bold tracking-tight text-gradient">Antigravity</h1>
                     <p className="text-xs text-gray-500 mt-1">Social Knowledge Base</p>
                 </div>
 
                 <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
-                    <SidebarItem icon={LayoutGrid} label="All Posts" active />
+                    <SidebarItem
+                        icon={Home}
+                        label="Home"
+                        active={location.pathname === '/'}
+                        onClick={() => navigate('/')}
+                    />
+
+                    <SidebarItem
+                        icon={LayoutGrid}
+                        label="All Posts"
+                        active={location.pathname === '/view-all'}
+                        onClick={() => navigate('/view-all')}
+                    />
 
                     <SidebarItem
                         icon={Library}
@@ -43,24 +64,39 @@ const Layout = ({ children }) => {
                     />
 
                     {/* Sub-collections */}
-                    {isCollectionsExpanded && (
-                        <div className="pl-4 space-y-1 mb-2 animate-in slide-in-from-top-2 duration-200">
-                            {collections.map(collection => (
-                                <div
-                                    key={collection.id}
-                                    className="flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer text-sm text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
-                                >
-                                    <Folder size={14} />
-                                    <span className="truncate">{collection.name}</span>
+                    <AnimatePresence>
+                        {isCollectionsExpanded && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                            >
+                                <div className="pl-4 space-y-1 mb-2">
+                                    {collections.map(collection => {
+                                        const isActive = location.pathname === `/collection/${collection.id}`;
+                                        return (
+                                            <div key={collection.id}>
+                                                <div
+                                                    className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors ${isActive ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                    onClick={() => toggleCollection(collection.id)}
+                                                >
+                                                    <Folder size={14} />
+                                                    <span className="truncate flex-1">{collection.name}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {collections.length === 0 && (
+                                        <div className="px-4 py-2 text-xs text-gray-600 italic">
+                                            No collections created
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
-                            {collections.length === 0 && (
-                                <div className="px-4 py-2 text-xs text-gray-600 italic">
-                                    No collections created
-                                </div>
-                            )}
-                        </div>
-                    )}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
 
                     <SidebarItem icon={Search} label="Search" />
                 </nav>

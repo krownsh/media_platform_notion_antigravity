@@ -425,85 +425,99 @@ Adhere strictly to the following User Style settings:
             let aiText;
 
             for (const model of modelsToTry) {
-                if (!response.ok) {
-                    const errText = await response.text();
-                    let errData;
-                    try {
-                        errData = JSON.parse(errText);
-                    } catch (e) {
-                        errData = { error: errText || response.statusText };
-                    }
-
-                    // If rate limited (429), try next model
-                    if (response.status === 429 || (errData.error && errData.error.code === 429)) {
-                        console.warn(`[AiService] Rate limit hit for ${model}, trying next model...`);
-                        if (!response.ok) {
-                            const errText = await response.text();
-                            let errData;
-                            try {
-                                errData = JSON.parse(errText);
-                            } catch (e) {
-                                errData = { error: errText || response.statusText };
-                            }
-
-                            // If rate limited (429), try next model
-                            if (response.status === 429 || (errData.error && errData.error.code === 429)) {
-                                console.warn(`[AiService] Rate limit hit for ${model}, trying next model...`);
-                                lastError = new Error(`Rate limit hit: ${JSON.stringify(errData)}`);
-                                continue;
-                            }
-
-                            throw new Error(`OpenRouter API Error: ${response.status} - ${JSON.stringify(errData)}`);
-                        }
-
-                        const data = await response.json();
-                        aiText = data.choices[0].message.content;
-                        break; // Success, exit loop
-
-                    } catch (error) {
-                        console.error(`[AiService] Error with model ${model}:`, error.message);
-                        lastError = error;
-                        // If it's not a rate limit error (and not the one we just caught and continued), rethrow
-                        if (!error.message.includes('Rate limit')) {
-                            if (!error.message.includes('Rate limit')) throw error;
-                        }
-                    }
-                }
-
-                if (!aiText) {
-                    throw lastError || new Error("All models failed to remix content.");
-                }
-
-                // Parse JSON
-                let parsedData;
                 try {
-                    const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
-                    const jsonText = jsonMatch ? jsonMatch[1] : aiText;
-                    parsedData = JSON.parse(jsonText.trim());
-                } catch (e) {
-                    console.warn('Failed to parse JSON, returning raw text');
-                    parsedData = {
-                        remixed_content: aiText,
-                        image_prompt: "Failed to generate specific image prompt."
-                    };
-                }
+                    console.log(`[AiService] Trying model: ${model}`);
 
-                // 4. Generate Image (if prompt exists)
-                if (parsedData.image_prompt && parsedData.image_prompt.length > 10) {
-                    console.log('[AiService] Generating image from prompt...');
-                    const imageUrl = await this.generateImageFromPrompt(parsedData.image_prompt);
-                    if (imageUrl) {
-                        parsedData.generated_image = imageUrl;
+                    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Content-Type': 'application/json',
+                            'HTTP-Referer': 'http://localhost:3000',
+                            'X-Title': 'Media Platform Antigravity'
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [
+                                {
+                                    role: "system",
+                                    content: systemPrompt
+                                },
+                                {
+                                    role: "user",
+                                    content: content
+                                }
+                            ]
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        let errData;
+                        try {
+                            errData = JSON.parse(errText);
+                        } catch (e) {
+                            errData = { error: errText || response.statusText };
+                        }
+
+                        // If rate limited (429), try next model
+                        if (response.status === 429 || (errData.error && errData.error.code === 429)) {
+                            console.warn(`[AiService] Rate limit hit for ${model}, trying next model...`);
+                            lastError = new Error(`Rate limit hit: ${JSON.stringify(errData)}`);
+                            continue;
+                        }
+
+                        throw new Error(`OpenRouter API Error: ${response.status} - ${JSON.stringify(errData)}`);
+                    }
+
+                    const data = await response.json();
+                    aiText = data.choices[0].message.content;
+                    break; // Success, exit loop
+
+                } catch (error) {
+                    console.error(`[AiService] Error with model ${model}:`, error.message);
+                    lastError = error;
+                    // If it's not a rate limit error, rethrow
+                    if (!error.message.includes('Rate limit')) {
+                        throw error;
                     }
                 }
-
-                return parsedData;
-
-            } catch (error) {
-                console.error('[AiService] Remix failed:', error);
-                throw error;
             }
+
+            if (!aiText) {
+                throw lastError || new Error("All models failed to remix content.");
+            }
+
+            // Parse JSON
+            let parsedData;
+            try {
+                const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
+                const jsonText = jsonMatch ? jsonMatch[1] : aiText;
+                parsedData = JSON.parse(jsonText.trim());
+            } catch (e) {
+                console.warn('Failed to parse JSON, returning raw text');
+                parsedData = {
+                    remixed_content: aiText,
+                    image_prompt: "Failed to generate specific image prompt."
+                };
+            }
+
+            // 4. Generate Image (if prompt exists)
+            if (parsedData.image_prompt && parsedData.image_prompt.length > 10) {
+                console.log('[AiService] Generating image from prompt...');
+                const imageUrl = await this.generateImageFromPrompt(parsedData.image_prompt);
+                if (imageUrl) {
+                    parsedData.generated_image = imageUrl;
+                }
+            }
+
+            return parsedData;
+
+        } catch (error) {
+            console.error('[AiService] Remix failed:', error);
+            throw error;
         }
+    }
 
     /**
      * Generate an image using OpenRouter (DALL-E 3)
@@ -511,45 +525,45 @@ Adhere strictly to the following User Style settings:
      * @returns {Promise<string|null>} Image URL or null
      */
     async generateImageFromPrompt(prompt) {
-            if (!this.apiKey) {
-                console.warn('[AiService] OPENROUTER_API_KEY missing. Skipping image generation.');
+        if (!this.apiKey) {
+            console.warn('[AiService] OPENROUTER_API_KEY missing. Skipping image generation.');
+            return null;
+        }
+
+        try {
+            console.log('[AiService] Generating image via OpenRouter (DALL-E 3)...');
+            const response = await fetch(`${this.baseUrl}/images/generations`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                    'HTTP-Referer': 'http://localhost:3000',
+                    'X-Title': 'Media Platform Antigravity'
+                },
+                body: JSON.stringify({
+                    model: "openai/dall-e-3",
+                    prompt: prompt,
+                    n: 1,
+                    size: "1024x1024",
+                    // quality: "standard", // OpenRouter might not support all params, keep it simple
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('[AiService] Image generation failed:', errorData);
                 return null;
             }
 
-            try {
-                console.log('[AiService] Generating image via OpenRouter (DALL-E 3)...');
-                const response = await fetch(`${this.baseUrl}/images/generations`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': 'http://localhost:3000',
-                        'X-Title': 'Media Platform Antigravity'
-                    },
-                    body: JSON.stringify({
-                        model: "openai/dall-e-3",
-                        prompt: prompt,
-                        n: 1,
-                        size: "1024x1024",
-                        // quality: "standard", // OpenRouter might not support all params, keep it simple
-                    })
-                });
+            const data = await response.json();
+            // OpenRouter /images/generations response format matches OpenAI
+            return data.data[0].url;
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('[AiService] Image generation failed:', errorData);
-                    return null;
-                }
-
-                const data = await response.json();
-                // OpenRouter /images/generations response format matches OpenAI
-                return data.data[0].url;
-
-            } catch (error) {
-                console.error('[AiService] Image generation error:', error);
-                return null;
-            }
+        } catch (error) {
+            console.error('[AiService] Image generation error:', error);
+            return null;
         }
     }
+}
 
-    export const aiService = new AiService();
+export const aiService = new AiService();

@@ -94,28 +94,8 @@ const PostDetailView = ({ post: initialPost, onClose }) => {
     const platformStyle = getPlatformStyle(platform);
     const images = post.images && post.images.length > 0 ? post.images : (screenshot ? [screenshot] : []);
 
-    // Mock comments if none exist (for demonstration)
-    const comments = post.comments && post.comments.length > 0 ? post.comments : [
-        {
-            author: 'alex_design',
-            text: 'This is such a great insight! I love how you broke down the process.',
-            time: '2h',
-            replies: [
-                {
-                    author: 'sarah_creative',
-                    text: 'Totally agree! The second point really resonated with me.',
-                    time: '1h',
-                    replies: []
-                }
-            ]
-        },
-        {
-            author: 'mike_dev',
-            text: 'Could you share more about the tools you used for this?',
-            time: '45m',
-            replies: []
-        }
-    ];
+    // Use actual comments or empty array
+    const comments = post.comments || [];
 
     // Handle saving note
     const handleSaveNote = async () => {
@@ -348,22 +328,47 @@ const PostDetailView = ({ post: initialPost, onClose }) => {
                             {/* Caption/Post Content */}
                             <div className="mb-6">
                                 <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-                                    {post.content || title}
+                                    {(() => {
+                                        const text = post.content || title || '';
+                                        // Regex to find URLs (http/https)
+                                        const urlRegex = /(https?:\/\/[^\s]+)/g;
+                                        const parts = text.split(urlRegex);
+
+                                        return parts.map((part, i) => {
+                                            if (part.match(urlRegex)) {
+                                                return (
+                                                    <a
+                                                        key={i}
+                                                        href={part}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-blue-400 hover:text-blue-300 hover:underline break-all"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        {part}
+                                                    </a>
+                                                );
+                                            }
+                                            return part;
+                                        });
+                                    })()}
                                 </p>
                                 <div className="mt-2 text-xs text-gray-500">
                                     {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                                 </div>
                             </div>
 
-                            {/* Comments Divider */}
-                            <div className="h-px bg-white/10 my-4" />
-
-                            {/* Comments Section */}
-                            <div className="space-y-4">
-                                {comments.map((comment, idx) => (
-                                    <CommentItem key={idx} comment={comment} />
-                                ))}
-                            </div>
+                            {/* Comments Section - Only show if there are comments */}
+                            {comments.length > 0 && (
+                                <>
+                                    <div className="h-px bg-white/10 my-4" />
+                                    <div className="space-y-4">
+                                        {comments.map((comment, idx) => (
+                                            <CommentItem key={idx} comment={comment} />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Footer Actions */}

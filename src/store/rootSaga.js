@@ -11,11 +11,22 @@ import {
   addAnnotationFailure,
   deletePost,
   deletePostSuccess,
-  deletePostFailure
+  deletePostFailure,
+  createCollection,
+  createCollectionSuccess,
+  createCollectionFailure,
+  deleteCollection,
+  deleteCollectionSuccess,
+  deleteCollectionFailure,
+  movePostToCollection,
+  movePostToCollectionSuccess,
+  movePostToCollectionFailure,
+  updateCollectionName,
+  updateCollectionNameSuccess
 } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 
-// Worker Saga: Fetch all posts
+// Worker Saga: Fetch all posts AND collections
 function* handleFetchPosts() {
   try {
     // 1. Ensure user is authenticated
@@ -38,7 +49,7 @@ function* handleFetchPosts() {
     }
 
     // 2. Fetch posts
-    const { data, error } = yield call(() =>
+    const { data: postsData, error: postsError } = yield call(() =>
       supabase
         .from('posts')
         .select(`
@@ -51,12 +62,23 @@ function* handleFetchPosts() {
         .order('created_at', { ascending: false })
     );
 
-    if (error) throw error;
+    if (postsError) throw postsError;
 
-    console.log('[Saga] Fetched posts from DB:', data);
+    // 3. Fetch collections
+    const { data: collectionsData, error: collectionsError } = yield call(() =>
+      supabase
+        .from('collections')
+        .select('*')
+        .order('created_at', { ascending: false })
+    );
+
+    if (collectionsError) throw collectionsError;
+
+    console.log('[Saga] Fetched posts from DB:', postsData);
+    console.log('[Saga] Fetched collections from DB:', collectionsData);
 
     // Transform data to match frontend structure
-    const formattedPosts = data.map(post => ({
+    const formattedPosts = postsData.map(post => ({
       id: post.id,
       dbId: post.id, // Database ID
       platform: post.platform,
@@ -68,6 +90,7 @@ function* handleFetchPosts() {
       originalUrl: post.original_url,
       createdAt: post.created_at,
       fullJson: post.full_json,
+      collectionId: post.collection_id, // Add collection_id
 
       // Transform media array
       images: post.post_media
@@ -103,7 +126,10 @@ function* handleFetchPosts() {
 
     console.log('[Saga] Formatted posts:', formattedPosts);
 
-    yield put(fetchPostsSuccess(formattedPosts));
+    yield put(fetchPostsSuccess({
+      posts: formattedPosts,
+      collections: collectionsData || []
+    }));
   } catch (error) {
     console.error('[Saga] Fetch Posts Error:', error);
     yield put(fetchPostsFailure(error.message));
@@ -168,7 +194,8 @@ function* handleFetchPost(action) {
       images: postData.images || [],
       comments: postData.comments || [],
       analysis: postData.analysis || null,
-      fullJson: postData.full_json || postData.fullJson || null
+      fullJson: postData.full_json || postData.fullJson || null,
+      collectionId: null
     };
 
     console.log('[Saga] Transformed post for display:', transformedPost);
@@ -362,12 +389,110 @@ function* handleDeletePost(action) {
   }
 }
 
+// Worker Saga: Create Collection
+function* handleCreateCollection(action) {
+  try {
+    const { name } = action.payload;
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = yield call(() =>
+      supabase.from('collections').insert({
+        name,
+        user_id: user.id
+      }).select().single()
+    );
+
+    if (error) throw error;
+
+    yield put(createCollectionSuccess(data));
+  } catch (error) {
+    console.error('[Saga] Create Collection Error:', error);
+    yield put(createCollectionFailure(error.message));
+  }
+}
+
+// Worker Saga: Delete Collection
+function* handleDeleteCollection(action) {
+  try {
+    const collectionId = action.payload;
+
+    // First, update all posts in this collection to have collection_id = null
+    const { error: updateError } = yield call(() =>
+      supabase.from('posts')
+        .update({ collection_id: null })
+        .eq('collection_id', collectionId)
+    );
+
+    if (updateError) throw updateError;
+
+    // Then delete the collection
+    const { error: deleteError } = yield call(() =>
+      supabase.from('collections').delete().eq('id', collectionId)
+    );
+
+    if (deleteError) throw deleteError;
+
+    yield put(deleteCollectionSuccess(collectionId));
+    // Refresh posts to update their collectionId status in UI
+    yield put(fetchPosts());
+  } catch (error) {
+    console.error('[Saga] Delete Collection Error:', error);
+    yield put(deleteCollectionFailure(error.message));
+  }
+}
+
+// Worker Saga: Move Post to Collection
+function* handleMovePostToCollection(action) {
+  try {
+    const { postId, collectionId } = action.payload;
+
+    const { error } = yield call(() =>
+      supabase.from('posts')
+        .update({ collection_id: collectionId })
+        .eq('id', postId)
+    );
+
+    if (error) throw error;
+
+    yield put(movePostToCollectionSuccess({ postId, collectionId }));
+  } catch (error) {
+    console.error('[Saga] Move Post Error:', error);
+    yield put(movePostToCollectionFailure(error.message));
+  }
+}
+
+// Worker Saga: Update Collection Name
+function* handleUpdateCollectionName(action) {
+  try {
+    const { collectionId, name } = action.payload;
+
+    const { error } = yield call(() =>
+      supabase.from('collections')
+        .update({ name })
+        .eq('id', collectionId)
+    );
+
+    if (error) throw error;
+
+    yield put(updateCollectionNameSuccess({ collectionId, name }));
+  } catch (error) {
+    console.error('[Saga] Update Collection Name Error:', error);
+    // Handle error if needed
+  }
+}
+
 // Watcher Saga
 function* watchPosts() {
   yield takeLatest(addPostByUrl.type, handleFetchPost);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);
+  yield takeLatest(createCollection.type, handleCreateCollection);
+  yield takeLatest(deleteCollection.type, handleDeleteCollection);
+  yield takeLatest(movePostToCollection.type, handleMovePostToCollection);
+  yield takeLatest(updateCollectionName.type, handleUpdateCollectionName);
 }
 
 export default function* rootSaga() {

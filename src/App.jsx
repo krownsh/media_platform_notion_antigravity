@@ -5,8 +5,11 @@ import { store } from './store';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import ViewAllPage from './pages/ViewAllPage';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 import RemixPanel from './components/RemixPanel';
 import PostDetailView from './components/PostDetailView';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'framer-motion';
 
 function App() {
@@ -16,11 +19,25 @@ function App() {
   return (
     <Provider store={store}>
       <Router>
-        <Layout>
+        <Layout onPostClick={setSelectedPost}>
           <Routes>
-            <Route path="/" element={<HomePage onRemix={setRemixPost} onPostClick={setSelectedPost} />} />
-            <Route path="/view-all" element={<ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />} />
-            <Route path="/collection/:collectionId" element={<ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <HomePage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+              </ProtectedRoute>
+            } />
+            <Route path="/view-all" element={
+              <ProtectedRoute>
+                <ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+              </ProtectedRoute>
+            } />
+            <Route path="/collection/:collectionId" element={
+              <ProtectedRoute>
+                <ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+              </ProtectedRoute>
+            } />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
           </Routes>
 
           <AnimatePresence>

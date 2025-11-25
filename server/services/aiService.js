@@ -306,7 +306,6 @@ class AiService {
             return null; // Return null if conversion fails
         }
     }
-
     /**
      * Remix content with "Internalize & Reframe" logic.
      * @param {object} sourceJson - The full JSON object of the source post

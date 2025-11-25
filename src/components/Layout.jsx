@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder, Home } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder, Home, LogOut, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { supabase } from '../api/supabaseClient';
+import SidebarSearch from './SidebarSearch';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded }) => (
     <div
@@ -19,28 +21,55 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded 
     </div>
 );
 
-const Layout = ({ children }) => {
+const Layout = ({ children, onPostClick }) => {
     const { items, collections } = useSelector((state) => state.posts);
     const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
     const [expandedCollections, setExpandedCollections] = useState(new Set());
     const navigate = useNavigate();
     const location = useLocation();
+    const [user, setUser] = useState(null);
+
+    React.useEffect(() => {
+        // Check active session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+    };
 
     const toggleCollection = (id) => {
         // Navigate to collection on click
         navigate(`/collection/${id}`);
     };
 
+    const isAuthPage = ['/login', '/signup'].includes(location.pathname);
+
+    if (isAuthPage) {
+        return <>{children}</>;
+    }
+
     return (
         <div className="flex h-screen overflow-hidden text-white">
             {/* Sidebar */}
-            <aside className="w-64 flex-shrink-0 glass-panel flex flex-col border-r border-white/5">
+            <aside className="w-64 flex-shrink-0 glass-panel flex flex-col border-r border-white/5 z-50 relative">
                 <div className="p-6 cursor-pointer" onClick={() => navigate('/')}>
                     <h1 className="text-2xl font-bold tracking-tight text-gradient">Antigravity</h1>
                     <p className="text-xs text-gray-500 mt-1">Social Knowledge Base</p>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
+                <SidebarSearch onPostClick={onPostClick} />
+                <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
                     <SidebarItem
                         icon={Home}
                         label="Home"
@@ -98,16 +127,24 @@ const Layout = ({ children }) => {
                         )}
                     </AnimatePresence>
 
-                    <SidebarItem icon={Search} label="Search" />
+
                 </nav>
 
                 <div className="p-4 mt-auto">
-                    <button className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl transition-all font-medium border border-white/10">
-                        <Plus size={18} />
-                        New Collection
-                    </button>
-                    <div className="mt-4 pt-4 border-t border-white/10">
-                        <SidebarItem icon={Settings} label="Settings" />
+                    <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
+                        {user ? (
+                            <SidebarItem
+                                icon={LogOut}
+                                label="Sign Out"
+                                onClick={handleLogout}
+                            />
+                        ) : (
+                            <SidebarItem
+                                icon={LogIn}
+                                label="Sign In"
+                                onClick={() => navigate('/login')}
+                            />
+                        )}
                     </div>
                 </div>
             </aside>

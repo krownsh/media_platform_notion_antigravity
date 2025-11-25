@@ -141,6 +141,31 @@ app.get('/api/proxy-image', async (req, res) => {
     }
 });
 
+// Signup Endpoint (Bypass email verification)
+app.post('/api/signup', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+    }
+
+    try {
+        // Use admin API to create user with email automatically confirmed
+        const { data, error } = await supabase.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true
+        });
+
+        if (error) throw error;
+
+        res.json({ user: data.user });
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ========== Annotations (筆記) API ==========
 
 // Helper function to check if Supabase is configured (including fallback)

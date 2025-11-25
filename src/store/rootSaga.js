@@ -33,19 +33,10 @@ function* handleFetchPosts() {
     const { data: { user } } = yield call(() => supabase.auth.getUser());
 
     if (!user) {
-      console.log('[Saga] No user found during fetchPosts, attempting sign in...');
-      const { data: authData, error: authError } = yield call(() =>
-        supabase.auth.signInWithPassword({
-          email: 'bgkong1205@gmail.com',
-          password: 'A123123a'
-        })
-      );
-
-      if (authError) {
-        console.warn('[Saga] Sign-in failed during fetchPosts:', authError);
-      } else {
-        console.log('[Saga] ✅ Signed in successfully for fetchPosts');
-      }
+      console.warn('[Saga] No user found during fetchPosts. User should be authenticated by ProtectedRoute.');
+      // We can either return here or let the query fail/return empty if RLS is on.
+      // Since we are implementing ProtectedRoute, this case shouldn't theoretically happen for the main view,
+      // but good to be safe.
     }
 
     // 2. Fetch posts
@@ -163,21 +154,7 @@ function* handleFetchPost(action) {
 
     let userId = user?.id;
     if (!userId) {
-      // Attempt sign in with provided credentials
-      console.log('[Saga] No user found, attempting sign in...');
-      const { data: authData, error: authError } = yield call(() =>
-        supabase.auth.signInWithPassword({
-          email: 'bgkong1205@gmail.com',
-          password: 'A123123a'
-        })
-      );
-
-      if (authData?.user) {
-        userId = authData.user.id;
-        console.log('[Saga] ✅ Signed in successfully as:', authData.user.email);
-      } else {
-        console.warn('[Saga] ❌ Sign-in failed. Data will NOT be saved to DB.', authError);
-      }
+      console.warn('[Saga] No user found. Data will NOT be saved to DB.');
     }
 
     // 3. Transform data for frontend (immediate display)

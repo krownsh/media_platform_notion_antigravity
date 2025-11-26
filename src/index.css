@@ -4,55 +4,114 @@
 
 @layer base {
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 263.4 70% 50.4%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    /* 
+      Palette from UI.md:
+      Primary (Rock Gray): #DAD9D4 -> 60 5% 85%
+      Secondary (Fog Blue): #AFC4C8 -> 192 18% 74%
+      Accent (Moss Green): #7F9B89 -> 141 13% 55%
+      Background (Fog White): #F7F7F5 -> 60 5% 96%
+      Foreground (Deep Stone): #4A4A48 -> 60 2% 29%
+      Muted (Sand): #E8E8E6 -> 60 5% 90%
+    */
+    --background: 60 5% 96%;
+    --foreground: 60 2% 29%;
+
+    --card: 60 5% 93%;
+    /* Slightly darker than bg for depth */
+    --card-foreground: 60 2% 29%;
+
+    --popover: 60 5% 96%;
+    --popover-foreground: 60 2% 29%;
+
+    --primary: 60 5% 85%;
+    /* Rock Gray */
+    --primary-foreground: 60 2% 29%;
+
+    --secondary: 192 18% 74%;
+    /* Fog Blue */
+    --secondary-foreground: 60 2% 29%;
+
+    --muted: 60 5% 90%;
+    --muted-foreground: 60 2% 45%;
+
+    --accent: 141 13% 55%;
+    /* Moss Green */
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* White text for contrast on green */
+
+    --destructive: 0 40% 50%;
+    /* Soft Red */
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --radius: 0.5rem;
+
+    --border: 60 5% 85%;
+    --input: 60 5% 85%;
+    --ring: 141 13% 55%;
+
+    --radius: 1.5rem;
+    /* Natural curvature */
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
-    background-image:
-      radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
-      radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
-    background-attachment: fixed;
+    @apply bg-background text-foreground antialiased selection:bg-accent/30;
+    font-family: 'Inter', 'Noto Sans TC', sans-serif;
+    /* Soft geometric */
+    line-height: 1.8;
+    /* Calm breathing */
+    letter-spacing: 0.02em;
+    /* Slightly positive */
+
+    /* Noise Texture */
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
   }
 }
 
 @layer utilities {
+
+  /* Fog Layer Effect */
   .glass-panel {
-    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-xl;
+    @apply bg-white/40 backdrop-blur-xl border border-white/40 shadow-sm;
   }
 
   .glass-card {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-all duration-300;
+    @apply bg-white/60 backdrop-blur-md border border-white/50 shadow-sm hover:shadow-md hover:bg-white/80 transition-all duration-500 ease-out;
+  }
+
+  /* Stone Surface */
+  .stone-panel {
+    @apply bg-primary/30 backdrop-blur-lg border border-primary/20;
   }
 
   .text-gradient {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400;
+    @apply text-foreground;
+    /* Removed neon gradient, kept simple or subtle */
+  }
+
+  /* Organic Animation Utility */
+  .animate-organic {
+    transition-timing-function: cubic-bezier(0.25, 0.8, 0.3, 1);
+  }
+
+  .hover-lift {
+    @apply transition-transform duration-500 ease-[cubic-bezier(0.25, 0.8, 0.3, 1)] hover:-translate-y-1;
   }
 }
 
-/* Custom Scrollbar */
+/* Custom Scrollbar - Minimal & Organic */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -60,10 +119,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
+  background: hsl(var(--primary));
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: hsl(var(--accent));
 }

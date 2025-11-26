@@ -8,26 +8,26 @@ const HomePage = ({ onRemix, onPostClick }) => {
 
     return (
         <div className="w-full mx-auto px-4">
-            <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
-                    Curate your <span className="text-gradient">Digital Mind</span>
+            <div className="text-center mb-16 pt-8">
+                <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 tracking-tight">
+                    整理您的 <span className="text-gradient">數位思維</span>
                 </h2>
-                <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-                    Save, analyze, and remix content from Instagram, Twitter, and Facebook.
-                    Turn social noise into structured knowledge.
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+                    儲存、分析並改寫來自 Instagram、Twitter 和 Facebook 的內容。
+                    將社群雜訊轉化為結構化知識。
                 </p>
             </div>
 
             <UrlInput />
 
-            <div className="mt-16">
-                <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-xl font-semibold text-white">Recent Saves</h3>
+            <div className="mt-20">
+                <div className="flex items-center justify-between mb-8 px-2">
+                    <h3 className="text-xl font-semibold text-foreground/90">最近儲存</h3>
                     <button
                         onClick={() => navigate('/view-all')}
-                        className="text-sm text-gray-400 hover:text-white transition-colors"
+                        className="text-sm text-muted-foreground hover:text-accent transition-colors font-medium"
                     >
-                        View All
+                        查看全部
                     </button>
                 </div>
                 <CollectionBoard onRemix={onRemix} onPostClick={onPostClick} />

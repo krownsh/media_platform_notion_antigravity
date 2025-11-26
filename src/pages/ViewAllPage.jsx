@@ -18,7 +18,7 @@ const ViewAllPage = ({ onRemix, onPostClick }) => {
 
     // Filter posts based on route (View All vs Collection)
     let displayedPosts = items;
-    let title = "All Posts";
+    let title = "所有貼文";
 
     if (collectionId) {
         const collection = collections.find(c => c.id === collectionId);
@@ -28,7 +28,7 @@ const ViewAllPage = ({ onRemix, onPostClick }) => {
         } else {
             // Handle case where collection is not found (maybe redirect or show empty)
             displayedPosts = [];
-            title = "Collection Not Found";
+            title = "找不到收藏夾";
         }
     }
 
@@ -37,28 +37,28 @@ const ViewAllPage = ({ onRemix, onPostClick }) => {
 
     return (
         <div className="w-full mx-auto px-4 pb-20">
-            <div className="flex items-center gap-3 mb-8 pt-6">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                    <Layers className="text-blue-400" size={24} />
+            <div className="flex items-center gap-3 mb-10 pt-8 pl-2">
+                <div className="p-2.5 bg-accent/10 rounded-xl">
+                    <Layers className="text-accent" size={24} />
                 </div>
-                <h1 className="text-2xl font-bold text-white">{title}</h1>
-                <span className="text-gray-500 text-sm ml-2">
-                    {displayedPosts.length} {displayedPosts.length === 1 ? 'post' : 'posts'}
+                <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+                <span className="text-muted-foreground text-sm ml-2 font-medium">
+                    {displayedPosts.length} 篇貼文
                 </span>
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center">
+                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="glass-card rounded-2xl overflow-hidden animate-pulse w-[360px] h-[560px] bg-white/5" />
+                        <div key={i} className="glass-card rounded-3xl overflow-hidden animate-pulse w-[360px] h-[560px] bg-white/20" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                    <p className="text-lg font-medium">No posts found</p>
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
+                    <p className="text-lg font-medium">未找到貼文</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center">
+                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
                     {displayedPosts.map((post) => (
                         <PostCard
                             key={post.id}

@@ -42,22 +42,19 @@ const PostCard = ({
         const platformName = p?.toLowerCase();
         if (platformName === 'instagram') {
             return {
-                icon: <Instagram size={12} className="text-white" />,
-                headerBg: 'bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737]',
+                icon: <Instagram size={14} className="text-pink-500" />,
                 label: 'Instagram',
             };
         }
         if (platformName === 'twitter' || platformName === 'x') {
             return {
-                icon: <Twitter size={12} className="text-white" />,
-                headerBg: 'bg-[#1DA1F2]', // Twitter Blue
-                label: 'Twitter', // Or 'X' if preferred, but user asked for "Twitter style"
+                icon: <Twitter size={14} className="text-blue-400" />,
+                label: 'Twitter', // Or 'X'
             };
         }
         // Default to Threads
         return {
-            icon: <ThreadsIcon size={12} className="text-white" />,
-            headerBg: 'bg-[#101010]',
+            icon: <ThreadsIcon size={14} className="text-foreground" />,
             label: 'Threads',
         };
     };
@@ -97,44 +94,44 @@ const PostCard = ({
                 scale: isMergeTarget ? 0.97 : 1,
                 rotate: isMergeTarget ? -0.4 : 0
             }}
-            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="glass-card rounded-xl overflow-hidden group relative w-[360px] h-[560px] flex-shrink-0 bg-black/40 border border-white/10 shadow-xl flex flex-col cursor-pointer"
+            className="glass-card rounded-3xl overflow-hidden group relative w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
-                <div className="absolute inset-0 pointer-events-none rounded-xl">
-                    <div className="absolute inset-0 rounded-xl bg-blue-500/5" />
+                <div className="absolute inset-0 pointer-events-none rounded-3xl z-50">
+                    <div className="absolute inset-0 rounded-3xl bg-accent/10" />
                     <div
-                        className="absolute inset-2 rounded-xl border border-blue-400/60"
+                        className="absolute inset-2 rounded-2xl border-2 border-accent/60"
                         style={{ opacity: mergeReady ? 1 : mergeProgress * 0.9 }}
                     />
                 </div>
             )}
             {/* Platform Header Strip */}
-            <div className={`w-full h-8 px-3 flex items-center justify-between flex-shrink-0 ${platformStyle.headerBg} border-b border-white/5`}>
-                <div className="flex items-center gap-2">
+            <div className="w-full h-12 px-5 flex items-center justify-between flex-shrink-0 bg-white/30 backdrop-blur-sm border-b border-white/20">
+                <div className="flex items-center gap-2.5">
                     {platformStyle.icon}
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white leading-none">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
                         {platformStyle.label}
                     </span>
-                    <span className="w-0.5 h-0.5 rounded-full bg-white/50" />
-                    <span className="text-[10px] text-white/70 font-medium leading-none">
-                        {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || 'Uncategorized' : 'Uncategorized'}
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
+                    <span className="text-[10px] text-muted-foreground/80 font-medium leading-none">
+                        {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}
                     </span>
                 </div>
 
                 {/* Menu */}
                 <div className="relative">
                     <button
-                        className="p-1 rounded-full hover:bg-white/20 text-white/80 transition-colors"
+                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground transition-colors"
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowMenu(!showMenu);
                             setShowMoveMenu(false);
                         }}
                     >
-                        <MoreHorizontal size={16} />
+                        <MoreHorizontal size={18} />
                     </button>
 
                     <AnimatePresence>
@@ -143,63 +140,64 @@ const PostCard = ({
                                 initial={{ opacity: 0, scale: 0.95, y: -10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                transition={{ duration: 0.1 }}
-                                className="absolute right-0 top-full mt-1 w-48 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50"
+                                transition={{ duration: 0.2, ease: [0.25, 0.8, 0.3, 1] }}
+                                className="absolute right-0 top-full mt-2 w-48 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl"
                             >
                                 {/* Move To Submenu Trigger */}
                                 <div className="relative">
                                     <button
-                                        className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/5 flex items-center justify-between transition-colors"
+                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 flex items-center justify-between transition-colors"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMoveMenu(!showMoveMenu);
                                         }}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <FolderInput size={14} />
-                                            Move to...
+                                            <FolderInput size={14} className="text-muted-foreground" />
+                                            移動至...
                                         </div>
-                                        <ChevronRight size={12} />
+                                        <ChevronRight size={12} className="text-muted-foreground" />
                                     </button>
 
                                     {/* Submenu */}
                                     {showMoveMenu && (
-                                        <div className="absolute right-full top-0 mr-1 w-40 bg-[#1A1A1A] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
+                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl">
                                             {post.collectionId && (
                                                 <button
-                                                    className="w-full px-3 py-2 text-left text-xs text-red-300 hover:bg-white/5 flex items-center gap-2 transition-colors border-b border-white/5"
+                                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-b border-border/20"
                                                     onClick={(e) => handleMoveToCollection(e, null)}
                                                 >
-                                                    <FolderMinus size={12} /> Remove from Folder
+                                                    <FolderMinus size={12} /> 從資料夾移除
                                                 </button>
                                             )}
                                             {collections.length > 0 ? (
                                                 collections.map(collection => (
                                                     <button
                                                         key={collection.id}
-                                                        className="w-full px-3 py-2 text-left text-xs text-gray-300 hover:bg-white/5 truncate"
+                                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 truncate"
                                                         onClick={(e) => handleMoveToCollection(e, collection.id)}
                                                     >
                                                         {collection.name}
                                                     </button>
                                                 ))
                                             ) : (
-                                                <div className="px-3 py-2 text-xs text-gray-500 italic">No folders</div>
+                                                <div className="px-4 py-3 text-xs text-muted-foreground italic">無資料夾</div>
                                             )}
                                         </div>
                                     )}
                                 </div>
 
                                 <button
-                                    className="w-full px-3 py-2 text-left text-xs text-red-400 hover:bg-white/5 flex items-center gap-2 transition-colors border-t border-white/5"
+                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-t border-border/20"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setShowMenu(false);
                                         onDelete && onDelete();
                                     }}
+                                    title="Delete Post"
                                 >
                                     <Trash2 size={14} />
-                                    Delete Post
+                                    刪除貼文
                                 </button>
                             </motion.div>
                         )}
@@ -208,19 +206,19 @@ const PostCard = ({
             </div>
 
             {/* Author Info */}
-            <div className="p-3 border-b border-white/5 flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-black/20">
+            <div className="px-5 py-3 border-b border-white/20 flex-shrink-0 relative z-20 flex items-center gap-3 bg-white/20">
                 {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/10" />
+                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-9 h-9 rounded-full object-cover border border-white/30 shadow-sm" />
                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-orange-500 flex items-center justify-center text-xs font-bold text-white">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/30 shadow-sm">
                         {post.author?.[0] || 'U'}
                     </div>
                 )}
                 <div className="flex flex-col justify-center">
-                    <span className="text-sm font-semibold text-white leading-none truncate max-w-[180px]">
+                    <span className="text-sm font-semibold text-foreground leading-none truncate max-w-[180px]">
                         {post.author || 'Unknown'}
                     </span>
-                    <span className="text-xs text-gray-400 leading-none mt-1">
+                    <span className="text-[10px] text-muted-foreground/80 leading-none mt-1.5 font-medium">
                         @{post.authorHandle || 'unknown'}
                         {post.postedAt && (
                             <>
@@ -232,8 +230,8 @@ const PostCard = ({
                 </div>
             </div>
 
-            {/* Image Carousel Section - Fixed Height (Aspect Video is relative to width, so it's fixed) */}
-            <div className="relative w-full aspect-video bg-gray-900 overflow-hidden group/image flex-shrink-0">
+            {/* Image Carousel Section */}
+            <div className="relative w-full aspect-video bg-muted/20 overflow-hidden group/image flex-shrink-0">
                 {images.length > 0 ? (
                     <div className="relative w-full h-full">
                         {/* Image Slider */}
@@ -261,110 +259,110 @@ const PostCard = ({
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={prevImage}
-                                        className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white/90 hover:bg-black/80 backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100"
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
                                     >
-                                        <ChevronLeft size={20} />
+                                        <ChevronLeft size={18} />
                                     </button>
                                 )}
                                 {currentImageIndex < images.length - 1 && (
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={nextImage}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 text-white/90 hover:bg-black/80 backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100"
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
                                     >
-                                        <ChevronRight size={20} />
+                                        <ChevronRight size={18} />
                                     </button>
                                 )}
 
                                 {/* Dots Indicator */}
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-2 py-1 rounded-full bg-black/20 backdrop-blur-sm">
+                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-2.5 py-1.5 rounded-full bg-black/10 backdrop-blur-md">
                                     {images.map((_, idx) => (
                                         <div
                                             key={idx}
-                                            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/40'}`}
+                                            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
                                         />
                                     ))}
                                 </div>
 
                                 {/* Image Counter Badge */}
-                                <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-medium text-white border border-white/10">
+                                <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/20 backdrop-blur-md text-[10px] font-medium text-white border border-white/10">
                                     {currentImageIndex + 1} / {images.length}
                                 </div>
                             </>
                         )}
                     </div>
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                        <span className="text-gray-500 text-sm">No image available</span>
+                    <div className="w-full h-full flex items-center justify-center bg-secondary/10">
+                        <span className="text-muted-foreground text-sm">無圖片</span>
                     </div>
                 )}
             </div>
 
-            {/* Action Bar - Fixed Height */}
-            <div className="px-3 py-2.5 flex items-center justify-end border-b border-white/5 h-[50px] flex-shrink-0">
+            {/* Action Bar */}
+            <div className="px-4 py-3 flex items-center justify-end border-b border-white/20 h-[50px] flex-shrink-0 bg-white/10">
                 <div className="flex items-center gap-3">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onRemix && onRemix(post);
                         }}
-                        className="p-1.5 rounded-full hover:bg-purple-500/20 text-purple-400 hover:text-purple-300 transition-colors"
-                        title="Remix with AI"
+                        className="p-2 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
+                        title="AI 改寫"
                     >
-                        <Sparkles size={20} />
+                        <Sparkles size={18} />
                     </button>
                     <a
                         href={post.originalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="hover:text-blue-400 text-gray-400 transition-colors"
-                        title="Open original post"
+                        className="p-2 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors duration-300"
+                        title="開啟原始貼文"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <ExternalLink size={20} />
+                        <ExternalLink size={18} />
                     </a>
                 </div>
             </div>
 
-            {/* Content Section - Flexible Height but constrained */}
-            <div className="p-3 flex-1 flex flex-col overflow-hidden">
-                {/* Caption - Fixed Height for 3 lines */}
-                <div className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap line-clamp-3 h-[4.5rem] mb-1 flex-shrink-0">
-                    <span className="font-semibold text-white mr-2">{post.author}</span>
+            {/* Content Section */}
+            <div className="p-5 flex-1 flex flex-col overflow-hidden bg-white/30">
+                {/* Caption */}
+                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3 h-[4.5rem] mb-3 flex-shrink-0 font-medium">
+                    <span className="font-bold text-foreground mr-2">{post.author}</span>
                     {post.content || title}
                 </div>
 
-                {/* Tags - Fixed Height for 1 line */}
-                <div className="flex flex-wrap gap-1.5 h-[26px] mb-1 flex-shrink-0 overflow-hidden">
+                {/* Tags */}
+                <div className="flex flex-wrap gap-1.5 h-[26px] mb-3 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 5).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-md bg-white/5 text-[10px] font-medium text-blue-300 border border-white/10 hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap">
+                        <span key={i} className="px-2.5 py-0.5 rounded-full bg-secondary/20 text-[10px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
                         </span>
                     ))}
                 </div>
 
-                {/* AI Summary (if available) - Fixed Height */}
-                <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-2.5 mb-2 flex-shrink-0 h-[70px] overflow-hidden">
+                {/* AI Summary */}
+                <div className="bg-accent/5 border border-accent/10 rounded-xl p-3 mb-2 flex-shrink-0 h-[70px] overflow-hidden relative group/summary">
                     {analysis?.summary ? (
                         <>
                             <div className="flex items-center gap-1.5 mb-1">
-                                <Sparkles size={12} className="text-purple-400" />
-                                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">AI Summary</span>
+                                <Sparkles size={12} className="text-accent" />
+                                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
                             </div>
-                            <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">
+                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 group-hover/summary:text-foreground transition-colors">
                                 {analysis.summary}
                             </p>
                         </>
                     ) : (
-                        <div className="flex items-center justify-center h-full text-xs text-gray-600 italic">
-                            No AI summary available
+                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground/50 italic">
+                            無 AI 摘要
                         </div>
                     )}
                 </div>
 
-                {/* Footer Info (Date) - Pushed to bottom */}
-                <div className="mt-auto pt-2 border-t border-white/5 flex items-center justify-between text-xs text-gray-500">
-                    <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
+                {/* Footer Info */}
+                <div className="mt-auto pt-3 border-t border-white/20 flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest opacity-60">
+                    <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
                 </div>
             </div>
         </motion.div>

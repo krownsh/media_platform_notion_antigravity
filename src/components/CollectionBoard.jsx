@@ -112,35 +112,35 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
             <div className="flex flex-col gap-8 pb-20">
 
                 {/* --- Top Section: Folders --- */}
-                <div className="bg-[#1A1A1A]/50 border-b border-white/5 p-6 -mx-6 md:-mx-8 lg:-mx-12 sticky top-0 z-30 backdrop-blur-md">
+                <div className="bg-white/40 border-b border-white/20 p-6 -mx-6 md:-mx-8 lg:-mx-12 sticky top-0 z-30 backdrop-blur-md shadow-sm">
                     <div className="max-w-[1600px] mx-auto w-full">
                         <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Layers size={20} className="text-blue-400" />
-                                Collections
+                            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                                <Layers size={20} className="text-accent" />
+                                收藏夾
                             </h2>
                             <button
                                 onClick={() => setIsCreating(true)}
-                                className="text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                                className="text-sm bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded-xl flex items-center gap-1 transition-all shadow-sm hover:shadow-md"
                             >
-                                <Plus size={16} /> New Folder
+                                <Plus size={16} /> 新增資料夾
                             </button>
                         </div>
 
-                        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
                             {/* Create Input */}
                             {isCreating && (
-                                <form onSubmit={handleCreateCollection} className="min-w-[160px] p-4 rounded-xl border border-blue-500/50 bg-blue-500/10 flex flex-col items-center gap-2">
+                                <form onSubmit={handleCreateCollection} className="min-w-[160px] p-4 rounded-2xl border border-accent/30 bg-accent/5 flex flex-col items-center gap-2 shadow-inner">
                                     <input
                                         type="text"
-                                        placeholder="Folder Name"
+                                        placeholder="資料夾名稱"
                                         value={newCollectionName}
                                         onChange={e => setNewCollectionName(e.target.value)}
                                         autoFocus
-                                        className="w-full bg-transparent border-b border-blue-400 text-sm text-center outline-none pb-1"
+                                        className="w-full bg-transparent border-b border-accent/50 text-sm text-center outline-none pb-1 text-foreground placeholder-muted-foreground"
                                         onBlur={() => !newCollectionName && setIsCreating(false)}
                                     />
-                                    <button type="submit" className="text-xs text-blue-300 hover:text-white">Press Enter</button>
+                                    <button type="submit" className="text-xs text-accent hover:text-accent/80 font-medium">按 Enter 鍵</button>
                                 </form>
                             )}
 
@@ -164,8 +164,8 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
                             })}
 
                             {collections.length === 0 && !isCreating && (
-                                <div className="text-sm text-gray-500 italic py-4">
-                                    No collections yet. Create one to organize your posts.
+                                <div className="text-sm text-muted-foreground italic py-4">
+                                    尚無收藏夾。建立一個來整理您的貼文。
                                 </div>
                             )}
                         </div>
@@ -174,18 +174,18 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
 
                 {/* --- Bottom Section: Uncategorized Posts --- */}
                 <div className="max-w-[1600px] mx-auto w-full px-4">
-                    <h2 className="text-lg font-semibold text-white mb-6 pl-2 border-l-4 border-gray-700">
-                        Uncategorized Posts
+                    <h2 className="text-lg font-semibold text-foreground mb-6 pl-3 border-l-4 border-accent/50">
+                        未分類貼文
                     </h2>
 
                     {uncategorizedPosts.length === 0 && !loading ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-                            <p className="text-lg font-medium">All caught up!</p>
-                            <p className="text-sm">All posts are organized in folders.</p>
+                        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
+                            <p className="text-lg font-medium">全部都看完了！</p>
+                            <p className="text-sm">所有貼文都已整理到資料夾中。</p>
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(item => item.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center">
+                            <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
                                 {uncategorizedPosts.map((post) => (
                                     <SortablePostCard
                                         key={post.id}
@@ -201,9 +201,9 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
                     )}
 
                     {loading && (
-                        <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-6 justify-center mt-4">
+                        <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center mt-4">
                             {[1, 2, 3].map(i => (
-                                <div key={i} className="glass-card rounded-2xl overflow-hidden animate-pulse w-[360px] h-[400px] bg-white/5" />
+                                <div key={i} className="glass-card rounded-3xl overflow-hidden animate-pulse w-[360px] h-[560px] bg-white/20" />
                             ))}
                         </div>
                     )}
@@ -257,7 +257,7 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
                                     scale: 0.1,
                                     opacity: 0
                                 }}
-                                transition={{ duration: 0.4, ease: "easeInOut" }}
+                                transition={{ duration: 0.4, ease: [0.25, 0.8, 0.3, 1] }}
                                 className="pointer-events-none"
                             >
                                 <SortablePostCard
@@ -278,4 +278,3 @@ const CollectionBoard = ({ onRemix, onPostClick }) => {
 };
 
 export default CollectionBoard;
-

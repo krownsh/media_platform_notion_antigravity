@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder, Home, LogOut, LogIn } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, Folder, Home, LogOut, LogIn, User as UserIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -8,13 +8,16 @@ import SidebarSearch from './SidebarSearch';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded }) => (
     <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-200 group ${active ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+        className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.25,0.8,0.3,1)] group ${active
+            ? 'bg-secondary/40 text-foreground font-medium shadow-sm'
+            : 'text-muted-foreground hover:bg-secondary/20 hover:text-foreground hover:translate-x-1'
+            }`}
         onClick={onClick}
     >
-        <Icon size={20} className="group-hover:scale-110 transition-transform" />
-        <span className="font-medium flex-1">{label}</span>
+        <Icon size={20} className={`transition-transform duration-500 ${active ? 'text-accent' : 'group-hover:text-accent'}`} />
+        <span className="flex-1">{label}</span>
         {hasSubmenu && (
-            <div className="text-gray-500">
+            <div className="text-muted-foreground/70">
                 {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
             </div>
         )}
@@ -60,33 +63,33 @@ const Layout = ({ children, onPostClick }) => {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden text-white">
+        <div className="flex h-screen overflow-hidden text-foreground bg-background">
             {/* Sidebar */}
-            <aside className="w-64 flex-shrink-0 glass-panel flex flex-col border-r border-white/5 z-50 relative">
-                <div className="p-6 cursor-pointer" onClick={() => navigate('/')}>
-                    <h1 className="text-2xl font-bold tracking-tight text-gradient">Antigravity</h1>
-                    <p className="text-xs text-gray-500 mt-1">Social Knowledge Base</p>
+            <aside className="w-72 flex-shrink-0 glass-panel flex flex-col border-r border-border/40 z-50 relative">
+                <div className="p-8 cursor-pointer" onClick={() => navigate('/')}>
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground/80 font-serif">社群媒體筆記本</h1>
+                    <p className="text-xs text-muted-foreground mt-1 tracking-widest uppercase opacity-70">Social Knowledge Base</p>
                 </div>
 
                 <SidebarSearch onPostClick={onPostClick} />
-                <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
+                <nav className="flex-1 px-6 space-y-2 overflow-y-auto custom-scrollbar py-4">
                     <SidebarItem
                         icon={Home}
-                        label="Home"
+                        label="首頁"
                         active={location.pathname === '/'}
                         onClick={() => navigate('/')}
                     />
 
                     <SidebarItem
                         icon={LayoutGrid}
-                        label="All Posts"
+                        label="所有貼文"
                         active={location.pathname === '/view-all'}
                         onClick={() => navigate('/view-all')}
                     />
 
                     <SidebarItem
                         icon={Library}
-                        label="Collections"
+                        label="收藏夾"
                         onClick={() => setIsCollectionsExpanded(!isCollectionsExpanded)}
                         hasSubmenu
                         expanded={isCollectionsExpanded}
@@ -99,27 +102,30 @@ const Layout = ({ children, onPostClick }) => {
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                transition={{ duration: 0.2 }}
+                                transition={{ duration: 0.4, ease: [0.25, 0.8, 0.3, 1] }}
                                 className="overflow-hidden"
                             >
-                                <div className="pl-4 space-y-1 mb-2">
+                                <div className="pl-4 space-y-1 mb-2 mt-1">
                                     {collections.map(collection => {
                                         const isActive = location.pathname === `/collection/${collection.id}`;
                                         return (
                                             <div key={collection.id}>
                                                 <div
-                                                    className={`flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer text-sm transition-colors ${isActive ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer text-sm transition-all duration-300 ${isActive
+                                                        ? 'bg-secondary/30 text-foreground font-medium'
+                                                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/10 hover:translate-x-1'
+                                                        }`}
                                                     onClick={() => toggleCollection(collection.id)}
                                                 >
-                                                    <Folder size={14} />
+                                                    <Folder size={14} className={isActive ? 'text-accent' : 'opacity-70'} />
                                                     <span className="truncate flex-1">{collection.name}</span>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                     {collections.length === 0 && (
-                                        <div className="px-4 py-2 text-xs text-gray-600 italic">
-                                            No collections created
+                                        <div className="px-4 py-2 text-xs text-muted-foreground/60 italic">
+                                            尚無收藏夾
                                         </div>
                                     )}
                                 </div>
@@ -130,28 +136,43 @@ const Layout = ({ children, onPostClick }) => {
 
                 </nav>
 
-                <div className="p-4 mt-auto">
-                    <div className="mt-4 pt-4 border-t border-white/10 space-y-1">
-                        {user ? (
-                            <SidebarItem
-                                icon={LogOut}
-                                label="Sign Out"
+                <div className="p-6 mt-auto">
+                    {user ? (
+                        <div className="bg-white/40 border border-white/20 rounded-2xl p-4 shadow-sm backdrop-blur-md flex items-center gap-3 group hover:bg-white/60 transition-all duration-300">
+                            <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent border border-accent/20">
+                                <UserIcon size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                    {user.email?.split('@')[0]}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground truncate opacity-70">
+                                    {user.email}
+                                </p>
+                            </div>
+                            <button
                                 onClick={handleLogout}
-                            />
-                        ) : (
-                            <SidebarItem
-                                icon={LogIn}
-                                label="Sign In"
-                                onClick={() => navigate('/login')}
-                            />
-                        )}
-                    </div>
+                                className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-colors"
+                                title="登出"
+                            >
+                                <LogOut size={18} />
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="w-full flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-2xl font-medium hover:bg-accent/90 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                        >
+                            <LogIn size={18} />
+                            <span>登入</span>
+                        </button>
+                    )}
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto relative">
-                <div className="w-full p-6">
+            <main className="flex-1 overflow-y-auto relative bg-gradient-to-br from-background via-background to-secondary/10">
+                <div className="w-full p-8 max-w-7xl mx-auto">
                     {children}
                 </div>
             </main>

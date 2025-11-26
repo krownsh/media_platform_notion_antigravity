@@ -50,9 +50,9 @@ const SidebarSearch = ({ onPostClick }) => {
     };
 
     return (
-        <div className="relative px-4 py-2 mb-2" ref={searchRef}>
+        <div className="relative px-6 py-4 mb-2" ref={searchRef}>
             <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-white transition-colors" size={16} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 group-focus-within:text-accent transition-colors duration-300" size={18} />
                 <input
                     type="text"
                     value={query}
@@ -61,8 +61,8 @@ const SidebarSearch = ({ onPostClick }) => {
                         setIsOpen(true);
                     }}
                     onFocus={() => setIsOpen(true)}
-                    placeholder="Search..."
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:bg-white/10 focus:border-white/20 transition-all"
+                    placeholder="搜尋貼文..."
+                    className="w-full bg-secondary/20 border border-transparent hover:bg-secondary/30 focus:bg-white focus:border-accent/30 focus:shadow-sm rounded-full pl-11 pr-10 py-3 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.3,1)]"
                 />
                 {query && (
                     <button
@@ -70,9 +70,9 @@ const SidebarSearch = ({ onPostClick }) => {
                             setQuery('');
                             setResults([]);
                         }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
                     >
-                        <X size={14} />
+                        <X size={16} />
                     </button>
                 )}
             </div>
@@ -80,10 +80,11 @@ const SidebarSearch = ({ onPostClick }) => {
             <AnimatePresence>
                 {isOpen && query && (
                     <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="absolute left-4 right-[-240px] top-full mt-2 bg-[#1A1A1A] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-xl"
+                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                        transition={{ duration: 0.3, ease: [0.25, 0.8, 0.3, 1] }}
+                        className="absolute left-6 right-[-240px] top-full mt-4 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
                     >
                         {results.length > 0 ? (
                             <div className="py-2">
@@ -91,18 +92,18 @@ const SidebarSearch = ({ onPostClick }) => {
                                     <div
                                         key={post.id}
                                         onClick={() => handleSelect(post)}
-                                        className="px-4 py-3 hover:bg-white/5 cursor-pointer border-b border-white/5 last:border-0"
+                                        className="px-5 py-4 hover:bg-secondary/20 cursor-pointer border-b border-border/30 last:border-0 transition-colors duration-200"
                                     >
                                         <div className="flex items-start gap-3">
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-medium text-white text-sm truncate">{post.author}</span>
-                                                    <span className="text-xs text-gray-500">• {new Date(post.postedAt || post.createdAt).toLocaleDateString()}</span>
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <span className="font-semibold text-foreground text-sm truncate">{post.author}</span>
+                                                    <span className="text-xs text-muted-foreground/70">• {new Date(post.postedAt || post.createdAt).toLocaleDateString()}</span>
                                                 </div>
-                                                <p className="text-xs text-gray-400 line-clamp-2 mb-1">{post.content || post.title}</p>
+                                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 leading-relaxed">{post.content || post.title}</p>
                                                 {/* Highlight AI Summary match if applicable */}
                                                 {post.analysis?.summary?.toLowerCase().includes(query.toLowerCase()) && (
-                                                    <div className="flex items-center gap-1.5 text-[10px] text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md w-fit">
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-accent-foreground bg-accent/80 px-2.5 py-1 rounded-full w-fit shadow-sm">
                                                         <Sparkles size={10} />
                                                         <span className="truncate max-w-[200px]">{post.analysis.summary}</span>
                                                     </div>
@@ -113,8 +114,8 @@ const SidebarSearch = ({ onPostClick }) => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="p-4 text-center text-gray-500 text-sm">
-                                No results found
+                            <div className="p-8 text-center text-muted-foreground text-sm">
+                                未找到結果
                             </div>
                         )}
                     </motion.div>

@@ -49,7 +49,6 @@ class Orchestrator {
             user_id: userId,
             platform: data.platform,
             original_url: originalUrl,
-            title: data.title,
             content: data.content,
             posted_at: postedAt || null,
             is_archived: data.is_archived ?? false,

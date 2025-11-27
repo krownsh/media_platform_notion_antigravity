@@ -114,14 +114,21 @@ app.get('/api/proxy-image', async (req, res) => {
     }
 
     try {
+        // console.log(`[Proxy] Fetching image: ${url}`);
         const response = await fetch(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
                 'Referer': 'https://www.threads.net/',
+                'Sec-Fetch-Dest': 'image',
+                'Sec-Fetch-Mode': 'no-cors',
+                'Sec-Fetch-Site': 'cross-site',
+                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
             }
         });
 
         if (!response.ok) {
+            console.error(`[Proxy] Failed to fetch image: ${response.status} ${response.statusText} for URL: ${url}`);
             throw new Error(`Failed to fetch image: ${response.status}`);
         }
 
@@ -131,12 +138,13 @@ app.get('/api/proxy-image', async (req, res) => {
         // Set appropriate headers
         res.setHeader('Content-Type', contentType || 'image/jpeg');
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+        res.setHeader('Access-Control-Allow-Origin', '*'); // Ensure CORS is allowed for the image itself
 
         // Pipe the image data
         const buffer = await response.arrayBuffer();
         res.send(Buffer.from(buffer));
     } catch (error) {
-        console.error('Error proxying image:', error);
+        console.error(`[Proxy] Error processing image: ${url}`, error.message);
         res.status(500).json({ error: 'Failed to load image' });
     }
 });

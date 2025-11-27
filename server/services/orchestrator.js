@@ -149,6 +149,21 @@ class Orchestrator {
                     }
                 }
 
+                // Process images in replies (comments)
+                if (data.full_json && Array.isArray(data.full_json) && data.full_json[0] && data.full_json[0].replies) {
+                    console.log('[Orchestrator] Processing reply images...');
+                    for (const reply of data.full_json[0].replies) {
+                        if (reply.images && reply.images.length > 0) {
+                            const newReplyImages = [];
+                            for (const imgUrl of reply.images) {
+                                const newUrl = await this.uploadImageToBucket(imgUrl);
+                                newReplyImages.push(newUrl);
+                            }
+                            reply.images = newReplyImages;
+                        }
+                    }
+                }
+
                 await this.upsertPost(data);
                 return { source: 'crawler', data };
             } catch (error) {

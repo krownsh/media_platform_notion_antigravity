@@ -14,26 +14,30 @@ import { AnimatePresence } from 'framer-motion';
 
 function App() {
   const [remixPost, setRemixPost] = useState(null);
-  const [selectedPost, setSelectedPost] = useState(null);
 
   return (
     <Provider store={store}>
       <Router>
-        <Layout onPostClick={setSelectedPost}>
+        <Layout>
           <Routes>
             <Route path="/" element={
               <ProtectedRoute>
-                <HomePage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+                <HomePage onRemix={setRemixPost} />
               </ProtectedRoute>
             } />
             <Route path="/view-all" element={
               <ProtectedRoute>
-                <ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+                <ViewAllPage onRemix={setRemixPost} />
               </ProtectedRoute>
             } />
             <Route path="/collection/:collectionId" element={
               <ProtectedRoute>
-                <ViewAllPage onRemix={setRemixPost} onPostClick={setSelectedPost} />
+                <ViewAllPage onRemix={setRemixPost} />
+              </ProtectedRoute>
+            } />
+            <Route path="/post/:postId" element={
+              <ProtectedRoute>
+                <PostDetailView />
               </ProtectedRoute>
             } />
             <Route path="/login" element={<LoginPage />} />
@@ -43,9 +47,6 @@ function App() {
           <AnimatePresence>
             {remixPost && (
               <RemixPanel post={remixPost} onClose={() => setRemixPost(null)} />
-            )}
-            {selectedPost && (
-              <PostDetailView post={selectedPost} onClose={() => setSelectedPost(null)} />
             )}
           </AnimatePresence>
         </Layout>

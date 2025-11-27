@@ -59,6 +59,7 @@
     /* Calm breathing */
     letter-spacing: 0.02em;
     /* Slightly positive */
+    overflow-x: hidden;
 
     /* Noise Texture */
     position: relative;

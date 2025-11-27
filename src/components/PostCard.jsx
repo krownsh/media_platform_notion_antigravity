@@ -96,7 +96,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="glass-card rounded-3xl overflow-hidden group relative w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+            className="glass-card rounded-3xl group relative w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
@@ -109,8 +109,8 @@ const PostCard = ({
                 </div>
             )}
             {/* Platform Header Strip */}
-            <div className="w-full h-12 px-5 flex items-center justify-between flex-shrink-0 bg-white/30 backdrop-blur-sm border-b border-white/20">
-                <div className="flex items-center gap-2.5">
+            <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white/30 backdrop-blur-sm border-b border-white/20 rounded-t-3xl">
+                <div className="flex items-center gap-2">
                     {platformStyle.icon}
                     <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
                         {platformStyle.label}
@@ -122,7 +122,7 @@ const PostCard = ({
                 </div>
 
                 {/* Menu */}
-                <div className="relative">
+                <div className="relative z-50">
                     <button
                         className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground transition-colors"
                         onClick={(e) => {
@@ -131,7 +131,7 @@ const PostCard = ({
                             setShowMoveMenu(false);
                         }}
                     >
-                        <MoreHorizontal size={18} />
+                        <MoreHorizontal size={16} />
                     </button>
 
                     <AnimatePresence>
@@ -141,7 +141,8 @@ const PostCard = ({
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                 transition={{ duration: 0.2, ease: [0.25, 0.8, 0.3, 1] }}
-                                className="absolute right-0 top-full mt-2 w-48 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl"
+                                className="absolute right-0 top-full mt-2 w-48 bg-white border border-white/50 rounded-2xl shadow-xl z-50 backdrop-blur-xl"
+                                onClick={(e) => e.stopPropagation()}
                             >
                                 {/* Move To Submenu Trigger */}
                                 <div className="relative">
@@ -161,7 +162,7 @@ const PostCard = ({
 
                                     {/* Submenu */}
                                     {showMoveMenu && (
-                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl">
+                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl">
                                             {post.collectionId && (
                                                 <button
                                                     className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-b border-border/20"
@@ -206,32 +207,26 @@ const PostCard = ({
             </div>
 
             {/* Author Info */}
-            <div className="px-5 py-3 border-b border-white/20 flex-shrink-0 relative z-20 flex items-center gap-3 bg-white/20">
+            <div className="px-4 py-2 border-b border-white/20 flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-white/20">
                 {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-9 h-9 rounded-full object-cover border border-white/30 shadow-sm" />
+                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/30 shadow-sm" />
                 ) : (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/30 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/30 shadow-sm">
                         {post.author?.[0] || 'U'}
                     </div>
                 )}
-                <div className="flex flex-col justify-center">
+                <div className="flex flex-col justify-center min-w-0">
                     <span className="text-sm font-semibold text-foreground leading-none truncate max-w-[180px]">
                         {post.author || 'Unknown'}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/80 leading-none mt-1.5 font-medium">
+                    <span className="text-[10px] text-muted-foreground/80 leading-none mt-1 font-medium truncate">
                         @{post.authorHandle || 'unknown'}
-                        {post.postedAt && (
-                            <>
-                                <span className="mx-1">•</span>
-                                {new Date(post.postedAt).toLocaleDateString()}
-                            </>
-                        )}
                     </span>
                 </div>
             </div>
 
-            {/* Image Carousel Section */}
-            <div className="relative w-full aspect-video bg-muted/20 overflow-hidden group/image flex-shrink-0">
+            {/* Image Carousel Section - Reduced Height */}
+            <div className="relative w-full h-44 bg-muted/20 overflow-hidden group/image flex-shrink-0">
                 {images.length > 0 ? (
                     <div className="relative w-full h-full">
                         {/* Image Slider */}
@@ -259,33 +254,33 @@ const PostCard = ({
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={prevImage}
-                                        className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
                                     >
-                                        <ChevronLeft size={18} />
+                                        <ChevronLeft size={16} />
                                     </button>
                                 )}
                                 {currentImageIndex < images.length - 1 && (
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={nextImage}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
                                     >
-                                        <ChevronRight size={18} />
+                                        <ChevronRight size={16} />
                                     </button>
                                 )}
 
                                 {/* Dots Indicator */}
-                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 px-2.5 py-1.5 rounded-full bg-black/10 backdrop-blur-md">
+                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10 px-2 py-1 rounded-full bg-black/10 backdrop-blur-md">
                                     {images.map((_, idx) => (
                                         <div
                                             key={idx}
-                                            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
+                                            className={`w-1 h-1 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
                                         />
                                     ))}
                                 </div>
 
                                 {/* Image Counter Badge */}
-                                <div className="absolute top-3 right-3 px-2 py-1 rounded-full bg-black/20 backdrop-blur-md text-[10px] font-medium text-white border border-white/10">
+                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 backdrop-blur-md text-[9px] font-medium text-white border border-white/10">
                                     {currentImageIndex + 1} / {images.length}
                                 </div>
                             </>
@@ -298,58 +293,58 @@ const PostCard = ({
                 )}
             </div>
 
-            {/* Action Bar */}
-            <div className="px-4 py-3 flex items-center justify-end border-b border-white/20 h-[50px] flex-shrink-0 bg-white/10">
-                <div className="flex items-center gap-3">
+            {/* Action Bar - Reduced Height */}
+            <div className="px-4 flex items-center justify-end border-b border-white/20 h-10 flex-shrink-0 bg-white/10">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onRemix && onRemix(post);
                         }}
-                        className="p-2 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
+                        className="p-1.5 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
                         title="AI 改寫"
                     >
-                        <Sparkles size={18} />
+                        <Sparkles size={16} />
                     </button>
                     <a
                         href={post.originalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors duration-300"
+                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors duration-300"
                         title="開啟原始貼文"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <ExternalLink size={18} />
+                        <ExternalLink size={16} />
                     </a>
                 </div>
             </div>
 
-            {/* Content Section */}
-            <div className="p-5 flex-1 flex flex-col overflow-hidden bg-white/30">
-                {/* Caption */}
-                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3 h-[4.5rem] mb-3 flex-shrink-0 font-medium">
+            {/* Content Section - Flexible with Padding */}
+            <div className="p-4 flex-1 flex flex-col overflow-hidden bg-white/30 rounded-b-3xl">
+                {/* Caption - Line Clamp 2 */}
+                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-2 h-[3rem] mb-2 flex-shrink-0 font-medium">
                     <span className="font-bold text-foreground mr-2">{post.author}</span>
                     {post.content || title}
                 </div>
 
                 {/* Tags */}
-                <div className="flex flex-wrap gap-1.5 h-[26px] mb-3 flex-shrink-0 overflow-hidden">
-                    {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 5).map((tag, i) => (
-                        <span key={i} className="px-2.5 py-0.5 rounded-full bg-secondary/20 text-[10px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
+                <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
+                    {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-full bg-secondary/20 text-[9px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
                         </span>
                     ))}
                 </div>
 
                 {/* AI Summary */}
-                <div className="bg-accent/5 border border-accent/10 rounded-xl p-3 mb-2 flex-shrink-0 h-[70px] overflow-hidden relative group/summary">
+                <div className="bg-accent/5 border border-accent/10 rounded-xl p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
                     {analysis?.summary ? (
                         <>
-                            <div className="flex items-center gap-1.5 mb-1">
-                                <Sparkles size={12} className="text-accent" />
-                                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
+                            <div className="flex items-center gap-1 mb-0.5">
+                                <Sparkles size={10} className="text-accent" />
+                                <span className="text-[9px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
                             </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 group-hover/summary:text-foreground transition-colors">
+                            <p className="text-xs text-muted-foreground leading-snug line-clamp-2 group-hover/summary:text-foreground transition-colors">
                                 {analysis.summary}
                             </p>
                         </>
@@ -361,7 +356,7 @@ const PostCard = ({
                 </div>
 
                 {/* Footer Info */}
-                <div className="mt-auto pt-3 border-t border-white/20 flex items-center justify-between text-[10px] text-muted-foreground uppercase tracking-widest opacity-60">
+                <div className="mt-auto pt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-muted-foreground uppercase tracking-widest opacity-60">
                     <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
                 </div>
             </div>

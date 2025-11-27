@@ -141,10 +141,19 @@ class AiService {
                 // Try to parse JSON from the response
                 let parsedData = null;
                 try {
-                    // Remove markdown code blocks if present
-                    const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
-                    const jsonText = jsonMatch ? jsonMatch[1] : aiText;
-                    parsedData = JSON.parse(jsonText.trim());
+                    // Robust JSON extraction: find the first '{' and the last '}'
+                    const firstBrace = aiText.indexOf('{');
+                    const lastBrace = aiText.lastIndexOf('}');
+
+                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                        const jsonText = aiText.substring(firstBrace, lastBrace + 1);
+                        parsedData = JSON.parse(jsonText);
+                    } else {
+                        // Fallback: try removing markdown code blocks if braces method fails (unlikely for valid JSON)
+                        const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
+                        const jsonText = jsonMatch ? jsonMatch[1] : aiText;
+                        parsedData = JSON.parse(jsonText.trim());
+                    }
                 } catch (parseError) {
                     console.warn('[AiService] Failed to parse JSON response, using raw text:', parseError.message);
                 }

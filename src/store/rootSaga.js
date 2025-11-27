@@ -99,7 +99,8 @@ function* handleFetchPosts() {
         postedAt: c.commented_at,
         handle: c.raw_data?.handle || c.raw_data?.authorHandle || '',
         avatar: c.raw_data?.avatar || '',
-        replies: c.raw_data?.replies || []
+        replies: c.raw_data?.replies || [],
+        images: c.raw_data?.images || []
       })) || [],
 
       // Transform annotations (筆記)

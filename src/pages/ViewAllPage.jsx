@@ -1,14 +1,15 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { fetchPosts } from '../features/postsSlice';
 import PostCard from '../components/PostCard';
 import { Layers } from 'lucide-react';
 
-const ViewAllPage = ({ onRemix, onPostClick }) => {
+const ViewAllPage = ({ onRemix }) => {
     const { items, collections, loading } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
     const { collectionId } = useParams();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (items.length === 0) {
@@ -64,7 +65,7 @@ const ViewAllPage = ({ onRemix, onPostClick }) => {
                             key={post.id}
                             post={post}
                             onRemix={onRemix}
-                            onClick={() => onPostClick(post)}
+                            onClick={() => navigate(`/post/${post.dbId || post.id}`)}
                             onDelete={() => { }} // Add delete handler if needed
                         />
                     ))}

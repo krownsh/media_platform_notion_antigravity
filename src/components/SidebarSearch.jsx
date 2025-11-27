@@ -2,13 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, Sparkles } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
-const SidebarSearch = ({ onPostClick }) => {
+const SidebarSearch = ({ collapsed, onExpand }) => {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const { items } = useSelector(state => state.posts);
     const searchRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -42,12 +44,24 @@ const SidebarSearch = ({ onPostClick }) => {
     }, [query, items]);
 
     const handleSelect = (post) => {
-        if (onPostClick) {
-            onPostClick(post);
-        }
+        navigate(`/post/${post.dbId || post.id}`);
         setIsOpen(false);
         setQuery('');
     };
+
+    if (collapsed) {
+        return (
+            <div className="px-2 py-4 mb-2 flex justify-center">
+                <button
+                    onClick={onExpand}
+                    className="p-3 rounded-2xl bg-secondary/20 text-muted-foreground hover:text-accent hover:bg-secondary/30 transition-all shadow-sm"
+                    title="搜尋"
+                >
+                    <Search size={20} />
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="relative px-6 py-4 mb-2" ref={searchRef}>

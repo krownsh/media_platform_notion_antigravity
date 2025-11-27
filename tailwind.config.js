@@ -52,6 +52,7 @@ export default {
       animation: {
         'fade-in': 'fadeIn 0.8s cubic-bezier(0.25, 0.8, 0.3, 1) forwards',
         'slide-up': 'slideUp 0.8s cubic-bezier(0.25, 0.8, 0.3, 1) forwards',
+        'shimmer': 'shimmer 2s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -61,6 +62,10 @@ export default {
         slideUp: {
           '0%': { opacity: '0', transform: 'translateY(20px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
         }
       }
     },

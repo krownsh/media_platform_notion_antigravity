@@ -3,7 +3,7 @@ import UrlInput from '../components/UrlInput';
 import CollectionBoard from '../components/CollectionBoard';
 import { useNavigate } from 'react-router-dom';
 
-const HomePage = ({ onRemix, onPostClick }) => {
+const HomePage = ({ onRemix }) => {
     const navigate = useNavigate();
 
     return (
@@ -15,6 +15,9 @@ const HomePage = ({ onRemix, onPostClick }) => {
                 <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
                     儲存、分析並改寫來自 Instagram、Twitter 和 Facebook 的內容。
                     將社群雜訊轉化為結構化知識。
+                </p>
+                <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+                    (目前只有Threads/Twitter可以用，因為ig跟fb比較沒有知識性的文章)
                 </p>
             </div>
 
@@ -30,7 +33,7 @@ const HomePage = ({ onRemix, onPostClick }) => {
                         查看全部
                     </button>
                 </div>
-                <CollectionBoard onRemix={onRemix} onPostClick={onPostClick} />
+                <CollectionBoard onRemix={onRemix} />
             </div>
         </div>
     );

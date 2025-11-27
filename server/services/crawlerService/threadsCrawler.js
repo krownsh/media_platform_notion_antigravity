@@ -24,7 +24,7 @@ async function scrapeWithApify(url) {
  * @returns {Promise<Object>} Scraped post data
  */
 export async function scrapeThreadsPost(url) {
-    console.log(`[ThreadsCrawler] 🕷️ Starting scrape for: ${url}`);
+    // console.log(`[ThreadsCrawler] 🕷️ Starting scrape for: ${url}`);
     let browser = null;
 
     try {
@@ -38,15 +38,15 @@ export async function scrapeThreadsPost(url) {
 
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-        console.log(`[ThreadsCrawler] Navigating to ${url}...`);
+        // console.log(`[ThreadsCrawler] Navigating to ${url}...`);
         await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
 
-        console.log('[ThreadsCrawler] Waiting for content to load...');
+        // console.log('[ThreadsCrawler] Waiting for content to load...');
         try {
             await page.waitForSelector('div[data-pressable-container="true"]', { timeout: 20000 });
-            console.log('[ThreadsCrawler] Content loaded successfully');
+            // console.log('[ThreadsCrawler] Content loaded successfully');
         } catch (_e) {
-            console.log('[ThreadsCrawler] Timeout waiting for initial selectors, continuing anyway...');
+            // console.log('[ThreadsCrawler] Timeout waiting for initial selectors, continuing anyway...');
         }
 
         // Extract meta data
@@ -200,12 +200,38 @@ export async function scrapeThreadsPost(url) {
                     const commentContent = extractContent(container);
                     const commentTimestamp = commentTime ? commentTime.getAttribute('datetime') : '';
 
+                    // Extract images from comment
+                    const commentImages = Array.from(container.querySelectorAll('img'))
+                        .filter(img => {
+                            const src = img.src;
+                            const alt = img.getAttribute('alt') || '';
+                            const width = parseInt(img.getAttribute('width') || '0', 10);
+
+                            // Exclude profile pictures
+                            if (!src) return false;
+                            if (src.includes('profile_pic') || src.includes('p50x50')) return false;
+                            if (alt.includes('大頭貼照') || alt.includes('profile picture')) return false;
+
+                            // Include if it's in a picture tag (standard for Threads media)
+                            if (img.closest('picture')) return true;
+
+                            // Include if it's inside the specific content wrapper class provided by user
+                            if (img.closest('.xkbb5z.x13vxnyz')) return true;
+
+                            // Include if it's large (likely media)
+                            if (width > 150) return true;
+
+                            return false;
+                        })
+                        .map(img => img.src);
+
                     const commentObj = {
                         user: commentAuthor,
                         handle: commentHandle,
                         text: commentContent,
                         postedAt: commentTimestamp,
                         avatar: commentAvatar ? commentAvatar.src : '',
+                        images: [...new Set(commentImages)],
                         replies: [] // Keep empty array for compatibility
                     };
 
@@ -219,18 +245,41 @@ export async function scrapeThreadsPost(url) {
             console.error('[ThreadsCrawler] DOM Scraping failed (continuing with meta data):', domError.message);
         }
 
+        // Filter out profile pics from meta image
+        const isProfilePic = (url) => {
+            if (!url) return false;
+            if (url.includes('profile_pic')) return true;
+            if (url.includes('s150x150') || url.includes('p50x50') || url.includes('s320x320')) return true;
+            return false;
+        };
+
+        let combinedImages = detailedData.images;
+
+        // If no images found in DOM, check if we should fallback to meta image
+        if (combinedImages.length === 0) {
+            // If DOM scraping was successful (we found author or content), we trust that there are truly no images.
+            // We ignore metaData.image because it's likely the avatar (og:image).
+            const domScrapeSuccess = detailedData.author || detailedData.content;
+
+            if (!domScrapeSuccess && metaData.image && !isProfilePic(metaData.image)) {
+                combinedImages = [metaData.image];
+            }
+        }
+
+        combinedImages = [...new Set(combinedImages)];
+
         // Construct Full JSON for AI (New nested structure)
         const fullJsonData = [
             {
                 main_text: detailedData.content || metaData.description || '',
                 author: detailedData.author || 'Unknown',
                 postedAt: detailedData.postedAt || '',
-                images: [...new Set([...(metaData.image ? [metaData.image] : []), ...detailedData.images])],
+                images: combinedImages,
                 replies: detailedData.comments.map(comment => ({
                     text: comment.text,
                     author: comment.user,
                     postedAt: comment.postedAt,
-                    images: [] // Currently no images in comments, but keep field for future
+                    images: comment.images || []
                 }))
             }
         ];
@@ -249,7 +298,7 @@ export async function scrapeThreadsPost(url) {
 
             content: detailedData.content || metaData.description || '',
 
-            images: [...new Set([...(metaData.image ? [metaData.image] : []), ...detailedData.images])],
+            images: combinedImages,
             videos: detailedData.videos,
             comments: detailedData.comments,
 

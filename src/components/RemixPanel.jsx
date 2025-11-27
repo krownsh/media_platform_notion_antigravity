@@ -111,7 +111,7 @@ const RemixPanel = ({ post, onClose }) => {
                 return;
             }
 
-            const response = await fetch('http://localhost:3001/api/remix', {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/remix`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

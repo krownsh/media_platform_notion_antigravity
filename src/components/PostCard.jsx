@@ -33,7 +33,7 @@ const PostCard = ({
         if (!imageUrl) return null;
         // Only proxy Instagram/Threads images
         if (imageUrl.includes('instagram.') || imageUrl.includes('fbcdn.net')) {
-            return `http://localhost:3001/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+            return `${import.meta.env.VITE_API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
         }
         return imageUrl;
     };

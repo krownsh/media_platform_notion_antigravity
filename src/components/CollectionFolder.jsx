@@ -3,6 +3,8 @@ import { useDroppable } from '@dnd-kit/core';
 import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { deleteCollection, updateCollectionName } from '../features/postsSlice';
+import { API_BASE_URL } from '../api/config';
+
 
 const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = [] }) => {
     const dispatch = useDispatch();
@@ -34,7 +36,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
     const proxyImage = (imageUrl) => {
         if (!imageUrl) return null;
         if (imageUrl.includes('instagram.') || imageUrl.includes('fbcdn.net')) {
-            return `http://localhost:3001/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+            return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
         }
         return imageUrl;
     };

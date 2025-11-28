@@ -3,6 +3,8 @@ import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Inst
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
+import { API_BASE_URL } from '../api/config';
+
 
 // Custom Threads Icon
 const ThreadsIcon = ({ size = 12, className = "" }) => (
@@ -33,7 +35,7 @@ const PostCard = ({
         if (!imageUrl) return null;
         // Only proxy Instagram/Threads images
         if (imageUrl.includes('instagram.') || imageUrl.includes('fbcdn.net')) {
-            return `http://localhost:3001/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+            return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
         }
         return imageUrl;
     };

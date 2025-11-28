@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft } from 'lucide-react';
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
+import { API_BASE_URL } from '../api/config';
+
 
 // Reusing ThreadsIcon from PostCard
 const ThreadsIcon = ({ size = 12, className = "" }) => (
@@ -17,7 +19,7 @@ const ThreadsIcon = ({ size = 12, className = "" }) => (
 const proxyImage = (imageUrl) => {
     if (!imageUrl) return null;
     if (imageUrl.includes('instagram.') || imageUrl.includes('fbcdn.net')) {
-        return `http://localhost:3001/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+        return `${API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
     }
     return imageUrl;
 };

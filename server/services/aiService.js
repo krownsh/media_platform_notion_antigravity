@@ -106,7 +106,7 @@ class AiService {
                     headers: {
                         'Authorization': `Bearer ${this.apiKey}`,
                         'Content-Type': 'application/json',
-                        'HTTP-Referer': 'http://localhost:3000',
+                        'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
                         'X-Title': 'Media Platform Antigravity'
                     },
                     body: JSON.stringify({
@@ -441,7 +441,7 @@ Adhere strictly to the following User Style settings:
                         headers: {
                             'Authorization': `Bearer ${this.apiKey}`,
                             'Content-Type': 'application/json',
-                            'HTTP-Referer': 'http://localhost:3000',
+                            'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
                             'X-Title': 'Media Platform Antigravity'
                         },
                         body: JSON.stringify({

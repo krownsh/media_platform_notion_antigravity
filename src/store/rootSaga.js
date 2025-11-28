@@ -25,6 +25,8 @@ import {
   updateCollectionNameSuccess
 } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
+import { API_BASE_URL } from '../api/config';
+
 
 // Worker Saga: Fetch all posts AND collections
 function* handleFetchPosts() {
@@ -135,7 +137,7 @@ function* handleFetchPost(action) {
 
     // 1. Call Backend API (Orchestrator) to get raw data
     console.log('[Saga] Fetching post from backend:', url);
-    const response = yield call(fetch, 'http://localhost:3001/api/process', {
+    const response = yield call(fetch, `${API_BASE_URL}/api/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
@@ -303,7 +305,7 @@ function* handleAddAnnotation(action) {
     console.log('[Saga] Adding annotation:', { postId, content, userId });
 
     // Call backend API
-    const response = yield call(fetch, `http://localhost:3001/api/posts/${postId}/annotations`, {
+    const response = yield call(fetch, `${API_BASE_URL}/api/posts/${postId}/annotations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, userId }),

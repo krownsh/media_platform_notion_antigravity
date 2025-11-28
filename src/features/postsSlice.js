@@ -4,6 +4,7 @@ const initialState = {
     items: [], // List of posts (uncategorized or all, depending on view)
     collections: [], // List of collections (folders)
     loading: false,
+    analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
     currentPost: null, // Currently viewed/processing post
 };
@@ -18,11 +19,13 @@ const postsSlice = createSlice({
         },
         fetchPostSuccess(state, action) {
             state.loading = false;
+            state.analyzing = false; // Reset analyzing on success
             state.items.unshift(action.payload); // Add new post to top
             state.currentPost = action.payload;
         },
         fetchPostFailure(state, action) {
             state.loading = false;
+            state.analyzing = false; // Reset analyzing on failure
             state.error = action.payload;
         },
         // Fetch all posts and collections
@@ -42,7 +45,7 @@ const postsSlice = createSlice({
         // Action to trigger Saga
         addPostByUrl(state) {
             // Payload: { url: string }
-            state.loading = true;
+            state.analyzing = true; // Set analyzing true for new post creation
             state.error = null;
         },
         reorderPosts(state, action) {

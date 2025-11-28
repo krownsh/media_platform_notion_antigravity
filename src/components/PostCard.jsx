@@ -322,14 +322,14 @@ const PostCard = ({
             </div>
 
             {/* Content Section - Flexible with Padding */}
-            <div className="p-4 flex-1 flex flex-col overflow-hidden bg-white/30 rounded-b-3xl">
-                {/* Caption - Line Clamp 2 */}
-                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-2 h-[3rem] mb-2 flex-shrink-0 font-medium">
+            <div className="px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white/30 rounded-b-3xl">
+                {/* Caption - Flexible Height */}
+                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-2 font-medium flex-grow">
                     <span className="font-bold text-foreground mr-2">{post.author}</span>
                     {post.content || title}
                 </div>
 
-                {/* Tags */}
+                {/* Tags - Fixed Height */}
                 <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
                         <span key={i} className="px-2 py-0.5 rounded-full bg-secondary/20 text-[9px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
@@ -338,7 +338,7 @@ const PostCard = ({
                     ))}
                 </div>
 
-                {/* AI Summary */}
+                {/* AI Summary - Fixed Height */}
                 <div className="bg-accent/5 border border-accent/10 rounded-xl p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
                     {analysis?.summary ? (
                         <>
@@ -346,9 +346,37 @@ const PostCard = ({
                                 <Sparkles size={10} className="text-accent" />
                                 <span className="text-[9px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
                             </div>
-                            <p className="text-xs text-muted-foreground leading-snug line-clamp-2 group-hover/summary:text-foreground transition-colors">
-                                {analysis.summary}
-                            </p>
+                            <div className="text-xs text-muted-foreground leading-snug line-clamp-2 group-hover/summary:text-foreground transition-colors">
+                                {(() => {
+                                    let summary = analysis.summary;
+
+                                    // 1. Try to parse JSON string if it looks like JSON
+                                    if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
+                                        try {
+                                            const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
+                                            const parsed = JSON.parse(cleanJson);
+                                            if (parsed && typeof parsed === 'object') {
+                                                summary = parsed;
+                                            }
+                                        } catch (e) {
+                                            // Ignore parse error
+                                        }
+                                    }
+
+                                    // 2. Handle Object (Parsed or original)
+                                    if (typeof summary === 'object' && summary !== null) {
+                                        return summary.core_insight || "點擊查看詳情";
+                                    }
+
+                                    // 3. Handle String (Strip Markdown)
+                                    if (typeof summary === 'string') {
+                                        // Remove ## headings, bold markers (**), code blocks (```)
+                                        return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
+                                    }
+
+                                    return summary || "無摘要";
+                                })()}
+                            </div>
                         </>
                     ) : (
                         <div className="flex items-center justify-center h-full text-xs text-muted-foreground/50 italic">
@@ -357,8 +385,8 @@ const PostCard = ({
                     )}
                 </div>
 
-                {/* Footer Info */}
-                <div className="mt-auto pt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-muted-foreground uppercase tracking-widest opacity-60">
+                {/* Footer Info - Fixed at Bottom */}
+                <div className="mt-auto pt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-muted-foreground uppercase tracking-widest opacity-60 flex-shrink-0">
                     <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
                 </div>
             </div>

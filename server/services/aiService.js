@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config({ path: './server/.env' });
 
@@ -11,213 +12,266 @@ dotenv.config({ path: './server/.env' });
  */
 class AiService {
     constructor() {
-        this.apiKey = process.env.OPENROUTER_API_KEY;
+        this.openRouterApiKey = process.env.OPENROUTER_API_KEY;
+        this.googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         this.baseUrl = 'https://openrouter.ai/api/v1';
 
-        // Free models with fallback options
-        this.models = [
-            'google/gemini-2.0-flash-exp:free',
-            'meta-llama/llama-3.2-3b-instruct:free',
-            'qwen/qwen-2-7b-instruct:free',
-            'microsoft/phi-3-mini-128k-instruct:free'
+        // Initialize Google AI
+        if (this.googleApiKey) {
+            this.genAI = new GoogleGenAI({ apiKey: this.googleApiKey });
+        }
+
+        // xAI Model (via OpenRouter) - Use Free version if available
+        this.xaiModel = 'x-ai/grok-4.1-fast:free';
+
+        // Free models with fallback options (OpenRouter)
+        this.freeModels = [
+            'x-ai/grok-4.1-fast:free',
+            'nvidia/nemotron-nano-12b-v2-vl:free',
+            'google/gemini-2.0-flash-exp:free'
         ];
-        this.currentModelIndex = 0;
+        this.currentFreeModelIndex = 0;
     }
 
-    get currentModel() {
-        return this.models[this.currentModelIndex];
+    get currentFreeModel() {
+        return this.freeModels[this.currentFreeModelIndex];
     }
 
-    switchToNextModel() {
-        this.currentModelIndex = (this.currentModelIndex + 1) % this.models.length;
-        console.log(`[AiService] Switching to model: ${this.currentModel}`);
+    switchToNextFreeModel() {
+        this.currentFreeModelIndex = (this.currentFreeModelIndex + 1) % this.freeModels.length;
+        console.log(`[AiService] Switching to next free model: ${this.currentFreeModel}`);
     }
 
     /**
-     * Analyze a Threads post using OpenRouter.
+     * Analyze a Threads post using a chain of models:
+     * 1. Google Gemini (via Google API)
+     * 2. xAI Grok (via OpenRouter)
+     * 3. OpenRouter Free Models (Fallback)
      * @param {Array} fullJsonData - The full JSON array from the crawler
      * @returns {Promise<object>} - Analysis result
      */
     async analyzeThreadsPost(fullJsonData) {
-        console.log('[AiService] Analyzing Threads post with OpenRouter...');
+        console.log('[AiService] Analyzing Threads post...');
 
-        if (!this.apiKey) {
-            console.warn('[AiService] OPENROUTER_API_KEY is missing. Returning mock data.');
-            return this.mockAnalysis();
+        // 1. Prepare Data
+        const mainPost = fullJsonData[0];
+        if (!mainPost) throw new Error("No post data found");
+
+        const systemPrompt = await this.getSystemPrompt();
+
+        // Attempt 1: Google Gemini (Direct)
+        if (this.googleApiKey) {
+            try {
+                return await this.analyzeWithGoogle(mainPost, systemPrompt);
+            } catch (error) {
+                console.warn('[AiService] Google API failed, trying xAI...', error.message);
+            }
+        } else {
+            console.log('[AiService] No Google API Key found, skipping Google Gemini.');
         }
 
-        // Try up to all available models
-        for (let attempt = 0; attempt < this.models.length; attempt++) {
+        // Attempt 2: xAI Grok (via OpenRouter)
+        if (this.openRouterApiKey) {
             try {
-                console.log(`[AiService] Attempt ${attempt + 1}/${this.models.length} using model: ${this.currentModel}`);
-
-                // 1. Prepare Data (New nested structure)
-                const mainPost = fullJsonData[0];
-                if (!mainPost) throw new Error("No post data found");
-
-                // Extract images from the data
-                const images = mainPost.images || [];
-
-                // Construct the user message content with new structure
-                const repliesText = mainPost.replies && mainPost.replies.length > 0
-                    ? mainPost.replies.map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n')
-                    : '(No replies)';
-
-                const content = [
-                    {
-                        type: "text",
-                        text: `Here is the content of a Threads post. Please analyze it according to the system instructions.\n\nPost Text: ${mainPost.main_text}\n\nAuthor: ${mainPost.author || 'Unknown'}\n\nReplies/Comments:\n${repliesText}`
-                    }
-                ];
-
-                // Add images to the content (limit to 3) - only for vision-capable models
-                if (this.currentModel.includes('gemini')) {
-                    images.slice(0, 3).forEach(url => {
-                        if (url && url.startsWith('http')) {
-                            content.push({
-                                type: "image_url",
-                                image_url: {
-                                    url: url
-                                }
-                            });
-                        }
-                    });
-                }
-
-                // 2. Load System Prompt
-                let systemPrompt;
-                try {
-                    // Use fileURLToPath to properly handle Windows paths
-                    const __filename = fileURLToPath(import.meta.url);
-                    const __dirname = path.dirname(__filename);
-                    const promptPath = path.join(__dirname, '..', 'prompts', 'threads_summary_prompt.md');
-                    systemPrompt = await fs.readFile(promptPath, 'utf-8');
-
-                    // Add JSON format requirement
-                    systemPrompt += '\n\n**IMPORTANT: You must respond with ONLY valid JSON in the following format, with NO additional text before or after:**\n```json\n{\n  "core_insight": "一句話精華",\n  "key_points": ["要點1", "要點2", "要點3"],\n  "actionable_knowledge": "具體可操作的知識",\n  "tags": ["標籤1", "標籤2", "標籤3"]\n}\n```';
-                } catch (error) {
-                    console.warn('[AiService] Could not read prompt file:', error.message);
-                    systemPrompt = "You are a helpful social media analyst. Summarize the following post in Traditional Chinese.";
-                }
-
-                // 3. Call OpenRouter
-                const response = await fetch(`${this.baseUrl}/chat/completions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
-                        'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
-                        'X-Title': 'Media Platform Antigravity'
-                    },
-                    body: JSON.stringify({
-                        model: this.currentModel,
-                        messages: [
-                            {
-                                role: "system",
-                                content: systemPrompt
-                            },
-                            {
-                                role: "user",
-                                content: content
-                            }
-                        ]
-                    })
-                });
-
-                const data = await response.json();
-
-                // Check for rate limit error
-                if (!response.ok) {
-                    if (response.status === 429 || (data.error && data.error.code === 429)) {
-                        console.warn(`[AiService] Rate limit hit for ${this.currentModel}, trying next model...`);
-                        this.switchToNextModel();
-                        continue; // Try next model
-                    }
-                    throw new Error(`OpenRouter API Error: ${response.status} - ${JSON.stringify(data)}`);
-                }
-
-                const aiText = data.choices[0].message.content;
-
-                // Try to parse JSON from the response
-                let parsedData = null;
-                try {
-                    // Robust JSON extraction: find the first '{' and the last '}'
-                    const firstBrace = aiText.indexOf('{');
-                    const lastBrace = aiText.lastIndexOf('}');
-
-                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-                        const jsonText = aiText.substring(firstBrace, lastBrace + 1);
-                        parsedData = JSON.parse(jsonText);
-                    } else {
-                        // Fallback: try removing markdown code blocks if braces method fails (unlikely for valid JSON)
-                        const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
-                        const jsonText = jsonMatch ? jsonMatch[1] : aiText;
-                        parsedData = JSON.parse(jsonText.trim());
-                    }
-                } catch (parseError) {
-                    console.warn('[AiService] Failed to parse JSON response, using raw text:', parseError.message);
-                }
-
-                return {
-                    summary: parsedData ? this.formatSummary(parsedData) : aiText,
-                    structured: parsedData,
-                    model: this.currentModel,
-                    raw: data
-                };
-
+                return await this.analyzeWithOpenRouter(mainPost, systemPrompt, this.xaiModel);
             } catch (error) {
-                console.error(`[AiService] Attempt ${attempt + 1} failed:`, error.message);
-
-                // If it's the last attempt, return error
-                if (attempt === this.models.length - 1) {
-                    return {
-                        summary: "## AI 分析暫時無法使用\n\n所有免費模型都遇到速率限制。請稍後再試，或考慮：\n\n1. 等待幾分鐘後重試\n2. 在 [OpenRouter](https://openrouter.ai/settings/integrations) 新增自己的 API Key 以提高速率限制\n\n**錯誤詳情：** " + error.message,
-                        error: error.message
-                    };
-                }
-
-                // Try next model
-                this.switchToNextModel();
+                console.warn('[AiService] xAI failed, trying free models...', error.message);
             }
+        }
+
+        // Attempt 3: OpenRouter Free Models (Fallback)
+        if (this.openRouterApiKey) {
+            for (let i = 0; i < this.freeModels.length; i++) {
+                try {
+                    return await this.analyzeWithOpenRouter(mainPost, systemPrompt, this.currentFreeModel);
+                } catch (error) {
+                    console.warn(`[AiService] Free model ${this.currentFreeModel} failed:`, error.message);
+                    this.switchToNextFreeModel();
+                }
+            }
+        }
+
+        // All failed
+        console.warn('[AiService] All models failed. Returning mock data.');
+        return this.mockAnalysis();
+    }
+
+    async getSystemPrompt() {
+        try {
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+            const promptPath = path.join(__dirname, '..', 'prompts', 'threads_summary_prompt.md');
+            let systemPrompt = await fs.readFile(promptPath, 'utf-8');
+
+            // Add JSON format requirement
+            systemPrompt += '\n\n**IMPORTANT: You must respond with ONLY valid JSON in the following format, with NO additional text before or after:**\n```json\n{\n  "core_insight": "一句話精華",\n  "key_points": ["要點1", "要點2", "要點3"],\n  "actionable_knowledge": "具體可操作的知識",\n  "tags": ["標籤1", "標籤2", "標籤3"]\n}\n```';
+            return systemPrompt;
+        } catch (error) {
+            console.warn('[AiService] Could not read prompt file:', error.message);
+            return "You are a helpful social media analyst. Summarize the following post in Traditional Chinese. Respond in JSON.";
         }
     }
 
-    /**
-     * Format structured JSON data into Markdown
-     * @param {object} data - Structured data from AI
-     * @returns {string} - Formatted Markdown
-     */
-    formatSummary(data) {
-        if (!data) return '';
+    async analyzeWithGoogle(mainPost, systemPrompt) {
+        console.log('[AiService] Attempting analysis with Google Gemini (Direct)...');
 
-        let markdown = '';
+        const repliesText = mainPost.replies && mainPost.replies.length > 0
+            ? mainPost.replies.map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n')
+            : '(No replies)';
 
-        // Core Insight
-        if (data.core_insight) {
-            markdown += `## 💡 核心洞察\n\n${data.core_insight}\n\n`;
+        const textPart = `
+${systemPrompt}
+
+Here is the content of a Threads post:
+
+Post Text: ${mainPost.main_text}
+Author: ${mainPost.author || 'Unknown'}
+Replies/Comments:
+${repliesText}
+`;
+
+        const parts = [{ text: textPart }];
+
+        // Add images
+        if (mainPost.images && mainPost.images.length > 0) {
+            for (const url of mainPost.images.slice(0, 3)) {
+                if (url && url.startsWith('http')) {
+                    const base64Data = await this.imageUrlToBase64(url);
+                    if (base64Data) {
+                        // Remove prefix "data:image/jpeg;base64,"
+                        const base64Content = base64Data.split(',')[1];
+                        // const mimeType = base64Data.split(';')[0].split(':')[1]; // Not strictly needed for new SDK if passing inlineData
+                        parts.push({
+                            inlineData: {
+                                data: base64Content,
+                                mimeType: 'image/jpeg' // Defaulting to jpeg, or extract from base64Data
+                            }
+                        });
+                    }
+                }
+            }
         }
 
-        // Key Points
-        if (data.key_points && Array.isArray(data.key_points)) {
-            markdown += `## 📌 關鍵要點\n\n`;
-            data.key_points.forEach((point, index) => {
-                markdown += `${index + 1}. ${point}\n`;
+        const response = await this.genAI.models.generateContent({
+            model: 'gemini-2.0-flash-exp',
+            contents: [{
+                parts: parts
+            }]
+        });
+
+        // The new SDK response object might not have .response property if it's already the response
+        // Or it might need to be accessed differently. 
+        // Based on docs, it should be response.text() directly on the result object if it's the high-level response
+        // But let's be safe and check structure.
+
+        let text;
+        if (typeof response.text === 'function') {
+            text = response.text();
+        } else if (response.response && typeof response.response.text === 'function') {
+            text = response.response.text();
+        } else {
+            // Fallback for raw candidate access
+            text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+
+        return this.parseAiResponse(text, "google/gemini-2.0-flash-exp");
+    }
+
+    async analyzeWithOpenRouter(mainPost, systemPrompt, modelName) {
+        console.log(`[AiService] Attempting analysis with OpenRouter model: ${modelName}`);
+
+        const repliesText = mainPost.replies && mainPost.replies.length > 0
+            ? mainPost.replies.map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n')
+            : '(No replies)';
+
+        const content = [
+            {
+                type: "text",
+                text: `Here is the content of a Threads post. Please analyze it according to the system instructions.\n\nPost Text: ${mainPost.main_text}\n\nAuthor: ${mainPost.author || 'Unknown'}\n\nReplies/Comments:\n${repliesText}`
+            }
+        ];
+
+        // Add images (only for vision capable models)
+        // Assuming xAI and Gemini on OpenRouter are vision capable. 
+        // Llama 3.2 11b vision is, but 3b might not be. 
+        // We'll add images if it's gemini or xai or explicitly vision.
+        // For safety, let's try adding them for all, OpenRouter usually handles it or ignores it.
+        // Actually, sending images to non-vision models might cause errors.
+        const isVision = modelName.includes('gemini') || modelName.includes('xai') || modelName.includes('vision');
+
+        if (isVision && mainPost.images && mainPost.images.length > 0) {
+            mainPost.images.slice(0, 3).forEach(url => {
+                if (url && url.startsWith('http')) {
+                    content.push({
+                        type: "image_url",
+                        image_url: {
+                            url: url
+                        }
+                    });
+                }
             });
-            markdown += '\n';
         }
 
-        // Actionable Knowledge
-        if (data.actionable_knowledge) {
-            markdown += `## 🎯 實用知識\n\n${data.actionable_knowledge}\n\n`;
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.openRouterApiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
+                'X-Title': 'Media Platform Antigravity'
+            },
+            body: JSON.stringify({
+                model: modelName,
+                messages: [
+                    {
+                        role: "system",
+                        content: systemPrompt
+                    },
+                    {
+                        role: "user",
+                        content: content
+                    }
+                ]
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (response.status === 429 || (data.error && data.error.code === 429)) {
+                throw new Error(`Rate limit hit for ${modelName}`);
+            }
+            throw new Error(`OpenRouter API Error: ${response.status} - ${JSON.stringify(data)}`);
         }
 
-        // Tags
-        if (data.tags && Array.isArray(data.tags)) {
-            markdown += `## 🏷️ 標籤\n\n`;
-            markdown += data.tags.map(tag => `\`${tag}\``).join(' ');
+        const aiText = data.choices[0].message.content;
+        return this.parseAiResponse(aiText, modelName, data);
+    }
+
+    parseAiResponse(aiText, modelName, rawData = null) {
+        let parsedData = null;
+        try {
+            const firstBrace = aiText.indexOf('{');
+            const lastBrace = aiText.lastIndexOf('}');
+
+            if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                const jsonText = aiText.substring(firstBrace, lastBrace + 1);
+                parsedData = JSON.parse(jsonText);
+            } else {
+                const jsonMatch = aiText.match(/```json\s*([\s\S]*?)\s*```/) || aiText.match(/```\s*([\s\S]*?)\s*```/);
+                const jsonText = jsonMatch ? jsonMatch[1] : aiText;
+                parsedData = JSON.parse(jsonText.trim());
+            }
+        } catch (parseError) {
+            console.warn('[AiService] Failed to parse JSON response, using raw text:', parseError.message);
         }
 
-        return markdown.trim();
+        return {
+            summary: parsedData || aiText, // Return object if parsed, else raw string
+            structured: parsedData,
+            model: modelName,
+            raw: rawData
+        };
     }
 
     mockAnalysis() {
@@ -234,7 +288,7 @@ class AiService {
     async rewriteContent(content, style) {
         console.log(`[AiService] Rewriting content in style: ${style}`);
 
-        if (!this.apiKey) {
+        if (!this.openRouterApiKey) {
             return `[${style.toUpperCase()}] ${content.substring(0, 50)}... (請設定 OPENROUTER_API_KEY 以啟用 AI 重寫)`;
         }
 
@@ -251,13 +305,13 @@ class AiService {
             const response = await fetch(`${this.baseUrl}/chat/completions`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Authorization': `Bearer ${this.openRouterApiKey}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'http://localhost:3000',
                     'X-Title': 'Media Platform Antigravity'
                 },
                 body: JSON.stringify({
-                    model: this.currentModel,
+                    model: this.currentFreeModel,
                     messages: [
                         {
                             role: "system",
@@ -322,16 +376,16 @@ class AiService {
      * @param {object} userParams - User defined parameters { style, focus, perspective, model }
      */
     async remixContent(sourceJson, sourceImages, userParams) {
-        console.log(`[AiService] Remixing content with model: ${userParams.model || this.currentModel}`);
+        console.log(`[AiService] Remixing content with model: ${userParams.model || this.currentFreeModel}`);
 
-        if (!this.apiKey) {
+        if (!this.openRouterApiKey) {
             return {
                 remixed_content: "API Key missing. Please configure OPENROUTER_API_KEY.",
                 image_prompt: "API Key missing."
             };
         }
 
-        const modelToUse = userParams.model || this.currentModel;
+        const modelToUse = userParams.model || this.currentFreeModel;
 
         try {
             // 1. Construct System Prompt
@@ -425,7 +479,7 @@ Adhere strictly to the following User Style settings:
             // 3. Call API with Retry Logic
             const modelsToTry = [modelToUse];
             // Add fallback models if they are different from the requested model
-            this.models.forEach(m => {
+            this.freeModels.forEach(m => {
                 if (m !== modelToUse) modelsToTry.push(m);
             });
 
@@ -439,7 +493,7 @@ Adhere strictly to the following User Style settings:
                     const response = await fetch(`${this.baseUrl}/chat/completions`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${this.apiKey}`,
+                            'Authorization': `Bearer ${this.openRouterApiKey}`,
                             'Content-Type': 'application/json',
                             'HTTP-Referer': process.env.FRONTEND_URL || 'http://localhost:3000',
                             'X-Title': 'Media Platform Antigravity'
@@ -533,7 +587,7 @@ Adhere strictly to the following User Style settings:
      * @returns {Promise<string|null>} Image URL or null
      */
     async generateImageFromPrompt(prompt) {
-        if (!this.apiKey) {
+        if (!this.openRouterApiKey) {
             console.warn('[AiService] OPENROUTER_API_KEY missing. Skipping image generation.');
             return null;
         }
@@ -543,7 +597,7 @@ Adhere strictly to the following User Style settings:
             const response = await fetch(`${this.baseUrl}/images/generations`, {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${this.apiKey}`,
+                    'Authorization': `Bearer ${this.openRouterApiKey}`,
                     'Content-Type': 'application/json',
                     'HTTP-Referer': 'http://localhost:3000',
                     'X-Title': 'Media Platform Antigravity'

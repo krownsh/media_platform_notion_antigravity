@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://mediacrawl.krownsh.work',
+        target: process.env.VITE_API_TARGET || 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
       }

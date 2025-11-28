@@ -194,15 +194,15 @@ const PostDetailView = () => {
             exit={{ opacity: 0, y: 10 }}
             className="flex flex-col min-h-screen gap-8 pb-20"
         >
-            {/* Back Button */}
-            <div className="flex-shrink-0">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-                >
+            {/* Back Button Area */}
+            <div
+                className="flex-shrink-0 w-full cursor-pointer py-2 group"
+                onClick={() => navigate(-1)}
+            >
+                <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground transition-colors">
                     <ArrowLeft size={20} />
                     <span className="text-sm font-medium">返回</span>
-                </button>
+                </div>
             </div>
 
             {/* Main Content Area - 3 Columns Unified */}
@@ -370,25 +370,88 @@ const PostDetailView = () => {
                     <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 custom-scrollbar">
                         {analysis?.summary ? (
                             <div className="space-y-4">
-                                <div className="bg-white/60 border border-white/50 rounded-2xl p-4 shadow-sm">
-                                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
-                                        {analysis.summary}
-                                    </p>
-                                </div>
+                                {(() => {
+                                    let data = analysis.summary;
+                                    // Try to parse if it's a string that looks like JSON
+                                    if (typeof data === 'string' && (data.trim().startsWith('{') || data.includes('```json'))) {
+                                        try {
+                                            const cleanJson = data.replace(/```json\s*|\s*```/g, '').trim();
+                                            data = JSON.parse(cleanJson);
+                                        } catch (e) {
+                                            // Keep as string if parse fails
+                                        }
+                                    }
 
-                                {analysis?.keyPoints && analysis.keyPoints.length > 0 && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-bold text-accent uppercase tracking-wider">重點整理</h4>
-                                        <ul className="space-y-2">
-                                            {analysis.keyPoints.map((point, idx) => (
-                                                <li key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
-                                                    <span className="text-accent mt-0.5">•</span>
-                                                    <span className="break-words">{point}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
+                                    if (typeof data === 'object' && data !== null) {
+                                        return (
+                                            <div className="bg-white/60 border border-white/50 rounded-2xl p-5 shadow-sm text-foreground/90">
+                                                {/* Core Insight */}
+                                                {data.core_insight && (
+                                                    <div className="mb-6">
+                                                        <h4 className="flex items-center gap-2 text-sm font-bold text-accent uppercase tracking-wider mb-2">
+                                                            <Sparkles size={14} />
+                                                            核心洞察
+                                                        </h4>
+                                                        <p className="text-sm leading-relaxed font-medium">
+                                                            {data.core_insight}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Key Points */}
+                                                {data.key_points && data.key_points.length > 0 && (
+                                                    <div className="mb-6">
+                                                        <h4 className="text-xs font-bold text-foreground/70 uppercase tracking-wider mb-3">關鍵要點</h4>
+                                                        <ul className="space-y-2">
+                                                            {data.key_points.map((point, idx) => (
+                                                                <li key={idx} className="text-sm flex items-start gap-2 leading-relaxed">
+                                                                    <span className="font-bold text-accent mt-0.5">•</span>
+                                                                    <span>{point}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {/* Actionable Knowledge */}
+                                                {data.actionable_knowledge && (
+                                                    <div className="mb-6">
+                                                        <h4 className="text-xs font-bold text-foreground/70 uppercase tracking-wider mb-2">實用知識</h4>
+                                                        <p className="text-sm leading-relaxed">
+                                                            {data.actionable_knowledge}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                {/* Tags */}
+                                                {data.tags && data.tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/10">
+                                                        {data.tags.map((tag, idx) => (
+                                                            <span key={idx} className="text-xs text-muted-foreground hover:text-accent transition-colors cursor-pointer">
+                                                                #{tag}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    } else {
+                                        // Fallback for raw string
+                                        let content = typeof data === 'string' ? data : JSON.stringify(data);
+                                        // Strip Markdown syntax (headers, bold, code blocks)
+                                        if (typeof content === 'string') {
+                                            content = content.replace(/##\s*|###\s*|\*\*/g, '').replace(/`/g, '').trim();
+                                        }
+
+                                        return (
+                                            <div className="bg-white/60 border border-white/50 rounded-2xl p-5 shadow-sm">
+                                                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
+                                                    {content}
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+                                })()}
 
                                 {analysis?.sentiment && (
                                     <div className="bg-white/60 border border-white/50 rounded-2xl p-4 shadow-sm">

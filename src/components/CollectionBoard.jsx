@@ -13,7 +13,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CollectionBoard = ({ onRemix }) => {
-    const { items, collections, loading } = useSelector((state) => state.posts);
+    const { items, collections, loading, analyzing } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -26,8 +26,11 @@ const CollectionBoard = ({ onRemix }) => {
     const [dropAnimation, setDropAnimation] = useState(null); // { item, startRect, targetRect }
 
     useEffect(() => {
-        dispatch(fetchPosts());
-    }, [dispatch]);
+        // Only fetch if we don't have items and aren't currently loading
+        if (items.length === 0 && !loading) {
+            dispatch(fetchPosts());
+        }
+    }, [dispatch, items.length, loading]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -51,10 +54,18 @@ const CollectionBoard = ({ onRemix }) => {
         setActiveId(event.active.id);
     };
 
+    const [activeOverId, setActiveOverId] = useState(null);
+
+    const handleDragOver = (event) => {
+        const { over } = event;
+        setActiveOverId(over ? over.id : null);
+    };
+
     const handleDragEnd = (event) => {
         const { active, over } = event;
         const activeItemData = items.find(i => i.id === active.id);
         setActiveId(null);
+        setActiveOverId(null);
 
         if (!over) return;
 
@@ -104,17 +115,21 @@ const CollectionBoard = ({ onRemix }) => {
     // Helper to find the active item for DragOverlay
     const activeItem = items.find(i => i.id === activeId);
 
+    // Check if currently hovering over a collection folder
+    const isHoveringFolder = activeOverId && collections.some(c => c.id === activeOverId);
+
     return (
         <DndContext
             sensors={sensors}
             collisionDetection={pointerWithin}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
         >
             <div className="flex flex-col gap-8 pb-20">
 
                 {/* --- Top Section: Folders --- */}
-                <div className="bg-white/40 border-b border-white/20 p-6 -mx-6 md:-mx-8 lg:-mx-12 sticky top-0 z-30 backdrop-blur-md shadow-sm">
+                <div className="bg-white/40 border-b border-white/20 py-3 px-6 -mx-6 md:-mx-8 lg:-mx-12 sticky top-0 z-30 backdrop-blur-md shadow-sm">
                     <div className="max-w-[1600px] mx-auto w-full">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -129,7 +144,7 @@ const CollectionBoard = ({ onRemix }) => {
                             </button>
                         </div>
 
-                        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide">
+                        <div className="flex gap-6 overflow-x-auto pb-8 pt-4 px-4 -mx-4 scrollbar-hide">
                             {/* Create Input */}
                             {isCreating && (
                                 <form onSubmit={handleCreateCollection} className="min-w-[160px] p-4 rounded-2xl border border-accent/30 bg-accent/5 flex flex-col items-center gap-2 shadow-inner">
@@ -152,15 +167,18 @@ const CollectionBoard = ({ onRemix }) => {
                                 const previewImages = folderPosts
                                     .flatMap(p => p.images || [])
                                     .slice(0, 4);
+                                const isHovered = activeOverId === collection.id;
 
                                 return (
-                                    <div key={collection.id} className="min-w-[140px]">
-                                        <CollectionFolder
-                                            collection={collection}
-                                            postCount={folderPosts.length}
-                                            previewImages={previewImages}
-                                            onClick={() => setSelectedCollectionId(collection.id)}
-                                        />
+                                    <div key={collection.id} className={`min-w-[140px] relative ${isHovered ? 'z-50' : 'z-0'}`}>
+                                        <div className={`transition-transform duration-300 ${isHovered ? 'scale-110' : ''}`}>
+                                            <CollectionFolder
+                                                collection={collection}
+                                                postCount={folderPosts.length}
+                                                previewImages={previewImages}
+                                                onClick={() => setSelectedCollectionId(collection.id)}
+                                            />
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -180,7 +198,7 @@ const CollectionBoard = ({ onRemix }) => {
                         未分類貼文
                     </h2>
 
-                    {uncategorizedPosts.length === 0 && !loading ? (
+                    {uncategorizedPosts.length === 0 && !loading && !analyzing ? (
                         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
                             <p className="text-lg font-medium">全部都看完了！</p>
                             <p className="text-sm">所有貼文都已整理到資料夾中。</p>
@@ -188,7 +206,7 @@ const CollectionBoard = ({ onRemix }) => {
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(item => item.id)} strategy={rectSortingStrategy}>
                             <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
-                                {loading && (
+                                {analyzing && (
                                     <div className="glass-card rounded-3xl overflow-hidden w-[360px] h-[560px] bg-white/40 border border-white/50 shadow-xl relative flex flex-col">
                                         {/* Shimmer Effect Overlay */}
                                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
@@ -277,7 +295,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {createPortal(
                     <DragOverlay>
                         {activeItem ? (
-                            <div className="w-[360px] opacity-90 rotate-3 scale-105 pointer-events-none">
+                            <div className={`w-[360px] opacity-90 pointer-events-none transition-all duration-300 ${isHoveringFolder ? 'scale-[0.2] rotate-0' : 'scale-105 rotate-3'}`}>
                                 <SortablePostCard
                                     post={activeItem}
                                     onRemix={() => { }}

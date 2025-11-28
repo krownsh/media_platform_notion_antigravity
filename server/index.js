@@ -5,7 +5,7 @@ import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { supabase } from './supabaseClient.js';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: './server/.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;

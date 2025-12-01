@@ -6,6 +6,7 @@ import { DndContext, pointerWithin, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { reorderPosts, fetchPosts, createCollection, movePostToCollection, deletePost } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
+import PostCard from './PostCard';
 import CollectionFolder from './CollectionFolder';
 import CollectionModal from './CollectionModal';
 import { Layers, Plus, Loader2 } from 'lucide-react';
@@ -14,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 const CollectionBoard = ({ onRemix }) => {
     const { items, collections, loading, analyzing } = useSelector((state) => state.posts);
+    console.log('CollectionBoard items:', items);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -45,6 +47,7 @@ const CollectionBoard = ({ onRemix }) => {
 
     // Filter posts:
     const uncategorizedPosts = items.filter(p => !p.collectionId);
+    console.log('Uncategorized posts:', uncategorizedPosts.length, uncategorizedPosts);
     const selectedCollection = collections.find(c => c.id === selectedCollectionId);
     const selectedCollectionPosts = selectedCollection
         ? items.filter(p => p.collectionId === selectedCollection.id)
@@ -204,79 +207,77 @@ const CollectionBoard = ({ onRemix }) => {
                             <p className="text-sm">所有貼文都已整理到資料夾中。</p>
                         </div>
                     ) : (
-                        <SortableContext items={uncategorizedPosts.map(item => item.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
-                                {analyzing && (
-                                    <div className="glass-card rounded-3xl overflow-hidden w-[360px] h-[560px] bg-white/40 border border-white/50 shadow-xl relative flex flex-col">
-                                        {/* Shimmer Effect Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
+                        <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
+                            {analyzing && (
+                                <div className="glass-card rounded-3xl overflow-hidden w-[360px] h-[560px] bg-white/40 border border-white/50 shadow-xl relative flex flex-col">
+                                    {/* Shimmer Effect Overlay */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
 
-                                        {/* Header Skeleton */}
-                                        <div className="h-12 border-b border-white/20 flex items-center px-4 gap-3 flex-shrink-0">
-                                            <div className="w-8 h-8 rounded-full bg-white/30 animate-pulse" />
-                                            <div className="flex flex-col gap-1.5">
-                                                <div className="h-2.5 w-20 bg-white/30 rounded animate-pulse" />
-                                                <div className="h-2 w-12 bg-white/20 rounded animate-pulse" />
-                                            </div>
-                                        </div>
-
-                                        {/* Author Skeleton */}
-                                        <div className="h-[50px] border-b border-white/20 flex items-center px-4 gap-3 flex-shrink-0 bg-white/10">
-                                            <div className="w-9 h-9 rounded-full bg-white/30 animate-pulse" />
-                                            <div className="flex flex-col gap-2">
-                                                <div className="h-3 w-24 bg-white/30 rounded animate-pulse" />
-                                                <div className="h-2 w-16 bg-white/20 rounded animate-pulse" />
-                                            </div>
-                                        </div>
-
-                                        {/* Image Skeleton with Spinner */}
-                                        <div className="h-44 bg-white/20 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-white/5 animate-pulse" />
-                                            <div className="flex flex-col items-center gap-3 z-10">
-                                                <Loader2 className="animate-spin text-accent" size={32} />
-                                                <span className="text-xs font-medium text-accent/80 tracking-wider">AI 分析中...</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Action Bar Skeleton */}
-                                        <div className="h-10 border-b border-white/20 bg-white/5 flex items-center justify-end px-4 gap-2 flex-shrink-0">
-                                            <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
-                                            <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
-                                        </div>
-
-                                        {/* Content Skeleton */}
-                                        <div className="p-4 flex-1 flex flex-col gap-3">
-                                            <div className="space-y-2">
-                                                <div className="h-3 w-full bg-white/30 rounded animate-pulse" />
-                                                <div className="h-3 w-5/6 bg-white/30 rounded animate-pulse" />
-                                                <div className="h-3 w-4/6 bg-white/30 rounded animate-pulse" />
-                                            </div>
-
-                                            <div className="flex gap-2 mt-1">
-                                                <div className="h-5 w-12 rounded-full bg-white/20 animate-pulse" />
-                                                <div className="h-5 w-16 rounded-full bg-white/20 animate-pulse" />
-                                            </div>
-
-                                            <div className="h-16 rounded-xl bg-accent/5 border border-accent/10 mt-2 p-3 flex flex-col gap-2">
-                                                <div className="h-2 w-12 bg-accent/20 rounded animate-pulse" />
-                                                <div className="h-2 w-full bg-accent/10 rounded animate-pulse" />
-                                                <div className="h-2 w-3/4 bg-accent/10 rounded animate-pulse" />
-                                            </div>
+                                    {/* Header Skeleton */}
+                                    <div className="h-12 border-b border-white/20 flex items-center px-4 gap-3 flex-shrink-0">
+                                        <div className="w-8 h-8 rounded-full bg-white/30 animate-pulse" />
+                                        <div className="flex flex-col gap-1.5">
+                                            <div className="h-2.5 w-20 bg-white/30 rounded animate-pulse" />
+                                            <div className="h-2 w-12 bg-white/20 rounded animate-pulse" />
                                         </div>
                                     </div>
-                                )}
-                                {uncategorizedPosts.map((post) => (
-                                    <SortablePostCard
-                                        key={post.id}
-                                        post={post}
-                                        onRemix={onRemix}
-                                        onClick={() => navigate(`/post/${post.dbId || post.id}`)}
-                                        onDelete={() => dispatch(deletePost(post.dbId || post.id))}
-                                        onRename={() => { }}
-                                    />
-                                ))}
-                            </div>
-                        </SortableContext>
+
+                                    {/* Author Skeleton */}
+                                    <div className="h-[50px] border-b border-white/20 flex items-center px-4 gap-3 flex-shrink-0 bg-white/10">
+                                        <div className="w-9 h-9 rounded-full bg-white/30 animate-pulse" />
+                                        <div className="flex flex-col gap-2">
+                                            <div className="h-3 w-24 bg-white/30 rounded animate-pulse" />
+                                            <div className="h-2 w-16 bg-white/20 rounded animate-pulse" />
+                                        </div>
+                                    </div>
+
+                                    {/* Image Skeleton with Spinner */}
+                                    <div className="h-44 bg-white/20 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+                                        <div className="absolute inset-0 bg-white/5 animate-pulse" />
+                                        <div className="flex flex-col items-center gap-3 z-10">
+                                            <Loader2 className="animate-spin text-accent" size={32} />
+                                            <span className="text-xs font-medium text-accent/80 tracking-wider">AI 分析中...</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Bar Skeleton */}
+                                    <div className="h-10 border-b border-white/20 bg-white/5 flex items-center justify-end px-4 gap-2 flex-shrink-0">
+                                        <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
+                                        <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
+                                    </div>
+
+                                    {/* Content Skeleton */}
+                                    <div className="p-4 flex-1 flex flex-col gap-3">
+                                        <div className="space-y-2">
+                                            <div className="h-3 w-full bg-white/30 rounded animate-pulse" />
+                                            <div className="h-3 w-5/6 bg-white/30 rounded animate-pulse" />
+                                            <div className="h-3 w-4/6 bg-white/30 rounded animate-pulse" />
+                                        </div>
+
+                                        <div className="flex gap-2 mt-1">
+                                            <div className="h-5 w-12 rounded-full bg-white/20 animate-pulse" />
+                                            <div className="h-5 w-16 rounded-full bg-white/20 animate-pulse" />
+                                        </div>
+
+                                        <div className="h-16 rounded-xl bg-accent/5 border border-accent/10 mt-2 p-3 flex flex-col gap-2">
+                                            <div className="h-2 w-12 bg-accent/20 rounded animate-pulse" />
+                                            <div className="h-2 w-full bg-accent/10 rounded animate-pulse" />
+                                            <div className="h-2 w-3/4 bg-accent/10 rounded animate-pulse" />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            {uncategorizedPosts.map((post) => (
+                                <PostCard
+                                    key={post.id}
+                                    post={post}
+                                    onRemix={onRemix}
+                                    onClick={() => navigate(`/post/${post.dbId || post.id}`)}
+                                    onDelete={() => dispatch(deletePost(post.dbId || post.id))}
+                                    onRename={() => { }}
+                                />
+                            ))}
+                        </div>
                     )}
                 </div>
 

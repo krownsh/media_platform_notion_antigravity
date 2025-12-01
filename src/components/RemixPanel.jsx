@@ -1,37 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight, ExternalLink, Settings2, Download, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../api/config';
+import MarkdownRenderer from './MarkdownRenderer';
 
-
+// Hardcoded models as requested
 const MODELS = [
     {
-        id: 'google/gemini-2.0-flash-exp:free',
-        name: 'Gemini 2.0 Flash',
-        type: 'free',
+        id: 'gemini-2.0-flash-exp',
+        name: 'Gemini 2.0 Flash (Exp)',
+        type: 'google',
         capabilities: ['vision', 'fast'],
-        desc: 'Fast, Free, Vision-capable'
+        desc: 'Fast, Experimental'
     },
     {
-        id: 'google/gemini-2.0-pro-exp-02-05:free',
-        name: 'Gemini 2.0 Pro',
-        type: 'free',
+        id: 'gemini-2.0-flash-thinking-exp',
+        name: 'Gemini 2.0 Flash Thinking',
+        type: 'google',
         capabilities: ['vision', 'deep'],
-        desc: 'Smarter, Free, Vision-capable'
+        desc: 'Reasoning, Experimental'
     },
     {
-        id: 'meta-llama/llama-3.2-3b-instruct:free',
-        name: 'Llama 3.2 3B',
-        type: 'free',
+        id: 'gemini-2.0-pro-exp-02-05',
+        name: 'Gemini 2.0 Pro (Exp)',
+        type: 'google',
+        capabilities: ['vision', 'deep'],
+        desc: 'High Capability, Experimental'
+    },
+    {
+        id: 'x-ai/grok-4.1-fast:free',
+        name: 'xAI Grok 4.1 Fast',
+        type: 'openrouter',
         capabilities: ['text'],
-        desc: 'Fast, Text-only'
+        desc: 'xAI Free Model'
     },
     {
-        id: 'anthropic/claude-3.5-sonnet',
-        name: 'Claude 3.5 Sonnet',
-        type: 'paid',
-        capabilities: ['vision', 'best'],
-        desc: 'Premium, Best Reasoning'
+        id: 'deepseek/deepseek-r1:free',
+        name: 'DeepSeek R1',
+        type: 'openrouter',
+        capabilities: ['text', 'reasoning'],
+        desc: 'DeepSeek Reasoning'
+    },
+    {
+        id: 'qwen/qwen-2.5-vl-72b-instruct:free',
+        name: 'Qwen 2.5 VL 72B',
+        type: 'openrouter',
+        capabilities: ['vision', 'text'],
+        desc: 'Qwen Vision Model'
     }
 ];
 
@@ -47,6 +62,18 @@ const RemixPanel = ({ post, onClose }) => {
     const [editableJson, setEditableJson] = useState('');
 
     const [activeImages, setActiveImages] = useState([]);
+
+    // Image Generation State
+    const [imagePrompt, setImagePrompt] = useState("A creative, high-quality illustration representing the core insight of the post. Style: Modern, Minimalist, Tech-focused.");
+    const [generatedImages, setGeneratedImages] = useState({}); // Map index -> url
+    const [generatingImageIndex, setGeneratingImageIndex] = useState(null);
+    const [showPromptInput, setShowPromptInput] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
+
+    // Image Carousel State
+    const [imgStartIndex, setImgStartIndex] = useState(0);
+    const MAX_VISIBLE_IMAGES = 3;
+    const visibleImages = activeImages.slice(imgStartIndex, imgStartIndex + MAX_VISIBLE_IMAGES);
 
     useEffect(() => {
         // Ensure images is an array
@@ -95,12 +122,19 @@ const RemixPanel = ({ post, onClose }) => {
         }
     };
 
-    const handleRemix = async () => {
-        if (activeImages.length > 4) {
-            alert('請最多選擇 4 張圖片。請從列表中移除不需要的圖片。');
-            return;
+    const nextImages = () => {
+        if (imgStartIndex + MAX_VISIBLE_IMAGES < activeImages.length) {
+            setImgStartIndex(prev => prev + 1);
         }
+    };
 
+    const prevImages = () => {
+        if (imgStartIndex > 0) {
+            setImgStartIndex(prev => prev - 1);
+        }
+    };
+
+    const handleRemix = async () => {
         setLoading(true);
         setResult(null);
         try {
@@ -118,7 +152,7 @@ const RemixPanel = ({ post, onClose }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     sourceJson: sourceJson,
-                    sourceImages: activeImages,
+                    // sourceImages: activeImages, // Removed as per request to not use images for text remix
                     userParams: {
                         ...params,
                         model: selectedModel
@@ -131,12 +165,50 @@ const RemixPanel = ({ post, onClose }) => {
             }
 
             const data = await response.json();
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
             setResult(data.result);
+
+            // If the AI returned a suggested prompt, maybe we update our default? 
+            if (data.result.image_prompt) {
+                setImagePrompt(data.result.image_prompt);
+            }
+
         } catch (error) {
             console.error('Remix failed:', error);
-            setResult({ remixed_content: '改寫失敗。請重試。', image_prompt: '' });
+            alert(`Remix failed: ${error.message}`);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGenerateImage = async (index) => {
+        setGeneratingImageIndex(index);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/generate-image`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prompt: imagePrompt })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error);
+
+            if (data.imageUrl) {
+                setGeneratedImages(prev => ({
+                    ...prev,
+                    [index]: data.imageUrl
+                }));
+            }
+        } catch (error) {
+            console.error("Image generation failed:", error);
+            alert("Image generation failed: " + error.message);
+        } finally {
+            setGeneratingImageIndex(null);
         }
     };
 
@@ -147,7 +219,6 @@ const RemixPanel = ({ post, onClose }) => {
 : 
 : **Input Data Structure:**
 : - **Source JSON**: Contains text content (\`main_text\`, \`author\`, \`replies\`).
-: - **Images**: Visual context provided as attachments.
 : 
 : **Input JSON Fields:**
 : - \`main_text\`: The core content/insight of the original post.
@@ -165,43 +236,7 @@ const RemixPanel = ({ post, onClose }) => {
 : - Tone (語氣): ${params.style || 'Professional & Casual'} (Calm, Insightful, Conversational)
 : - Focus (核心領域): ${params.focus || 'Auto-detect'}
 : - Perspective (切入觀點): ${params.perspective || 'Industry Observer'}
-: 
-: **Style Guidelines:**
-: 1. **Expert Authority**: You already know this concept inside out. Do NOT say "I just learned..." (最近研究...) or "Wow!" (天啊!). Instead, say "I noticed..." (看到這個...) or "This reminds me..." (這讓我想起...).
-: 2. **No Newbie Language**: STRICTLY FORBIDDEN phrases: "天啊", "筆記一下", "簡單說", "避坑小貼士", "感覺像...".
-: 3. **Conversational but Deep**: Use a tone that suggests experience. E.g., "其實很多人忽略了...", "這才是核心邏輯...".
-: 4. **Calm & Composed**: Use minimal emojis (max 1-2). No "😱" or "✨". Use neutral ones like ☕, 📉, 💡.
-: 
-: **Process:**
-: 1. **Analyze Main Text**: Identify the core concept.
-: 2. **Internalize**: Connect this to broader industry knowledge.
-: 3. **Re-teach with Authority**: Frame the insight as an observation.
-:    - **Bad Opening**: "天啊！最近發現主力洗盤好可怕！" (Newbie)
-:    - **Good Opening**: "聊聊主力洗盤。其實這就是心理戰的極致表現。" (Expert)
-: 4. **Visual Creation**: The 'imagePrompt' should describe a *new* image that represents this internalized knowledge. It should be a synthesis of the source image's information and the user's style.
-: 
-: **Output Requirements:**
-: You must respond with a JSON object containing two fields:
-: 1. "remixed_content": The new post content (in Traditional Chinese). It should be standalone and ready to post.
-: 2. "image_prompt": A detailed prompt for an AI image generator (like Midjourney/DALL-E). This prompt must be a **Visual Reorganization** of the knowledge point.
     `.trim();
-
-    // Image Carousel State
-    const [imgStartIndex, setImgStartIndex] = useState(0);
-    const MAX_VISIBLE_IMAGES = 3;
-    const visibleImages = activeImages.slice(imgStartIndex, imgStartIndex + MAX_VISIBLE_IMAGES);
-
-    const nextImages = () => {
-        if (imgStartIndex + MAX_VISIBLE_IMAGES < activeImages.length) {
-            setImgStartIndex(prev => prev + 1);
-        }
-    };
-
-    const prevImages = () => {
-        if (imgStartIndex > 0) {
-            setImgStartIndex(prev => prev - 1);
-        }
-    };
 
     return (
         <motion.div
@@ -345,7 +380,8 @@ const RemixPanel = ({ post, onClose }) => {
                                         >
                                             {MODELS.map(model => (
                                                 <option key={model.id} value={model.id} className="bg-white text-foreground">
-                                                    {model.name} {model.type === 'free' ? '(免費)' : ''}
+                                                    {model.type === 'google' ? '[Google] ' : '[OpenRouter] '}
+                                                    {model.name}
                                                 </option>
                                             ))}
                                         </select>
@@ -421,115 +457,178 @@ const RemixPanel = ({ post, onClose }) => {
                         </div>
                     </div>
 
-                    {/* Column 3: Output (37%) */}
+                    {/* Column 3: Output (37%) - Split into Top (Text) and Bottom (Images) */}
                     <div className="w-[37%] flex flex-col bg-secondary/5 overflow-hidden">
-                        <div className="p-4 border-b border-border/20 flex items-center justify-between">
-                            <h3 className="font-semibold text-foreground flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-accent/20 text-accent text-xs flex items-center justify-center border border-accent/30">3</span>
-                                最終產出
-                            </h3>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col">
-                            {!result && !loading && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/50 gap-4">
-                                    <div className="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center">
-                                        <Wand2 size={32} className="opacity-30" />
-                                    </div>
-                                    <p className="text-sm text-center max-w-[200px]">
-                                        準備改寫
-                                    </p>
+                        {/* Section 3: Text Output (Flex 1) */}
+                        <div className="flex-1 flex flex-col min-h-0 border-b border-border/20">
+                            <div className="p-4 border-b border-border/10 flex items-center justify-between shrink-0 bg-white/30">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">3</div>
+                                    <h3 className="font-medium text-foreground">最終產出 (文字)</h3>
                                 </div>
-                            )}
+                            </div>
 
-                            {loading && (
-                                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-4">
-                                    <RefreshCw size={32} className="animate-spin text-accent" />
-                                    <p className="text-sm animate-pulse">內化與重構中...</p>
-                                </div>
-                            )}
-
-                            {result && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="space-y-6"
-                                >
-                                    {/* Image Prompt / Generated Image */}
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                            <ImageIcon size={12} /> 視覺概念
-                                        </label>
-
-                                        {result.generated_image ? (
-                                            <div className="aspect-square w-full bg-secondary/10 rounded-2xl border border-border/20 overflow-hidden relative group shadow-sm">
-                                                <img
-                                                    src={result.generated_image}
-                                                    alt="AI Generated"
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <div className="absolute inset-0 bg-white/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3 p-6 backdrop-blur-md">
-                                                    <p className="text-[10px] text-foreground/80 text-center line-clamp-4">
-                                                        "{result.image_prompt}"
-                                                    </p>
-                                                    <div className="flex gap-2">
-                                                        <a
-                                                            href={result.generated_image}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-3 py-1.5 bg-white border border-border/20 hover:bg-secondary/20 rounded-lg text-xs text-foreground transition-colors flex items-center gap-1 shadow-sm"
-                                                        >
-                                                            <ExternalLink size={12} /> 開啟
-                                                        </a>
-                                                        <button
-                                                            onClick={() => navigator.clipboard.writeText(result.image_prompt)}
-                                                            className="px-3 py-1.5 bg-white border border-border/20 hover:bg-secondary/20 rounded-lg text-xs text-foreground transition-colors flex items-center gap-1 shadow-sm"
-                                                        >
-                                                            <Copy size={12} /> 提示詞
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="aspect-video bg-white/40 rounded-2xl border border-border/20 flex flex-col items-center justify-center p-6 text-center group relative overflow-hidden shadow-sm">
-                                                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
-                                                <p className="text-xs text-muted-foreground italic relative z-10 line-clamp-4 group-hover:line-clamp-none transition-all">
-                                                    "{result.image_prompt}"
-                                                </p>
-                                                <button
-                                                    onClick={() => navigator.clipboard.writeText(result.image_prompt)}
-                                                    className="mt-4 px-4 py-2 bg-white hover:bg-secondary/20 rounded-lg text-xs text-foreground transition-colors relative z-10 flex items-center gap-2 shadow-sm border border-border/10"
-                                                >
-                                                    <Copy size={12} /> 複製提示詞
-                                                </button>
-                                            </div>
-                                        )}
+                            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                                {loading ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-3">
+                                        <RefreshCw className="w-8 h-8 animate-spin text-accent" />
+                                        <p className="text-sm animate-pulse">AI 正在思考與改寫中...</p>
                                     </div>
-
-                                    {/* Text Content */}
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                                            <Brain size={12} /> 改寫內容
-                                        </label>
-                                        <div className="bg-white/50 rounded-2xl p-5 text-foreground/90 text-sm leading-relaxed border border-border/20 whitespace-pre-wrap shadow-sm">
-                                            {result.remixed_content}
+                                ) : result ? (
+                                    <div className="space-y-6 animate-in fade-in duration-500">
+                                        <div className="prose prose-sm max-w-none">
+                                            <MarkdownRenderer content={result.remixed_content} />
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                onClick={() => navigator.clipboard.writeText(result.remixed_content)}
+                                                className="flex-1 py-2 rounded-lg bg-white/50 hover:bg-white/80 text-foreground text-xs font-medium flex items-center justify-center gap-2 transition-colors border border-border/20"
+                                            >
+                                                <Copy size={14} /> 複製
+                                            </button>
                                         </div>
                                     </div>
-
-                                    {/* Actions */}
-                                    <div className="flex gap-3 pt-4">
-                                        <button className="flex-1 py-2.5 rounded-xl bg-white/50 hover:bg-white/80 text-foreground text-sm font-medium flex items-center justify-center gap-2 transition-colors border border-border/20 shadow-sm">
-                                            <Copy size={16} /> 複製文字
-                                        </button>
-                                        <button className="flex-1 py-2.5 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent border border-accent/20 text-sm font-medium flex items-center justify-center gap-2 transition-colors shadow-sm">
-                                            <Share size={16} /> 分享
-                                        </button>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50">
+                                        <Sparkles className="w-12 h-12 mb-2 opacity-20" />
+                                        <p className="text-sm">點擊「改寫」生成內容</p>
                                     </div>
-                                </motion.div>
-                            )}
+                                )}
+                            </div>
                         </div>
+
+                        {/* Section 4: Image Generation (Fixed Height or Flex) */}
+                        <div className="h-[40%] flex flex-col min-h-0 bg-white/20">
+                            <div className="p-4 border-b border-border/10 flex items-center justify-between shrink-0 bg-white/30">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold">4</div>
+                                    <h3 className="font-medium text-foreground">配圖生成</h3>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            onClose();
+                                            // Use window.location as fallback if useNavigate not available in this context (though it should be)
+                                            // But better to pass navigate or use hook
+                                            window.location.href = `/image-workflow/${post.id || post.dbId}`;
+                                        }}
+                                        className="text-xs flex items-center gap-1 transition-colors px-2 py-1 rounded-md text-accent hover:bg-accent/10"
+                                    >
+                                        <ExternalLink className="w-3 h-3" />
+                                        Advanced
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPromptInput(!showPromptInput)}
+                                        className={`text-xs flex items-center gap-1 transition-colors px-2 py-1 rounded-md ${showPromptInput ? 'bg-accent/10 text-accent' : 'text-muted-foreground hover:text-accent hover:bg-accent/5'}`}
+                                    >
+                                        <Settings2 className="w-3 h-3" />
+                                        Prompt
+                                    </button>
+                                </div>
+                            </div>
+
+                            {showPromptInput && (
+                                <div className="px-4 py-2 bg-accent/5 border-b border-accent/10 shrink-0 animate-in slide-in-from-top-2">
+                                    <textarea
+                                        value={imagePrompt}
+                                        onChange={(e) => setImagePrompt(e.target.value)}
+                                        className="w-full text-xs bg-white border border-border/20 rounded p-2 focus:outline-none focus:border-accent/50 h-16 resize-none"
+                                        placeholder="輸入圖片生成提示詞..."
+                                    />
+                                </div>
+                            )}
+
+                            <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                                {activeImages.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {activeImages.map((imgUrl, idx) => (
+                                            <div key={idx} className="flex items-center gap-3 bg-white/40 p-3 rounded-xl border border-white/20 shadow-sm hover:bg-white/50 transition-colors">
+                                                {/* Left: Source Image */}
+                                                <div
+                                                    className="w-24 h-24 shrink-0 rounded-lg overflow-hidden bg-gray-100 border border-border/10 cursor-zoom-in hover:opacity-90 transition-opacity shadow-inner"
+                                                    onClick={() => setPreviewImage(imgUrl)}
+                                                >
+                                                    <img src={imgUrl} alt="Source" className="w-full h-full object-cover" />
+                                                </div>
+
+                                                {/* Center: Generate Button */}
+                                                <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-2">
+                                                    <button
+                                                        onClick={() => handleGenerateImage(idx)}
+                                                        disabled={generatingImageIndex === idx}
+                                                        className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center hover:bg-accent/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:scale-110 active:scale-95"
+                                                        title="生成配圖"
+                                                    >
+                                                        {generatingImageIndex === idx ? (
+                                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                                        ) : (
+                                                            <ChevronRight className="w-5 h-5" />
+                                                        )}
+                                                    </button>
+                                                    <span className="text-[10px] text-muted-foreground font-medium">生成</span>
+                                                </div>
+
+                                                {/* Right: Generated Image */}
+                                                <div
+                                                    className={`w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-border/10 flex items-center justify-center relative shadow-inner transition-all ${generatedImages[idx] ? 'bg-white cursor-zoom-in hover:opacity-90' : 'bg-black/5'}`}
+                                                    onClick={() => generatedImages[idx] && setPreviewImage(generatedImages[idx])}
+                                                >
+                                                    {generatedImages[idx] ? (
+                                                        <img
+                                                            src={generatedImages[idx]}
+                                                            alt="Generated"
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="text-[10px] text-muted-foreground/50 text-center px-2 leading-tight flex flex-col items-center gap-1">
+                                                            <Sparkles className="w-4 h-4 opacity-20" />
+                                                            <span>待生成</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50 text-xs">
+                                        <p>無來源圖片</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
                     </div>
                 </div>
+
+                {/* Image Preview Modal */}
+                <AnimatePresence>
+                    {previewImage && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8"
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            <motion.div
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.9, opacity: 0 }}
+                                className="relative max-w-full max-h-full rounded-2xl overflow-hidden shadow-2xl"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] object-contain" />
+                                <button
+                                    onClick={() => setPreviewImage(null)}
+                                    className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.div>
         </motion.div>
     );

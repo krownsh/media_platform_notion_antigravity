@@ -32,97 +32,34 @@ import { API_BASE_URL } from '../api/config';
 function* handleFetchPosts() {
   try {
     // 1. Ensure user is authenticated
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
+    const { data: { session } } = yield call(() => supabase.auth.getSession());
+    const user = session?.user;
 
     if (!user) {
       console.warn('[Saga] No user found during fetchPosts. User should be authenticated by ProtectedRoute.');
-      // We can either return here or let the query fail/return empty if RLS is on.
-      // Since we are implementing ProtectedRoute, this case shouldn't theoretically happen for the main view,
-      // but good to be safe.
+      // Return empty if no user, or handle as error
+      yield put(fetchPostsSuccess({ posts: [], collections: [] }));
+      return;
     }
 
-    // 2. Fetch posts
-    const { data: postsData, error: postsError } = yield call(() =>
-      supabase
-        .from('posts')
-        .select(`
-          *,
-          post_media (*),
-          post_comments (*),
-          post_analysis (*),
-          user_annotations (*)
-        `)
-        .order('created_at', { ascending: false })
-    );
+    // 2. Call Backend API
+    console.log('[Saga] Fetching posts from backend...');
+    const response = yield call(fetch, `${API_BASE_URL}/api/posts`, {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    });
 
-    if (postsError) throw postsError;
+    if (!response.ok) {
+      throw new Error('Failed to fetch posts from backend');
+    }
 
-    // 3. Fetch collections
-    const { data: collectionsData, error: collectionsError } = yield call(() =>
-      supabase
-        .from('collections')
-        .select('*')
-        .order('created_at', { ascending: false })
-    );
-
-    if (collectionsError) throw collectionsError;
-
-    console.log('[Saga] Fetched posts from DB:', postsData);
-    console.log('[Saga] Fetched collections from DB:', collectionsData);
-
-    // Transform data to match frontend structure
-    const formattedPosts = postsData.map(post => ({
-      id: post.id,
-      dbId: post.id, // Database ID
-      platform: post.platform,
-      author: post.author_name,
-      authorHandle: post.author_id,
-      avatar: post.author_avatar_url,
-      content: post.content,
-      postedAt: post.posted_at,
-      originalUrl: post.original_url,
-      createdAt: post.created_at,
-      fullJson: post.full_json,
-      collectionId: post.collection_id, // Add collection_id
-
-      // Transform media array
-      images: post.post_media
-        ?.filter(m => m.type === 'image')
-        .sort((a, b) => a.order - b.order)
-        .map(m => m.url) || [],
-
-      media: post.post_media || [],
-
-      // Transform comments
-      comments: post.post_comments?.map(c => ({
-        user: c.author_name,
-        author: c.author_name,
-        text: c.content,
-        postedAt: c.commented_at,
-        handle: c.raw_data?.handle || c.raw_data?.authorHandle || '',
-        avatar: c.raw_data?.avatar || '',
-        replies: c.raw_data?.replies || [],
-        images: c.raw_data?.images || []
-      })) || [],
-
-      // Transform annotations (筆記)
-      annotations: post.user_annotations?.filter(a => a.type === 'note') || [],
-
-      // Transform analysis
-      analysis: post.post_analysis?.[0] ? {
-        summary: post.post_analysis[0].summary,
-        tags: post.post_analysis[0].tags || [],
-        topics: post.post_analysis[0].topics || [],
-        sentiment: post.post_analysis[0].sentiment,
-        insights: post.post_analysis[0].insights || []
-      } : null
-    }));
-
-    console.log('[Saga] Formatted posts:', formattedPosts);
+    const data = yield response.json();
+    console.log('[Saga] Fetched posts:', data.posts?.length);
 
     yield put(fetchPostsSuccess({
-      posts: formattedPosts,
-      collections: collectionsData || []
+      posts: data.posts || [],
+      collections: data.collections || []
     }));
   } catch (error) {
     console.error('[Saga] Fetch Posts Error:', error);

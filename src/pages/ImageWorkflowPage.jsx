@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { ArrowLeft, Play, Save, Loader2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Play, Save, Loader2, CheckCircle, Instagram, Twitter, AtSign, Send, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 import RichMentionEditor from '../components/RichMentionEditor';
 
@@ -193,85 +193,64 @@ Output format: Just give me the Subject Description paragraph in English.`);
     };
 
     // Step 4 State
-    const [selectedPlatforms, setSelectedPlatforms] = useState({
-        instagram: false,
-        threads: false,
-        twitter: false
+    const [captions, setCaptions] = useState({
+        instagram: '',
+        threads: '',
+        twitter: ''
     });
-    const [finalCaption, setFinalCaption] = useState('');
-    const [publishStatus, setPublishStatus] = useState('');
+    const [publishStatuses, setPublishStatuses] = useState({
+        instagram: '',
+        threads: '',
+        twitter: ''
+    });
 
-    // Auto-fill caption from Step 2 output when entering Step 4
+    // Auto-fill captions from Step 2 output when entering Step 4
     useEffect(() => {
-        if (step2Output && !finalCaption) {
-            setFinalCaption(step2Output);
+        if (step2Output) {
+            setCaptions(prev => ({
+                instagram: prev.instagram || step2Output,
+                threads: prev.threads || step2Output,
+                twitter: prev.twitter || step2Output
+            }));
         }
     }, [step2Output]);
 
-    const handlePublish = async () => {
+    const handlePublishSingle = async (platform) => {
         if (!step3Output) return alert('No image generated yet!');
 
         setLoading(true);
-        setPublishStatus('Starting publication...\n');
-
-        const appendStatus = (msg) => setPublishStatus(prev => prev + msg + '\n');
+        setPublishStatuses(prev => ({ ...prev, [platform]: '⏳ Publishing...' }));
 
         try {
-            // Instagram
-            if (selectedPlatforms.instagram) {
-                appendStatus('⏳ Publishing to Instagram...');
-                try {
-                    const res = await fetch(`${API_BASE_URL}/api/publish/instagram`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ imageUrl: step3Output, caption: finalCaption })
-                    });
-                    const data = await res.json();
-                    if (data.error) throw new Error(data.error);
-                    appendStatus(`✅ Instagram: Published! ID: ${data.id}`);
-                } catch (e) {
-                    appendStatus(`❌ Instagram Failed: ${e.message}`);
-                }
+            let res, data;
+
+            if (platform === 'instagram') {
+                res = await fetch(`${API_BASE_URL}/api/publish/instagram`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageUrl: step3Output, caption: captions.instagram })
+                });
+            } else if (platform === 'threads') {
+                res = await fetch(`${API_BASE_URL}/api/publish/threads`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ imageUrl: step3Output, text: captions.threads })
+                });
+            } else if (platform === 'twitter') {
+                res = await fetch(`${API_BASE_URL}/api/publish/twitter`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: captions.twitter + `\n\nImage: ${step3Output}` })
+                });
             }
 
-            // Threads
-            if (selectedPlatforms.threads) {
-                appendStatus('⏳ Publishing to Threads...');
-                try {
-                    const res = await fetch(`${API_BASE_URL}/api/publish/threads`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ imageUrl: step3Output, text: finalCaption })
-                    });
-                    const data = await res.json();
-                    if (data.error) throw new Error(data.error);
-                    appendStatus(`✅ Threads: Published! ID: ${data.id}`);
-                } catch (e) {
-                    appendStatus(`❌ Threads Failed: ${e.message}`);
-                }
-            }
+            data = await res.json();
+            if (data.error) throw new Error(data.error);
 
-            // Twitter
-            if (selectedPlatforms.twitter) {
-                appendStatus('⏳ Publishing to Twitter...');
-                try {
-                    const res = await fetch(`${API_BASE_URL}/api/publish/twitter`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: finalCaption + `\n\nImage: ${step3Output}` }) // Append image URL for now
-                    });
-                    const data = await res.json();
-                    if (data.error) throw new Error(data.error);
-                    appendStatus(`✅ Twitter: Published! ID: ${data.id}`);
-                } catch (e) {
-                    appendStatus(`❌ Twitter Failed: ${e.message}`);
-                }
-            }
-
-            appendStatus('✨ All operations completed.');
+            setPublishStatuses(prev => ({ ...prev, [platform]: `✅ Success! ID: ${data.id}` }));
 
         } catch (error) {
-            appendStatus(`Error: ${error.message}`);
+            setPublishStatuses(prev => ({ ...prev, [platform]: `❌ Failed: ${error.message}` }));
         } finally {
             setLoading(false);
         }
@@ -462,84 +441,126 @@ Output format: Just give me the Subject Description paragraph in English.`);
 
                 {/* Step 4: Publish */}
                 <section className={`glass-card p-6 rounded-3xl border ${currentStep === 4 ? 'border-accent ring-2 ring-accent/20' : 'border-white/10'} ${currentStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
                             <span className="bg-accent text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
                             發佈 (Publish)
                         </h2>
                     </div>
 
-                    <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {/* Instagram Toggle */}
-                            <div className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlatforms.instagram ? 'bg-pink-500/10 border-pink-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-                                onClick={() => setSelectedPlatforms(prev => ({ ...prev, instagram: !prev.instagram }))}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedPlatforms.instagram ? 'bg-pink-500 border-pink-500' : 'border-white/30'}`}>
-                                        {selectedPlatforms.instagram && <CheckCircle size={14} className="text-white" />}
-                                    </div>
-                                    <span className="font-medium">Instagram</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Instagram Section */}
+                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-muted rounded-lg text-pink-500">
+                                    <Instagram size={20} />
                                 </div>
-                                <p className="text-xs text-muted-foreground pl-8">Post image + caption</p>
+                                <span className="font-bold text-lg">Instagram</span>
                             </div>
 
-                            {/* Threads Toggle */}
-                            <div className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlatforms.threads ? 'bg-white/20 border-white' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-                                onClick={() => setSelectedPlatforms(prev => ({ ...prev, threads: !prev.threads }))}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedPlatforms.threads ? 'bg-white border-white' : 'border-white/30'}`}>
-                                        {selectedPlatforms.threads && <CheckCircle size={14} className="text-black" />}
-                                    </div>
-                                    <span className="font-medium">Threads</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground pl-8">Post image + text</p>
+                            <div className="flex-1 space-y-3 mb-4">
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Caption</label>
+                                <textarea
+                                    value={captions.instagram}
+                                    onChange={(e) => setCaptions(prev => ({ ...prev, instagram: e.target.value }))}
+                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    placeholder="Write a caption for Instagram..."
+                                />
                             </div>
 
-                            {/* Twitter Toggle */}
-                            <div className={`p-4 rounded-xl border cursor-pointer transition-all ${selectedPlatforms.twitter ? 'bg-blue-500/10 border-blue-500' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
-                                onClick={() => setSelectedPlatforms(prev => ({ ...prev, twitter: !prev.twitter }))}
-                            >
-                                <div className="flex items-center gap-3 mb-2">
-                                    <div className={`w-5 h-5 rounded border flex items-center justify-center ${selectedPlatforms.twitter ? 'bg-blue-500 border-blue-500' : 'border-white/30'}`}>
-                                        {selectedPlatforms.twitter && <CheckCircle size={14} className="text-white" />}
+                            <div className="space-y-3 mt-auto">
+                                <button
+                                    onClick={() => handlePublishSingle('instagram')}
+                                    disabled={loading || !step3Output}
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading && publishStatuses.instagram.includes('Publishing') ? 'Publishing...' : 'Publish Post'}
+                                </button>
+                                {publishStatuses.instagram && (
+                                    <div className={`text-xs p-3 rounded-lg border ${publishStatuses.instagram.includes('Success') ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-red-500/10 border-red-500/20 text-red-600'} font-medium flex items-start gap-2`}>
+                                        {publishStatuses.instagram.includes('Success') ? <CheckCircle size={14} className="mt-0.5" /> : <AlertCircle size={14} className="mt-0.5" />}
+                                        <span className="break-all">{publishStatuses.instagram}</span>
                                     </div>
-                                    <span className="font-medium">Twitter / X</span>
-                                </div>
-                                <p className="text-xs text-muted-foreground pl-8">Post text only (Basic Tier)</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="block text-sm font-medium text-muted-foreground">Final Caption / Text</label>
-                            <textarea
-                                value={finalCaption}
-                                onChange={(e) => setFinalCaption(e.target.value)}
-                                className="w-full h-32 bg-white/50 border border-white/20 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
-                                placeholder="Enter the caption for your post..."
-                            />
+                        {/* Threads Section */}
+                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-muted rounded-lg text-foreground">
+                                    <AtSign size={20} />
+                                </div>
+                                <span className="font-bold text-lg">Threads</span>
+                            </div>
+
+                            <div className="flex-1 space-y-3 mb-4">
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Thread Text</label>
+                                <textarea
+                                    value={captions.threads}
+                                    onChange={(e) => setCaptions(prev => ({ ...prev, threads: e.target.value }))}
+                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    placeholder="Start a thread..."
+                                />
+                            </div>
+
+                            <div className="space-y-3 mt-auto">
+                                <button
+                                    onClick={() => handlePublishSingle('threads')}
+                                    disabled={loading || !step3Output}
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading && publishStatuses.threads.includes('Publishing') ? 'Posting...' : 'Post Thread'}
+                                </button>
+                                {publishStatuses.threads && (
+                                    <div className={`text-xs p-3 rounded-lg border ${publishStatuses.threads.includes('Success') ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-red-500/10 border-red-500/20 text-red-600'} font-medium flex items-start gap-2`}>
+                                        {publishStatuses.threads.includes('Success') ? <CheckCircle size={14} className="mt-0.5" /> : <AlertCircle size={14} className="mt-0.5" />}
+                                        <span className="break-all">{publishStatuses.threads}</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <button
-                            onClick={handlePublish}
-                            disabled={loading || (!selectedPlatforms.instagram && !selectedPlatforms.threads && !selectedPlatforms.twitter)}
-                            className="w-full bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 hover:opacity-90 text-white py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/20"
-                        >
-                            {loading ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                            Publish to Selected Platforms
-                        </button>
-
-                        {publishStatus && (
-                            <div className="p-4 rounded-xl bg-black/20 border border-white/10 text-sm whitespace-pre-wrap font-mono">
-                                {publishStatus}
+                        {/* Twitter Section */}
+                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-muted rounded-lg text-blue-500">
+                                    <Twitter size={20} />
+                                </div>
+                                <span className="font-bold text-lg">Twitter / X</span>
                             </div>
-                        )}
+
+                            <div className="flex-1 space-y-3 mb-4">
+                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tweet</label>
+                                <textarea
+                                    value={captions.twitter}
+                                    onChange={(e) => setCaptions(prev => ({ ...prev, twitter: e.target.value }))}
+                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    placeholder="What's happening?"
+                                />
+                            </div>
+
+                            <div className="space-y-3 mt-auto">
+                                <button
+                                    onClick={() => handlePublishSingle('twitter')}
+                                    disabled={loading || !step3Output}
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading && publishStatuses.twitter.includes('Publishing') ? 'Tweeting...' : 'Tweet'}
+                                </button>
+                                {publishStatuses.twitter && (
+                                    <div className={`text-xs p-3 rounded-lg border ${publishStatuses.twitter.includes('Success') ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-red-500/10 border-red-500/20 text-red-600'} font-medium flex items-start gap-2`}>
+                                        {publishStatuses.twitter.includes('Success') ? <CheckCircle size={14} className="mt-0.5" /> : <AlertCircle size={14} className="mt-0.5" />}
+                                        <span className="break-all">{publishStatuses.twitter}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </section>
 
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

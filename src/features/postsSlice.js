@@ -4,6 +4,7 @@ const initialState = {
     items: [], // List of posts (uncategorized or all, depending on view)
     collections: [], // List of collections (folders)
     loading: false,
+    initialized: false, // Track if initial fetch has completed
     analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
     currentPost: null, // Currently viewed/processing post
@@ -35,11 +36,13 @@ const postsSlice = createSlice({
         },
         fetchPostsSuccess(state, action) {
             state.loading = false;
+            state.initialized = true;
             state.items = action.payload.posts;
             state.collections = action.payload.collections;
         },
         fetchPostsFailure(state, action) {
             state.loading = false;
+            state.initialized = true; // Mark as initialized even on error so we don't loop
             state.error = action.payload;
         },
         // Action to trigger Saga

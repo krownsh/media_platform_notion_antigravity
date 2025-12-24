@@ -78,15 +78,15 @@ const PostDetailView = ({ onRemix }) => {
     const [zoomedImage, setZoomedImage] = useState(null);
 
     // Get the post data from Redux store
-    const { items, loading } = useSelector(state => state.posts);
+    const { items, loading, initialized } = useSelector(state => state.posts);
     const post = items.find(p => p.id === postId || p.dbId === postId);
 
     // Fetch posts if not found (e.g., direct link or refresh)
     useEffect(() => {
-        if (!post && !loading && items.length === 0) {
+        if (!post && !loading && !initialized) {
             dispatch(fetchPosts());
         }
-    }, [post, loading, items.length, dispatch]);
+    }, [post, loading, initialized, dispatch]);
 
     // Handle keyboard navigation
     useEffect(() => {

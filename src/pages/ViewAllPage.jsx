@@ -6,16 +6,16 @@ import PostCard from '../components/PostCard';
 import { Layers } from 'lucide-react';
 
 const ViewAllPage = ({ onRemix }) => {
-    const { items, collections, loading } = useSelector((state) => state.posts);
+    const { items, collections, loading, initialized } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
     const { collectionId } = useParams();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (items.length === 0) {
+        if (!initialized && !loading) {
             dispatch(fetchPosts());
         }
-    }, [dispatch, items.length]);
+    }, [dispatch, initialized, loading]);
 
     // Filter posts based on route (View All vs Collection)
     let displayedPosts = items;

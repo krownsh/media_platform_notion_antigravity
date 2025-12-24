@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CollectionBoard = ({ onRemix }) => {
-    const { items, collections, loading, analyzing } = useSelector((state) => state.posts);
+    const { items, collections, loading, analyzing, initialized } = useSelector((state) => state.posts);
     console.log('CollectionBoard items:', items);
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -28,11 +28,11 @@ const CollectionBoard = ({ onRemix }) => {
     const [dropAnimation, setDropAnimation] = useState(null); // { item, startRect, targetRect }
 
     useEffect(() => {
-        // Only fetch if we don't have items and aren't currently loading
-        if (items.length === 0 && !loading) {
+        // Only fetch if we haven't initialized yet and aren't currently loading
+        if (!initialized && !loading) {
             dispatch(fetchPosts());
         }
-    }, [dispatch, items.length, loading]);
+    }, [dispatch, initialized, loading]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {

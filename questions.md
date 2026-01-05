@@ -35,3 +35,20 @@
 *   查看日誌中是否有 `[ThreadsCrawler] 🛠️ Final Executable Path: "/usr/bin/chromium"`。
 
 ---
+
+## 🤖 AI 模型使用順序與 Fallback 機制
+**最後更新**：2026-01-05
+
+### 1. 貼文總結與分析 (Analysis Chain)
+系統在處理 Threads 貼文時，會依序嘗試以下模型直至成功（皆以免費額度優先）：
+1.  **Google Gemma 3 (首選)**：`gemma-3-27b-it` (Direct API)。
+2.  **xAI Grok (次選)**：`x-ai/grok-4.1-fast:free` (via OpenRouter)。
+3.  **免費模型輪詢 (Fallback)**：若上述失效，會自動在 `deepseek-r1` 與 `qwen-2.5-vl` 之間切換。
+
+### 2. 內容二創與圖片生成 (Remix Workflow)
+*   **文字改寫**：首選 Google **Gemma 3 (27B)** 直連，若失敗則降級使用 `grok-2:free` (OpenRouter)。
+*   **圖片生成**：使用 `openai/dall-e-3` (OpenRouter) 或專屬的 `Nano Banana Pro`。
+
+### 3. 如何切換模型或設定？
+*   若要修改 API Key，請調整 `server/.env` 中的 `GOOGLE_GENERATIVE_AI_API_KEY` 或 `OPENROUTER_API_KEY`。
+*   若要調整分析邏輯，核心程式碼位於 `server/services/aiService.js` 的 `analyzeThreadsPost` 函式。

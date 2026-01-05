@@ -22,11 +22,11 @@ class AiService {
         }
 
         // xAI Model (via OpenRouter) - Use Free version if available
-        this.xaiModel = 'x-ai/grok-4.1-fast:free';
+        this.xaiModel = 'x-ai/grok-2-1212:free';
 
         // Free models with fallback options (OpenRouter)
         this.freeModels = [
-            'x-ai/grok-4.1-fast:free',
+            'x-ai/grok-2-1212:free',
             'deepseek/deepseek-r1:free',
             'qwen/qwen-2.5-vl-72b-instruct:free'
         ];
@@ -44,14 +44,14 @@ class AiService {
 
     /**
      * Analyze a Threads post using a chain of models:
-     * 1. Google Gemini (via Google API)
+     * 1. Google Gemma 3 (via Google API)
      * 2. xAI Grok (via OpenRouter)
      * 3. OpenRouter Free Models (Fallback)
      * @param {Array} fullJsonData - The full JSON array from the crawler
      * @returns {Promise<object>} - Analysis result
      */
     async analyzeThreadsPost(fullJsonData) {
-        console.log('[AiService] Analyzing Threads post...');
+        console.log('[AiService] Analyzing Threads post with Google Gemma 3...');
 
         // 1. Prepare Data
         const mainPost = fullJsonData[0];
@@ -59,15 +59,13 @@ class AiService {
 
         const systemPrompt = await this.getSystemPrompt();
 
-        // Attempt 1: Google Gemini (Direct)
+        // Attempt 1: Google Gemma 3 (Direct)
         if (this.googleApiKey) {
             try {
-                return await this.analyzeWithGoogle(mainPost, systemPrompt);
+                return await this.analyzeWithGoogle(mainPost, systemPrompt, 'gemma-3-27b-it');
             } catch (error) {
-                console.warn('[AiService] Google API failed, trying xAI...', error.message);
+                console.warn('[AiService] Gemma 3 failed, trying xAI via OpenRouter...', error.message);
             }
-        } else {
-            console.log('[AiService] No Google API Key found, skipping Google Gemini.');
         }
 
         // Attempt 2: xAI Grok (via OpenRouter)
@@ -112,8 +110,8 @@ class AiService {
         }
     }
 
-    async analyzeWithGoogle(mainPost, systemPrompt) {
-        console.log('[AiService] Attempting analysis with Google Gemini (Direct)...');
+    async analyzeWithGoogle(mainPost, systemPrompt, modelName = 'gemma-3-27b-it') {
+        console.log(`[AiService] Attempting analysis with ${modelName} (Direct)...`);
 
         const repliesText = mainPost.replies && mainPost.replies.length > 0
             ? mainPost.replies.map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n')
@@ -152,12 +150,14 @@ ${repliesText}
             }
         }
 
-        const response = await this.genAI.models.generateContent({
-            model: 'gemini-2.0-flash-exp',
+        const model = this.genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent({
             contents: [{
                 parts: parts
             }]
         });
+
+        const response = result.response;
 
         // The new SDK response object might not have .response property if it's already the response
         // Or it might need to be accessed differently. 
@@ -174,7 +174,7 @@ ${repliesText}
             text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
         }
 
-        return this.parseAiResponse(text, "google/gemini-2.0-flash-exp");
+        return this.parseAiResponse(text, `google/${modelName}`);
     }
 
     async analyzeWithOpenRouter(mainPost, systemPrompt, modelName) {
@@ -372,7 +372,19 @@ ${repliesText}
     /**
      * Remix content with "Internalize & Reframe" logic.
      */
-    async remixContent(sourceJson, sourceImages, userParams, modelToUse = this.xaiModel) {
+    async remixContent(sourceJson, sourceImages, userParams, modelToUse = null) {
+        // 0. Default to Gemma 3 if no specific model requested (Free Priority)
+        if (!modelToUse) {
+            if (this.googleApiKey) {
+                try {
+                    return await this.remixWithGoogle(sourceJson, sourceImages, userParams, 'gemma-3-27b-it');
+                } catch (error) {
+                    console.warn('[AiService] Remix with Gemma 3 failed, trying OpenRouter fallback...', error.message);
+                }
+            }
+            modelToUse = this.xaiModel;
+        }
+
         console.log(`[AiService] Remixing content with model: ${modelToUse}`);
         try {
             // 1. Construct System Prompt
@@ -571,7 +583,19 @@ Adhere strictly to the following User Style settings:
     /**
      * Remix content with "Internalize & Reframe" logic.
      */
-    async remixContent(sourceJson, sourceImages, userParams, modelToUse = this.xaiModel) {
+    async remixContent(sourceJson, sourceImages, userParams, modelToUse = null) {
+        // 0. Default to Gemma 3 if no specific model requested (Free Priority)
+        if (!modelToUse) {
+            if (this.googleApiKey) {
+                try {
+                    return await this.remixWithGoogle(sourceJson, sourceImages, userParams, 'gemma-3-27b-it');
+                } catch (error) {
+                    console.warn('[AiService] Remix with Gemma 3 failed, trying OpenRouter fallback...', error.message);
+                }
+            }
+            modelToUse = this.xaiModel;
+        }
+
         console.log(`[AiService] Remixing content with model: ${modelToUse}`);
         try {
             // 1. Construct System Prompt
@@ -881,12 +905,14 @@ ${JSON.stringify(sourceJson, null, 2)}
         }
 
         // 4. Call Google API
-        const response = await this.genAI.models.generateContent({
-            model: modelId,
+        const model = this.genAI.getGenerativeModel({ model: modelId });
+        const result = await model.generateContent({
             contents: [{
                 parts: parts
             }]
         });
+
+        const response = result.response;
 
         // 5. Parse Response
         let text;
@@ -951,10 +977,12 @@ ${JSON.stringify(sourceJson, null, 2)}
                 }
             ];
 
-            const response = await this.genAI.models.generateContent({
-                model: 'gemini-2.0-flash-exp', // Use a vision-capable model
+            const model = this.genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
+            const result = await model.generateContent({
                 contents: [{ parts }]
             });
+
+            const response = result.response;
 
             let text;
             if (typeof response.text === 'function') {
@@ -993,12 +1021,12 @@ ${JSON.stringify(sourceJson, null, 2)}
         if (this.openRouterApiKey) {
             return await this.analyzeWithOpenRouter({ main_text: fullPrompt }, "You are a helpful assistant.", model).then(res => res.summary);
         } else {
-            // Fallback to Google
-            const response = await this.genAI.models.generateContent({
-                model: 'gemini-2.0-flash-exp',
+            // Fallback to Google Gemma 3
+            const model = this.genAI.getGenerativeModel({ model: 'gemma-3-27b-it' });
+            const result = await model.generateContent({
                 contents: [{ parts: [{ text: fullPrompt }] }]
             });
-            return response.response.text();
+            return result.response.text();
         }
     }
 

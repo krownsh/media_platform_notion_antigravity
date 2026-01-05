@@ -1,4 +1,7 @@
 import puppeteer from 'puppeteer';
+import dotenv from 'dotenv';
+
+dotenv.config({ path: './server/.env' });
 
 /**
  * Fallback function to scrape using Apify if Puppeteer fails.

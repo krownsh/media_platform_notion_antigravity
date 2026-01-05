@@ -29,10 +29,13 @@ export async function scrapeThreadsPost(url) {
 
     try {
         // 1. Try Puppeteer
+        const executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || null;
+
         browser = await puppeteer.launch({
             headless: true,
+            executablePath: executablePath,
             defaultViewport: null,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         });
         const page = await browser.newPage();
 

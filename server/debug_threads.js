@@ -7,9 +7,12 @@ const TARGET_URL = 'https://www.threads.net/@w0955313233/post/DRE83NWEy6J';
 
 async function debugThreadsStructure() {
     console.log(`[Debug] Starting debug scrape for: ${TARGET_URL}`);
+    const executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || null;
+
     const browser = await puppeteer.launch({
-        headless: false,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized'],
+        headless: true, // 伺服器環境必須為 true
+        executablePath: executablePath,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--start-maximized', '--disable-dev-shm-usage'],
     });
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');

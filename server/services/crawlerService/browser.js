@@ -12,8 +12,11 @@ class CrawlerService {
     async initBrowser() {
         if (!this.browser) {
             console.log('[CrawlerService] Launching browser...');
+            const executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || null;
+
             this.browser = await puppeteer.launch({
                 headless: "new", // Use new headless mode
+                executablePath: executablePath,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -59,9 +62,6 @@ class CrawlerService {
 
             // Basic Extraction (Placeholder - needs platform specific parsers)
             const title = await page.title();
-
-            // TODO: Implement specific parsers here based on platform
-            // e.g., const data = await parseInstagram(page);
 
             return {
                 success: true,

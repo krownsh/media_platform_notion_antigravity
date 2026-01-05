@@ -1,21 +1,37 @@
-# Questions & Clarifications
+# 專案常見問題與技術重點提示 (Questions & Troubleshooting)
 
-## Puppeteer 在 1Panel 環境下的安裝問題
-**提問時間**：2026-01-05
-**使用者問題**：執行了 `apt-get install chromium`，這樣是成功嗎？
+## 🛠️ Puppeteer 在 1Panel ARM 環境下的安裝與調試
+**時間**：2026-01-05
+**問題描述**：在 1Panel 的 ARM 架構伺服器中，Puppeteer 無法正常啟動，出現 `Syntax error: newline unexpected` 或 `Could not find Chrome` 報錯。
 
-**解釋與解決方案**：
-1. **驗證方式**：執行 `chromium --version`。若有出現版本號即代表成功。
-2. **獲取路徑**：執行 `which chromium` 以取得執行檔路徑（通常為 `/usr/bin/chromium`）。
-3. **後續調整**：
-    - 移除原本 1Panel 啟動指令中的 `npx puppeteer install` 部份。
-    - 程式碼需明確指定 `executablePath` 指向該路徑，以解決 ARM 架構相容性問題。
-4. **成功背景確認**：需確認先前的「成功」是在本地 Windows 還是 1Panel 伺服器。若是伺服器成功，代表當時環境已有可用之 Chromium。
-5. **潛在改動**：可能先前的版本有指定 `executablePath` 指向系統瀏覽器，或者使用了不同版本的 Puppeteer。
-6. **歷史追蹤**：目前已定位到 2025-11-27 的大改動 commit。若使用者確認特定時間點，可還原該檔案內容比對。
-7. **現狀判斷**：目前的報錯 `newline unexpected` 確實是 ARM 硬體無法執行下載之 x86 二進制檔所致，這通常與環境切換或重新下載了錯誤版本有關。
-8. **問題的演進**：
-    - **第一階段 (缺失)**：一開始報錯 `Could not find Chrome`，確診為環境中完全沒有瀏覽器。
-    - **第二階段 (架構不匹配)**：在嘗試透過 `npx` 安裝後，雖然檔案存在了，但報錯變為 `Syntax error: newline unexpected`。
-6. **原因解析**：這是因為伺服器為 **ARM 架構**，而 Puppeteer 自動下載的二進制檔與處理器架構不相容。這不是程式沒啟動，而是瀏覽器組件「無法在該硬體上運行」。
-7. **解決結論**：在 ARM 架構的 Linux 容器中，必須跳過 `npx puppeteer browsers install`，改用系統層級的 `apt-get install chromium-browser` 才能獲得正確的執行檔。
+### 1. 核心原因分析
+*   **架構不相容**：Puppeteer 預設下載的 Chrome 是針對 x86 架構的。在 ARM 處理器 (如 AWS Graviton, Oracle ARM) 上運行會報出語法錯誤。
+*   **容器隔離性**：1Panel 預設使用 Docker 容器，在容器終端機手動 `apt-get install` 的軟體，會在容器重啟或重構時被抹除 (Ephemeral Storage)。
+*   **環境變數迷蹤**：在容器化環境下，`dotenv` 有時無法正確抓到根目錄的 `.env`，導致指定的路徑失效。
+
+### 2. 完整排錯歷程 (Debug Journey)
+1.  **第一階段 (缺失)**：原本報錯找不到 Chrome。
+2.  **第二階段 (架構錯誤)**：透過 `npx puppeteer install` 下載了 Chrome，但因為是 x86 編譯版，ARM 無法執行，噴出 `newline unexpected`。
+3.  **第三階段 (環境隔離)**：手動進容器安裝 `chromium` 成功後，重啟伺服器導致安裝檔遺失，回到 `DEFAULT` 狀態。
+4.  **第四階段 (最終修復)**：透過「自動安裝腳本」+「路徑自動偵測」解決。
+
+### 3. 最終解決方案 (Best Practice)
+*   **安裝原生 Chromium**：不要使用 Puppeteer 下載的瀏覽器，改用系統套件管理員安裝原生支援 ARM 的版本。
+*   **啟動指令自動化**：為了防止容器重啟後遺失安裝物，將安裝指令寫入 1Panel 的 **「啟動指令」**。
+    ```bash
+    # 範例
+    apt-get update && apt-get install -y chromium libnss3 ... && node server/index.js
+    ```
+*   **程式碼自動偵測**：在 `puppeteer.launch` 加入路徑自動偵測，優先尋找 Linux 系統執行檔。
+    ```javascript
+    if (fs.existsSync('/usr/bin/chromium')) {
+        executablePath = '/usr/bin/chromium';
+    }
+    ```
+
+### 4. 驗證指令
+*   `which chromium`：確認執行檔位置。
+*   `ls -l /usr/bin/chromium`：確保在 **當前容器** 內檔案確實存在。
+*   查看日誌中是否有 `[ThreadsCrawler] 🛠️ Final Executable Path: "/usr/bin/chromium"`。
+
+---

@@ -1,5 +1,8 @@
 import puppeteer from 'puppeteer';
 import dotenv from 'dotenv';
+import fs from 'fs';
+
+console.log('[THREADS_CRAWLER_LOADED] Module is being loaded at ' + new Date().toISOString());
 
 dotenv.config({ path: './server/.env' });
 
@@ -31,12 +34,13 @@ export async function scrapeThreadsPost(url) {
     let browser = null;
 
     try {
+        console.log(`[ThreadsCrawler] 🟢 scrapeThreadsPost started for: ${url}`);
+
         // 1. Try Puppeteer
         let executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
 
-        // Fallback for Linux ARM (1Panel/Debian/Ubuntu)
+        // Auto-detect for Linux ARM (1Panel/Debian/Ubuntu)
         if (!executablePath && process.platform === 'linux') {
-            const fs = await import('fs');
             if (fs.existsSync('/usr/bin/chromium')) {
                 executablePath = '/usr/bin/chromium';
             } else if (fs.existsSync('/usr/bin/chromium-browser')) {
@@ -44,7 +48,7 @@ export async function scrapeThreadsPost(url) {
             }
         }
 
-        console.log(`[ThreadsCrawler] 🚀 Launching browser with path: ${executablePath || 'default'}`);
+        console.log(`[ThreadsCrawler] �️ Final Executable Path: "${executablePath || 'DEFAULT'}"`);
 
         browser = await puppeteer.launch({
             headless: true,

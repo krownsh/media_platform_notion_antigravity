@@ -85,9 +85,10 @@
     - **解決方案**：更新 `threadsParser.js` 與 `twitterParser.js`，增加 Regex 匹配或 DOM `<a>` 標籤篩選，確保內文中的外部連結能被獨立識別並存儲。
     - **思考**：許多知識型貼文的核心價值在於其引用的連結（如報導、論文），若遺失連結則 AI 分析的精準度會大幅下降。
 - [ ] **修復併發競爭：支援多連結同時處理**
-    - **解決方案**：在後端 Orchestrator 引入任務隊列（如簡易的 Promise.all 併發限制或 Queue），並確保 `browser.js` 能夠在多個 Page Context 下平行運作。
+    - **解決方案**：在後端 Orchestrator 引入任務隊列，並確保 `browser.js` 採用 `BrowserContext` 隔離。
+    - **詳細方案參照**：[docs/concurrency_strategy.md](./docs/concurrency_strategy.md)
     - **思考**：當用戶一次貼上多個貼文時，目前系統可能因共用單一爬蟲實例或全域變數導致資料被覆蓋（Race Condition），需實作隔離處理。
 - [ ] **增強 UX：實作擷取失敗的 SnackBar 反饋**
-    - **解決方案**：在前端 `UrlInput.jsx` 或 `Layout.jsx` 中整合全域通知組件，並在 Saga 的 `fetchPostFailure` 動作中觸發顯示錯誤訊息（如：解析失敗、網址無效）。
-    - **思考**：爬蟲行為具備高度不確定性（受反爬蟲策略影響），必須提供明確的視覺反饋供用戶知曉失敗原因，而非讓 UI 停留在載入狀態。
+    - [ ] **解決方案**：在前端 `UrlInput.jsx` 或 `Layout.jsx` 中整合全域通知組件，並在 Saga 的 `fetchPostFailure` 動作中觸發顯示錯誤訊息（如：解析失敗、網址無效）。
+    - [ ] **思考**：爬蟲行為具備高度不確定性（受反爬蟲策略影響），必須提供明確的視覺反饋供用戶知曉失敗原因，而非讓 UI 停留在載入狀態。
 ```

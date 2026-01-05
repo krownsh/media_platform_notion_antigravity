@@ -32,11 +32,23 @@ export async function scrapeThreadsPost(url) {
 
     try {
         // 1. Try Puppeteer
-        const executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || null;
+        let executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
+
+        // Fallback for Linux ARM (1Panel/Debian/Ubuntu)
+        if (!executablePath && process.platform === 'linux') {
+            const fs = await import('fs');
+            if (fs.existsSync('/usr/bin/chromium')) {
+                executablePath = '/usr/bin/chromium';
+            } else if (fs.existsSync('/usr/bin/chromium-browser')) {
+                executablePath = '/usr/bin/chromium-browser';
+            }
+        }
+
+        console.log(`[ThreadsCrawler] 🚀 Launching browser with path: ${executablePath || 'default'}`);
 
         browser = await puppeteer.launch({
             headless: true,
-            executablePath: executablePath,
+            executablePath: executablePath || undefined,
             defaultViewport: null,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         });

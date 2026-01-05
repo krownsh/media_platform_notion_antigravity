@@ -24,6 +24,7 @@ import {
   updateCollectionName,
   updateCollectionNameSuccess
 } from '../features/postsSlice';
+import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 
@@ -227,9 +228,14 @@ function* handleFetchPost(action) {
 
     // 5. Return the post to Redux store for immediate display
     yield put(fetchPostSuccess(transformedPost));
+    yield put(addNotification({ message: '貼文已成功擷取', type: 'success' }));
 
   } catch (error) {
     console.error('[Saga] Error in handleFetchPost:', error);
+    yield put(addNotification({
+      message: `擷取失敗: ${error.message || '請確認網址是否正確或稍後再試'}`,
+      type: 'error'
+    }));
     yield put(fetchPostFailure(error.message));
   }
 }
@@ -326,6 +332,7 @@ function* handleCreateCollection(action) {
     yield put(createCollectionSuccess(data));
   } catch (error) {
     console.error('[Saga] Create Collection Error:', error);
+    yield put(addNotification({ message: '建立資料夾失敗', type: 'error' }));
     yield put(createCollectionFailure(error.message));
   }
 }
@@ -376,6 +383,7 @@ function* handleMovePostToCollection(action) {
     yield put(movePostToCollectionSuccess({ postId, collectionId }));
   } catch (error) {
     console.error('[Saga] Move Post Error:', error);
+    yield put(addNotification({ message: '移動貼文失敗', type: 'error' }));
     yield put(movePostToCollectionFailure(error.message));
   }
 }

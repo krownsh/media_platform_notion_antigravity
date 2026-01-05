@@ -88,7 +88,7 @@
     - **解決方案**：在後端 Orchestrator 引入任務隊列，並確保 `browser.js` 採用 `BrowserContext` 隔離。
     - **詳細方案參照**：[docs/concurrency_strategy.md](./docs/concurrency_strategy.md)
     - **思考**：當用戶一次貼上多個貼文時，目前系統可能因共用單一爬蟲實例或全域變數導致資料被覆蓋（Race Condition），需實作隔離處理。
-- [ ] **增強 UX：實作擷取失敗的 SnackBar 反饋**
-    - [ ] **解決方案**：在前端 `UrlInput.jsx` 或 `Layout.jsx` 中整合全域通知組件，並在 Saga 的 `fetchPostFailure` 動作中觸發顯示錯誤訊息（如：解析失敗、網址無效）。
-    - [ ] **思考**：爬蟲行為具備高度不確定性（受反爬蟲策略影響），必須提供明確的視覺反饋供用戶知曉失敗原因，而非讓 UI 停留在載入狀態。
+- [x] **增強 UX：實作擷取失敗的 SnackBar 反饋**
+    - [x] **解決方案**：在前端 `Layout.jsx` 中整合全域通知組件 `Notification.jsx`，並在 Saga 的 `catch` 動作中觸發顯示錯誤訊息。
+    - [x] **思考**：爬蟲行為具備高度不確定性，提供明確的視覺反饋能顯著提升使用者信心。
 ```

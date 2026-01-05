@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
 import SidebarSearch from './SidebarSearch';
+import NotificationContainer from './Notification';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <div
@@ -228,10 +229,11 @@ const Layout = ({ children }) => {
 
             {/* Main Content */}
             <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-gradient-to-br from-background via-background to-secondary/10">
-                <div className="w-full p-8 max-w-7xl mx-auto">
+                <div className="w-full p-8 max-w-full">
                     {children}
                 </div>
             </main>
+            <NotificationContainer />
         </div>
     );
 };

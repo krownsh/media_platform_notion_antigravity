@@ -199,7 +199,7 @@ const CollectionBoard = ({ onRemix }) => {
                 </div>
 
                 {/* --- Bottom Section: Uncategorized Posts --- */}
-                <div className="max-w-[1600px] mx-auto w-full px-4">
+                <div className="max-w-full w-full px-4">
                     <h2 className="text-lg font-semibold text-foreground mb-6 pl-3 border-l-4 border-accent/50">
                         未分類貼文
                     </h2>

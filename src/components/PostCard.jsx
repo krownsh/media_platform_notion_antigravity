@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
@@ -42,6 +42,12 @@ const PostCard = ({
 
     const getPlatformStyle = (p) => {
         const platformName = p?.toLowerCase();
+        if (platformName === 'threads') {
+            return {
+                icon: <ThreadsIcon size={14} className="text-foreground" />,
+                label: 'Threads',
+            };
+        }
         if (platformName === 'instagram') {
             return {
                 icon: <Instagram size={14} className="text-pink-500" />,
@@ -51,13 +57,31 @@ const PostCard = ({
         if (platformName === 'twitter' || platformName === 'x') {
             return {
                 icon: <Twitter size={14} className="text-blue-400" />,
-                label: 'Twitter', // Or 'X'
+                label: 'Twitter',
             };
         }
-        // Default to Threads
+        if (platformName === 'facebook') {
+            return {
+                icon: <Facebook size={14} className="text-blue-600" />,
+                label: 'Facebook',
+            };
+        }
+        if (platformName === 'youtube') {
+            return {
+                icon: <Youtube size={14} className="text-red-600" />,
+                label: 'YouTube',
+            };
+        }
+        if (platformName === 'notion') {
+            return {
+                icon: <FileText size={14} className="text-foreground" />,
+                label: 'Notion',
+            };
+        }
+        // Default to Generic
         return {
-            icon: <ThreadsIcon size={14} className="text-foreground" />,
-            label: 'Threads',
+            icon: <Globe size={14} className="text-muted-foreground" />,
+            label: 'Web Link',
         };
     };
 
@@ -98,7 +122,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="glass-card rounded-3xl group relative w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+            className="glass-card rounded-3xl group relative w-full max-w-[400px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (

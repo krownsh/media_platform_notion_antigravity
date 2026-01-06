@@ -4,6 +4,7 @@ const uiSlice = createSlice({
     name: 'ui',
     initialState: {
         notifications: [],
+        taskCenterOpen: false,
     },
     reducers: {
         addNotification: (state, action) => {
@@ -17,8 +18,11 @@ const uiSlice = createSlice({
         removeNotification: (state, action) => {
             state.notifications = state.notifications.filter(n => n.id !== action.payload);
         },
+        toggleTaskCenter: (state) => {
+            state.taskCenterOpen = !state.taskCenterOpen;
+        },
     },
 });
 
-export const { addNotification, removeNotification } = uiSlice.actions;
+export const { addNotification, removeNotification, toggleTaskCenter } = uiSlice.actions;
 export default uiSlice.reducer;

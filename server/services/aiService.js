@@ -94,6 +94,39 @@ class AiService {
         return this.mockAnalysis();
     }
 
+    /**
+     * Analyze a generic article or post.
+     * @param {object} contentData - { title, main_text, author, images }
+     */
+    async analyzeGenericPost(contentData) {
+        console.log('[AiService] Analyzing Generic post with Google Gemma 3...');
+
+        const systemPrompt = await this.getGenericSystemPrompt();
+
+        // Attempt 1: Google Gemma 3 (Direct)
+        if (this.googleApiKey) {
+            try {
+                return await this.analyzeWithGoogle(contentData, systemPrompt, 'gemma-3-27b-it');
+            } catch (error) {
+                console.warn('[AiService] Gemma 3 failed for generic post:', error.message);
+            }
+        }
+
+        // Attempt 2: OpenRouter Fallbacks
+        if (this.openRouterApiKey) {
+            const models = [this.xaiModel, ...this.freeModels];
+            for (const model of models) {
+                try {
+                    return await this.analyzeWithOpenRouter(contentData, systemPrompt, model);
+                } catch (error) {
+                    console.warn(`[AiService] OpenRouter model ${model} failed for generic post:`, error.message);
+                }
+            }
+        }
+
+        return this.mockAnalysis();
+    }
+
     async getSystemPrompt() {
         try {
             const __filename = fileURLToPath(import.meta.url);
@@ -110,6 +143,19 @@ class AiService {
         }
     }
 
+    async getGenericSystemPrompt() {
+        try {
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+            const promptPath = path.join(__dirname, '..', 'prompts', 'generic_summary_prompt.md');
+            let systemPrompt = await fs.readFile(promptPath, 'utf-8');
+            return systemPrompt;
+        } catch (error) {
+            console.warn('[AiService] Could not read generic prompt file:', error.message);
+            return "You are a helpful post re-writer. Restate the content from the same perspective as the author. Respond in JSON.";
+        }
+    }
+
     async analyzeWithGoogle(mainPost, systemPrompt, modelName = 'gemma-3-27b-it') {
         console.log(`[AiService] Attempting analysis with ${modelName} (Direct)...`);
 
@@ -120,9 +166,9 @@ class AiService {
         const textPart = `
 ${systemPrompt}
 
-Here is the content of a Threads post:
+Here is the content to analyze:
 
-Post Text: ${mainPost.main_text}
+Content: ${mainPost.content || mainPost.main_text}
 Author: ${mainPost.author || 'Unknown'}
 Replies/Comments:
 ${repliesText}
@@ -187,7 +233,7 @@ ${repliesText}
         const content = [
             {
                 type: "text",
-                text: `Here is the content of a Threads post. Please analyze it according to the system instructions.\n\nPost Text: ${mainPost.main_text}\n\nAuthor: ${mainPost.author || 'Unknown'}\n\nReplies/Comments:\n${repliesText}`
+                text: `Here is the content to analyze according to the system instructions.\n\nContent: ${mainPost.content || mainPost.main_text}\n\nAuthor: ${mainPost.author || 'Unknown'}\n\nReplies/Comments:\n${repliesText}`
             }
         ];
 

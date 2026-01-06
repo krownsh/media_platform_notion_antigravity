@@ -8,6 +8,7 @@ const initialState = {
     analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
     currentPost: null, // Currently viewed/processing post
+    tasks: [], // Task Queue: [{ id, url, status, timestamp }]
 };
 
 const postsSlice = createSlice({
@@ -20,14 +21,17 @@ const postsSlice = createSlice({
         },
         fetchPostSuccess(state, action) {
             state.loading = false;
-            state.analyzing = false; // Reset analyzing on success
-            state.items.unshift(action.payload); // Add new post to top
+            state.analyzing = false;
+            state.items.unshift(action.payload);
             state.currentPost = action.payload;
+            // Also remove task if it exists (fallback if removeTask wasn't called)
+            state.tasks = state.tasks.filter(t => t.url !== action.payload.url);
         },
         fetchPostFailure(state, action) {
             state.loading = false;
-            state.analyzing = false; // Reset analyzing on failure
+            state.analyzing = false;
             state.error = action.payload;
+            // Status update for tasks will be handled by updateTaskStatus or removeTask
         },
         // Fetch all posts and collections
         fetchPosts(state) {
@@ -46,10 +50,34 @@ const postsSlice = createSlice({
             state.error = action.payload;
         },
         // Action to trigger Saga
-        addPostByUrl(state) {
-            // Payload: { url: string }
-            state.analyzing = true; // Set analyzing true for new post creation
+        addPostByUrl(state, action) {
+            // Payload: { url: string, taskId: string }
+            state.analyzing = true;
             state.error = null;
+        },
+        // Queue Management Reducers
+        addTask(state, action) {
+            // action.payload: { taskId, url }
+            state.tasks.push({
+                id: action.payload.taskId,
+                url: action.payload.url,
+                status: 'pending', // pending | crawling | analyzing | failed
+                timestamp: Date.now()
+            });
+        },
+        updateTaskStatus(state, action) {
+            // action.payload: { taskId, status }
+            const task = state.tasks.find(t => t.id === action.payload.taskId);
+            if (task) {
+                task.status = action.payload.status;
+            }
+        },
+        removeTask(state, action) {
+            // action.payload: taskId
+            state.tasks = state.tasks.filter(t => t.id !== action.payload);
+            if (state.tasks.length === 0) {
+                state.analyzing = false;
+            }
         },
         reorderPosts(state, action) {
             const { oldIndex, newIndex } = action.payload;
@@ -156,6 +184,9 @@ export const {
     fetchPostsSuccess,
     fetchPostsFailure,
     addPostByUrl,
+    addTask,
+    updateTaskStatus,
+    removeTask,
     reorderPosts,
     addAnnotation,
     addAnnotationSuccess,

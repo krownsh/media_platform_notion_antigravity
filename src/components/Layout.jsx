@@ -6,6 +6,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
 import SidebarSearch from './SidebarSearch';
 import NotificationContainer from './Notification';
+import TaskCenter from './TaskCenter';
+import { toggleTaskCenter } from '../features/uiSlice';
+import { useDispatch } from 'react-redux';
+import { Activity } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <div
@@ -29,7 +33,8 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded,
 );
 
 const Layout = ({ children }) => {
-    const { items, collections } = useSelector((state) => state.posts);
+    const { items, collections, tasks } = useSelector((state) => state.posts);
+    const dispatch = useDispatch();
     const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [expandedCollections, setExpandedCollections] = useState(new Set());
@@ -232,6 +237,37 @@ const Layout = ({ children }) => {
                 <div className="w-full p-8 max-w-full">
                     {children}
                 </div>
+
+                {/* Floating Task Center Toggle */}
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => dispatch(toggleTaskCenter())}
+                    className="fixed bottom-8 right-8 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-[60] hover:shadow-xl transition-shadow group"
+                >
+                    <Activity size={24} className={tasks.length > 0 ? 'animate-pulse' : ''} />
+
+                    {/* Badge */}
+                    <AnimatePresence>
+                        {tasks.length > 0 && (
+                            <motion.div
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0, opacity: 0 }}
+                                className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-destructive text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center px-1"
+                            >
+                                {tasks.length}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Tooltip */}
+                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
+                        {tasks.length > 0 ? `${tasks.length} 個任務處理中` : '任務中心'}
+                    </div>
+                </motion.button>
+
+                <TaskCenter />
             </main>
             <NotificationContainer />
         </div>

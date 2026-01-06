@@ -14,7 +14,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CollectionBoard = ({ onRemix }) => {
-    const { items, collections, loading, analyzing, initialized } = useSelector((state) => state.posts);
+    const { items, collections, loading, initialized, tasks } = useSelector((state) => state.posts);
     console.log('CollectionBoard items:', items);
     const dispatch = useDispatch();
     const navigate = useNavigate();
@@ -204,25 +204,28 @@ const CollectionBoard = ({ onRemix }) => {
                         未分類貼文
                     </h2>
 
-                    {uncategorizedPosts.length === 0 && !loading && !analyzing ? (
+                    {uncategorizedPosts.length === 0 && tasks.length === 0 && !loading ? (
                         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
                             <p className="text-lg font-medium">全部都看完了！</p>
                             <p className="text-sm">所有貼文都已整理到資料夾中。</p>
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
-                                {analyzing && (
-                                    <div className="glass-card rounded-3xl overflow-hidden w-[360px] h-[560px] bg-white/40 border border-white/50 shadow-xl relative flex flex-col">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-8">
+                                {/* --- Task Queue Skeletons --- */}
+                                {tasks.map((task) => (
+                                    <div key={task.id} className="glass-card rounded-3xl overflow-hidden w-full max-w-[400px] h-[560px] bg-white/40 border border-white/50 shadow-xl relative flex flex-col">
                                         {/* Shimmer Effect Overlay */}
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
+                                        {task.status !== 'failed' && (
+                                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
+                                        )}
 
                                         {/* Header Skeleton */}
                                         <div className="h-12 border-b border-white/20 flex items-center px-4 gap-3 flex-shrink-0">
                                             <div className="w-8 h-8 rounded-full bg-white/30 animate-pulse" />
-                                            <div className="flex flex-col gap-1.5">
+                                            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
                                                 <div className="h-2.5 w-20 bg-white/30 rounded animate-pulse" />
-                                                <div className="h-2 w-12 bg-white/20 rounded animate-pulse" />
+                                                <div className="h-2 w-3/4 bg-white/20 rounded animate-pulse truncate" title={task.url} />
                                             </div>
                                         </div>
 
@@ -235,42 +238,58 @@ const CollectionBoard = ({ onRemix }) => {
                                             </div>
                                         </div>
 
-                                        {/* Image Skeleton with Spinner */}
-                                        <div className="h-44 bg-white/20 flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-                                            <div className="absolute inset-0 bg-white/5 animate-pulse" />
-                                            <div className="flex flex-col items-center gap-3 z-10">
-                                                <Loader2 className="animate-spin text-accent" size={32} />
-                                                <span className="text-xs font-medium text-accent/80 tracking-wider">AI 分析中...</span>
+                                        {/* Image Skeleton with Status */}
+                                        <div className={`h-44 flex items-center justify-center flex-shrink-0 relative overflow-hidden ${task.status === 'failed' ? 'bg-destructive/10' : 'bg-white/20'}`}>
+                                            {task.status !== 'failed' && <div className="absolute inset-0 bg-white/5 animate-pulse" />}
+                                            <div className="flex flex-col items-center gap-3 z-10 p-4 text-center">
+                                                {task.status === 'failed' ? (
+                                                    <>
+                                                        <Loader2 className="text-destructive" size={32} />
+                                                        <span className="text-xs font-semibold text-destructive uppercase tracking-widest">擷取失敗</span>
+                                                        <p className="text-[10px] text-destructive/70 mt-1 line-clamp-2">系統將自動從佇列中移除</p>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Loader2 className="animate-spin text-accent" size={32} />
+                                                        <span className="text-xs font-semibold text-accent uppercase tracking-widest animate-pulse">
+                                                            {task.status === 'pending' && '等待處理中...'}
+                                                            {task.status === 'crawling' && '正在爬取網頁內容...'}
+                                                            {task.status === 'analyzing' && 'AI 分析語義中...'}
+                                                        </span>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
 
                                         {/* Action Bar Skeleton */}
                                         <div className="h-10 border-b border-white/20 bg-white/5 flex items-center justify-end px-4 gap-2 flex-shrink-0">
-                                            <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
-                                            <div className="w-6 h-6 rounded-full bg-white/20 animate-pulse" />
+                                            <div className="w-6 h-6 rounded-full bg-white/20" />
+                                            <div className="w-6 h-6 rounded-full bg-white/20" />
                                         </div>
 
                                         {/* Content Skeleton */}
                                         <div className="p-4 flex-1 flex flex-col gap-3">
                                             <div className="space-y-2">
-                                                <div className="h-3 w-full bg-white/30 rounded animate-pulse" />
-                                                <div className="h-3 w-5/6 bg-white/30 rounded animate-pulse" />
-                                                <div className="h-3 w-4/6 bg-white/30 rounded animate-pulse" />
+                                                <div className="h-3 w-full bg-white/30 rounded" />
+                                                <div className="h-3 w-5/6 bg-white/30 rounded" />
+                                                <div className="h-3 w-4/6 bg-white/30 rounded" />
                                             </div>
 
                                             <div className="flex gap-2 mt-1">
-                                                <div className="h-5 w-12 rounded-full bg-white/20 animate-pulse" />
-                                                <div className="h-5 w-16 rounded-full bg-white/20 animate-pulse" />
+                                                <div className="h-5 w-12 rounded-full bg-white/20" />
+                                                <div className="h-5 w-16 rounded-full bg-white/20" />
                                             </div>
 
                                             <div className="h-16 rounded-xl bg-accent/5 border border-accent/10 mt-2 p-3 flex flex-col gap-2">
-                                                <div className="h-2 w-12 bg-accent/20 rounded animate-pulse" />
-                                                <div className="h-2 w-full bg-accent/10 rounded animate-pulse" />
-                                                <div className="h-2 w-3/4 bg-accent/10 rounded animate-pulse" />
+                                                <div className="h-2 w-12 bg-accent/20 rounded" />
+                                                <div className="h-2 w-full bg-accent/10 rounded" />
+                                                <div className="h-2 w-3/4 bg-accent/10 rounded" />
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                ))}
+
+                                {/* --- Actual Posts --- */}
                                 {uncategorizedPosts.map((post) => (
                                     <SortablePostCard
                                         key={post.id}
@@ -300,7 +319,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {createPortal(
                     <DragOverlay>
                         {activeItem ? (
-                            <div className={`w-[360px] opacity-90 pointer-events-none transition-all duration-300 ${isHoveringFolder ? 'scale-[0.2] rotate-0' : 'scale-105 rotate-3'}`}>
+                            <div className={`w-full max-w-[400px] opacity-90 pointer-events-none transition-all duration-300 ${isHoveringFolder ? 'scale-[0.2] rotate-0' : 'scale-105 rotate-3'}`}>
                                 <SortablePostCard
                                     post={activeItem}
                                     onRemix={() => { }}
@@ -322,13 +341,13 @@ const CollectionBoard = ({ onRemix }) => {
                                     position: 'fixed',
                                     left: dropAnimation.startRect.left,
                                     top: dropAnimation.startRect.top,
-                                    width: 360, // Assuming card width
+                                    width: 400, // Matching max-width
                                     scale: 1,
                                     opacity: 1,
                                     zIndex: 9999
                                 }}
                                 animate={{
-                                    left: dropAnimation.targetRect.left + (dropAnimation.targetRect.width / 2) - 180, // Center horizontally (180 is half of 360)
+                                    left: dropAnimation.targetRect.left + (dropAnimation.targetRect.width / 2) - 200, // Center horizontally (200 is half of 400)
                                     top: dropAnimation.targetRect.top + (dropAnimation.targetRect.height / 2) - 200, // Center vertically (approx)
                                     scale: 0.1,
                                     opacity: 0

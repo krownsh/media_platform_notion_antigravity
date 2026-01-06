@@ -1,4 +1,4 @@
-import { all, takeLatest, call, put } from 'redux-saga/effects';
+import { all, takeLatest, takeEvery, call, put } from 'redux-saga/effects';
 import {
   addPostByUrl,
   fetchPostSuccess,
@@ -9,9 +9,10 @@ import {
   addAnnotation,
   addAnnotationSuccess,
   addAnnotationFailure,
-  deletePost,
-  deletePostSuccess,
   deletePostFailure,
+  addTask,
+  updateTaskStatus,
+  removeTask,
   createCollection,
   createCollectionSuccess,
   createCollectionFailure,
@@ -22,7 +23,9 @@ import {
   movePostToCollectionSuccess,
   movePostToCollectionFailure,
   updateCollectionName,
-  updateCollectionNameSuccess
+  updateCollectionNameSuccess,
+  deletePost,
+  deletePostSuccess
 } from '../features/postsSlice';
 import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
@@ -70,10 +73,12 @@ function* handleFetchPosts() {
 
 // Worker Saga: Handle adding a post by URL
 function* handleFetchPost(action) {
+  const { url, taskId } = action.payload;
   try {
-    const { url } = action.payload;
+    // 1. Initial State: Starting crawl
+    yield put(updateTaskStatus({ taskId, status: 'crawling' }));
 
-    // 1. Call Backend API (Orchestrator) to get raw data
+    // 2. Call Backend API (Orchestrator) to get raw data
     console.log('[Saga] Fetching post from backend:', url);
     const response = yield call(fetch, `${API_BASE_URL}/api/process`, {
       method: 'POST',
@@ -89,6 +94,7 @@ function* handleFetchPost(action) {
     const postData = result.data;
 
     console.log('[Saga] Received postData from API:', postData);
+    yield put(updateTaskStatus({ taskId, status: 'analyzing' }));
 
     // 2. Authenticate user
     const { data: { user } } = yield call(() => supabase.auth.getUser());
@@ -229,6 +235,7 @@ function* handleFetchPost(action) {
     // 5. Return the post to Redux store for immediate display
     yield put(fetchPostSuccess(transformedPost));
     yield put(addNotification({ message: '貼文已成功擷取', type: 'success' }));
+    yield put(removeTask(taskId));
 
   } catch (error) {
     console.error('[Saga] Error in handleFetchPost:', error);
@@ -237,6 +244,11 @@ function* handleFetchPost(action) {
       type: 'error'
     }));
     yield put(fetchPostFailure(error.message));
+    yield put(updateTaskStatus({ taskId, status: 'failed' }));
+    // Wait a bit then remove failed task from UI or keep it? 
+    // For now, let's keep it for a while then remove
+    // yield delay(5000); 
+    // yield put(removeTask(taskId));
   }
 }
 
@@ -410,7 +422,7 @@ function* handleUpdateCollectionName(action) {
 
 // Watcher Saga
 function* watchPosts() {
-  yield takeLatest(addPostByUrl.type, handleFetchPost);
+  yield takeEvery(addPostByUrl.type, handleFetchPost);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);

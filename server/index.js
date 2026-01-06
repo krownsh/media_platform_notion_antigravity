@@ -31,28 +31,72 @@ app.post('/api/process', async (req, res) => {
     try {
         const result = await orchestrator.processUrl(url);
 
-        // If it's a Threads or Twitter post with full_json, run AI analysis
-        if (result.data && result.data.full_json && (result.data.platform === 'threads' || result.data.platform === 'twitter')) {
-            console.log('[Server] Running AI analysis for Threads post...');
-            try {
-                const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                result.data.analysis = {
-                    summary: aiResult.summary,
-                    raw: aiResult.raw
-                };
-                console.log('[Server] AI analysis completed');
-            } catch (aiError) {
-                console.warn('[Server] AI analysis failed (continuing without it):', aiError.message);
-                result.data.analysis = {
-                    summary: '## AI 分析暫時無法使用\n\n' + aiError.message
-                };
+        // Run AI Analysis based on platform
+        if (result.data) {
+            const platform = result.data.platform;
+            const isSocial = platform === 'threads' || platform === 'twitter';
+            const isGeneric = platform === 'generic' || platform === 'unknown';
+
+            if (isSocial && result.data.full_json) {
+                console.log(`[Server] Running AI analysis for ${platform} post...`);
+                try {
+                    const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
+                    result.data.analysis = {
+                        summary: aiResult.summary,
+                        raw: aiResult.raw
+                    };
+                    console.log('[Server] Social AI analysis completed');
+                } catch (aiError) {
+                    console.warn('[Server] Social AI analysis failed:', aiError.message);
+                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                }
+            } else if (isGeneric && result.data.content) {
+                console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
+                try {
+                    const aiResult = await aiService.analyzeGenericPost(result.data);
+                    result.data.analysis = {
+                        summary: aiResult.summary,
+                        raw: aiResult.raw
+                    };
+                    console.log('[Server] Generic AI analysis completed');
+                } catch (aiError) {
+                    console.warn('[Server] Generic AI analysis failed:', aiError.message);
+                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                }
             }
         }
 
         res.json(result);
     } catch (error) {
         console.error('Error processing URL:', error);
-        res.status(500).json({ error: error.message });
+
+        // Identify if it's a core platform from the URL if result wasn't reached
+        const isCorePlatform = url.includes('threads.net') || url.includes('threads.com') ||
+            url.includes('twitter.com') || url.includes('x.com');
+
+        // If it's a core platform, we want to know it failed (Propagate error)
+        if (isCorePlatform) {
+            return res.status(500).json({ error: `核心平台抓取失敗: ${error.message}` });
+        }
+
+        // For generic URLs, use the Fallback: just save the link
+        try {
+            const fallbackData = {
+                source: 'fallback',
+                data: {
+                    platform: 'generic',
+                    original_url: url,
+                    title: '連結存檔 (自動容錯)',
+                    content: url,
+                    analysis: {
+                        summary: `⚠️ 此網址目前無法解析詳細內容，已為您自動轉為連結存檔模式。\n原因：${error.message}`
+                    }
+                }
+            };
+            res.json(fallbackData);
+        } catch (innerError) {
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 

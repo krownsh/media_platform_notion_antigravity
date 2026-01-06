@@ -2,7 +2,11 @@ import { socialApiService } from './socialApiService.js';
 import { crawlerService } from './crawlerService/browser.js';
 import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
 import { scrapeTwitterPost } from './crawlerService/twitterCrawler.js';
-import { supabase } from '../supabaseClient.js'; // corrected relative path
+import { supabase } from '../supabaseClient.js';
+import pLimit from 'p-limit';
+
+// Global concurrency limiter (max 3 concurrent crawl/API tasks)
+const limit = pLimit(3);
 
 /**
  * Orchestrator
@@ -19,10 +23,12 @@ class Orchestrator {
     // Identify platform based on URL
     identifyPlatform(url) {
         if (url.includes('instagram.com')) return 'instagram';
-        if (url.includes('facebook.com') || url.includes('fb.watch')) return 'facebook';
+        if (url.includes('facebook.com') || url.includes('fb.watch') || url.includes('fb.com')) return 'facebook';
         if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
         if (url.includes('threads.net') || url.includes('threads.com')) return 'threads';
-        return 'unknown';
+        if (url.includes('notion.so') || url.includes('notion.site')) return 'notion';
+        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+        return 'generic';
     }
 
     // Helper: upsert post with full_json (if present)
@@ -49,6 +55,7 @@ class Orchestrator {
             user_id: userId,
             platform: data.platform,
             original_url: originalUrl,
+            author_name: data.author || data.author_name || null,
             content: data.content,
             posted_at: postedAt || null,
             is_archived: data.is_archived ?? false,
@@ -75,10 +82,14 @@ class Orchestrator {
     // Helper: Upload image to Supabase Storage
     async uploadImageToBucket(url) {
         try {
+            if (!url || typeof url !== 'string') return url;
             // Skip if already a Supabase URL
             if (url.includes('supabase.co')) return url;
 
-            console.log(`[Orchestrator] Uploading image to bucket: ${url}`);
+            // Staggering: Mimic human behavior with random delay (100ms - 300ms)
+            await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+
+            console.log(`[Orchestrator] Uploading image to bucket: ${url.substring(0, 50)}...`);
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
 
@@ -115,111 +126,97 @@ class Orchestrator {
     }
 
     async processUrl(url) {
-        const platform = this.identifyPlatform(url);
-        if (platform === 'unknown') {
-            throw new Error('Unknown platform');
-        }
+        return limit(async () => {
+            const platform = this.identifyPlatform(url);
 
-        // Auto‑correct threads.com to threads.net
-        if (platform === 'threads' && url.includes('threads.com')) {
-            url = url.replace('threads.com', 'threads.net');
-        }
+            // Auto‑correct threads.com to threads.net
+            if (platform === 'threads' && url.includes('threads.com')) {
+                url = url.replace('threads.com', 'threads.net');
+            }
 
-        console.log(`[Orchestrator] Processing ${platform} URL: ${url}`);
+            console.log(`[Orchestrator] Processing ${platform} URL (queued): ${url}`);
 
-        // Special handling for Threads (Direct Crawler)
-        if (platform === 'threads') {
-            console.log('[Orchestrator] Using specialized Threads Crawler...');
-            try {
-                let data = await scrapeThreadsPost(url);
+            // Special handling for Threads (Direct Crawler)
+            if (platform === 'threads') {
+                console.log('[Orchestrator] Using specialized Threads Crawler...');
+                try {
+                    let data = await scrapeThreadsPost(url);
 
-                // Upload Images to Bucket
-                if (data.images && data.images.length > 0) {
-                    console.log('[Orchestrator] Processing images...');
-                    const newImages = [];
-                    for (const imgUrl of data.images) {
-                        const newUrl = await this.uploadImageToBucket(imgUrl);
-                        newImages.push(newUrl);
-                    }
-                    data.images = newImages;
+                    // Upload Images to Bucket
+                    // Upload Images to Bucket in Parallel
+                    if (data.images && data.images.length > 0) {
+                        console.log(`[Orchestrator] Processing ${data.images.length} images...`);
+                        data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
 
-                    // Update images in full_json
-                    if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
-                        data.full_json[0].images = data.images;
-                    }
-                }
-
-                // Process images in replies (comments)
-                if (data.full_json && Array.isArray(data.full_json) && data.full_json[0] && data.full_json[0].replies) {
-                    console.log('[Orchestrator] Processing reply images...');
-                    for (const reply of data.full_json[0].replies) {
-                        if (reply.images && reply.images.length > 0) {
-                            const newReplyImages = [];
-                            for (const imgUrl of reply.images) {
-                                const newUrl = await this.uploadImageToBucket(imgUrl);
-                                newReplyImages.push(newUrl);
-                            }
-                            reply.images = newReplyImages;
+                        // Update images in full_json
+                        if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
+                            data.full_json[0].images = data.images;
                         }
                     }
-                }
 
+                    // Process images in replies (comments) in Parallel
+                    if (data.full_json && Array.isArray(data.full_json) && data.full_json[0] && data.full_json[0].replies) {
+                        console.log('[Orchestrator] Processing reply images...');
+                        await Promise.all(data.full_json[0].replies.map(async (reply) => {
+                            if (reply.images && reply.images.length > 0) {
+                                reply.images = await Promise.all(reply.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
+                            }
+                        }));
+                    }
+
+                    await this.upsertPost(data);
+                    return { source: 'crawler', data };
+                } catch (error) {
+                    throw new Error(`Threads Crawler failed: ${error.message}`);
+                }
+            }
+
+            // Special handling for Twitter (Direct Crawler)
+            if (platform === 'twitter') {
+                console.log('[Orchestrator] Using specialized Twitter Crawler...');
+                try {
+                    let data = await scrapeTwitterPost(url);
+
+                    // Upload Images to Bucket
+                    // Upload Images to Bucket in Parallel
+                    if (data.images && data.images.length > 0) {
+                        console.log(`[Orchestrator] Processing ${data.images.length} images...`);
+                        data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
+
+                        // Update images in full_json
+                        if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
+                            data.full_json[0].images = data.images;
+                        }
+                    }
+
+                    await this.upsertPost(data);
+                    return { source: 'crawler', data };
+                } catch (error) {
+                    throw new Error(`Twitter Crawler failed: ${error.message}`);
+                }
+            }
+
+            // 1. Try API First (For other platforms)
+            let data = await socialApiService.fetchPost(platform, url);
+
+            if (data) {
+                console.log('[Orchestrator] Data fetched via API.');
+                await this.upsertPost(data);
+                return { source: 'api', data };
+            }
+
+            // 2. Fallback to Crawler
+            console.log('[Orchestrator] API failed or not configured. Switching to Crawler...');
+            data = await crawlerService.crawlPost(url, platform);
+
+            if (data.success) {
+                console.log('[Orchestrator] Data fetched via Crawler.');
                 await this.upsertPost(data);
                 return { source: 'crawler', data };
-            } catch (error) {
-                throw new Error(`Threads Crawler failed: ${error.message}`);
+            } else {
+                throw new Error(`Failed to fetch post: ${data.error}`);
             }
-        }
-
-        // Special handling for Twitter (Direct Crawler)
-        if (platform === 'twitter') {
-            console.log('[Orchestrator] Using specialized Twitter Crawler...');
-            try {
-                let data = await scrapeTwitterPost(url);
-
-                // Upload Images to Bucket
-                if (data.images && data.images.length > 0) {
-                    console.log('[Orchestrator] Processing images...');
-                    const newImages = [];
-                    for (const imgUrl of data.images) {
-                        const newUrl = await this.uploadImageToBucket(imgUrl);
-                        newImages.push(newUrl);
-                    }
-                    data.images = newImages;
-
-                    // Update images in full_json
-                    if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
-                        data.full_json[0].images = data.images;
-                    }
-                }
-
-                await this.upsertPost(data);
-                return { source: 'crawler', data };
-            } catch (error) {
-                throw new Error(`Twitter Crawler failed: ${error.message}`);
-            }
-        }
-
-        // 1. Try API First (For other platforms)
-        let data = await socialApiService.fetchPost(platform, url);
-
-        if (data) {
-            console.log('[Orchestrator] Data fetched via API.');
-            await this.upsertPost(data);
-            return { source: 'api', data };
-        }
-
-        // 2. Fallback to Crawler
-        console.log('[Orchestrator] API failed or not configured. Switching to Crawler...');
-        data = await crawlerService.crawlPost(url, platform);
-
-        if (data.success) {
-            console.log('[Orchestrator] Data fetched via Crawler.');
-            await this.upsertPost(data);
-            return { source: 'crawler', data };
-        } else {
-            throw new Error(`Failed to fetch post: ${data.error}`);
-        }
+        });
     }
 }
 

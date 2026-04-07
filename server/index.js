@@ -5,6 +5,8 @@ import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
 import { supabase } from './supabaseClient.js';
+import * as statsService from './services/statsService.js';
+import { batchClassify } from './services/batchProcessor.js';
 
 dotenv.config({ path: './server/.env' });
 
@@ -532,6 +534,99 @@ app.get('/api/posts/:postId/image-workflows', async (req, res) => {
         res.json({ logs: data });
     } catch (error) {
         console.error('Error fetching workflow logs:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========== Intelligence Aggregator Stats API ==========
+
+// GET /api/stats/overview - 快速總覽
+app.get('/api/stats/overview', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getOverview(userId);
+        res.json(data);
+    } catch (error) {
+        console.error('[Stats] overview error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/categories - 類別分佈
+app.get('/api/stats/categories', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getCategoryStats(userId);
+        res.json({ categories: data });
+    } catch (error) {
+        console.error('[Stats] categories error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/domains - 熱門 Domain 排行
+app.get('/api/stats/domains', async (req, res) => {
+    const { userId, limit } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getDomainLeaderboard(userId, parseInt(limit) || 10);
+        res.json({ domains: data });
+    } catch (error) {
+        console.error('[Stats] domains error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/authors - Rising Voices 作者統計
+app.get('/api/stats/authors', async (req, res) => {
+    const { userId, minCount } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getAuthorStats(userId, parseInt(minCount) || 2);
+        res.json({ authors: data });
+    } catch (error) {
+        console.error('[Stats] authors error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/trend - 每日跨勢
+app.get('/api/stats/trend', async (req, res) => {
+    const { userId, days } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getDailyTrend(userId, parseInt(days) || 30);
+        res.json({ trend: data });
+    } catch (error) {
+        console.error('[Stats] trend error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/tags - Tag Cloud
+app.get('/api/stats/tags', async (req, res) => {
+    const { userId, limit } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getTagCloud(userId, parseInt(limit) || 20);
+        res.json({ tags: data });
+    } catch (error) {
+        console.error('[Stats] tags error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/batch-classify - 手動觸發批量分類
+app.post('/api/batch-classify', async (req, res) => {
+    const { ruleOnly = true, limit = 100 } = req.body;
+    try {
+        console.log('[BatchClassify] Triggered manually...');
+        const result = await batchClassify({ ruleOnly, limit });
+        res.json(result);
+    } catch (error) {
+        console.error('[BatchClassify] error:', error);
         res.status(500).json({ error: error.message });
     }
 });

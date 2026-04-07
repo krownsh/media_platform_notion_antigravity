@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -142,6 +142,14 @@ const Layout = ({ children }) => {
                         label="所有貼文"
                         active={location.pathname === '/view-all'}
                         onClick={() => navigate('/view-all')}
+                        collapsed={isSidebarCollapsed}
+                    />
+
+                    <SidebarItem
+                        icon={BarChart3}
+                        label="趨勢看板"
+                        active={location.pathname === '/insight'}
+                        onClick={() => navigate('/insight')}
                         collapsed={isSidebarCollapsed}
                     />
 

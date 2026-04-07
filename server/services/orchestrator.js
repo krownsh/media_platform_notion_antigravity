@@ -60,6 +60,7 @@ class Orchestrator {
             posted_at: postedAt || null,
             is_archived: data.is_archived ?? false,
             full_json: fullJson || null,
+            source_domains: data.source_domains || [],
         };
         // Remove undefined keys (Supabase will reject them for NOT NULL columns)
         Object.keys(upsertPayload).forEach(k => upsertPayload[k] === undefined && delete upsertPayload[k]);

@@ -328,10 +328,23 @@ export async function scrapeThreadsPost(url) {
             }
         ];
 
+        // Extract source domains from links (對齊 fieldtheory-cli 的 Domain Analysis)
+        const allLinks = [
+            ...(detailedData.extracted_links || []),
+            ...detailedData.comments.flatMap(c => c.extracted_links || [])
+        ];
+        const sourceDomains = [...new Set(
+            allLinks
+                .map(link => {
+                    try { return new URL(link).hostname.replace('www.', ''); } catch { return null; }
+                })
+                .filter(Boolean)
+        )];
+
         const finalData = {
             platform: 'threads',
             originalUrl: url,
-            original_url: url, // snake_case for database upsert
+            original_url: url,
             scrapedAt: new Date().toISOString(),
 
             author: detailedData.author || 'Unknown',
@@ -347,6 +360,7 @@ export async function scrapeThreadsPost(url) {
             comments: detailedData.comments,
 
             full_json: fullJsonData,
+            source_domains: sourceDomains,
 
             raw: { meta: metaData, dom: detailedData }
         };

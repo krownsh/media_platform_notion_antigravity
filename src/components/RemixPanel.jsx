@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { API_BASE_URL } from '../api/config';
+
 
 const MODELS = [
     {
@@ -111,7 +113,11 @@ const RemixPanel = ({ post, onClose }) => {
                 return;
             }
 
+<<<<<<< HEAD
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/remix`, {
+=======
+            const response = await fetch(`${API_BASE_URL}/api/remix`, {
+>>>>>>> 138ac675901b12c0beee7a28f5c8f9761a663ad0
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

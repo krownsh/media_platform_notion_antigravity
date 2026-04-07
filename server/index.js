@@ -5,10 +5,11 @@ import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { supabase } from './supabaseClient.js';
 
-dotenv.config();
+dotenv.config({ path: './server/.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost"
 
 app.use(cors());
 app.use(express.json());
@@ -251,5 +252,5 @@ app.post('/api/posts/:postId/annotations', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on ${FRONTEND_URL}:${PORT}`);
 });

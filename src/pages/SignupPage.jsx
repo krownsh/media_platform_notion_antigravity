@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
+import { API_BASE_URL } from '../api/config';
+
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -32,7 +34,11 @@ const SignupPage = () => {
 
         try {
             // 1. Create user via backend (bypasses email verification)
+<<<<<<< HEAD
             const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/signup`, {
+=======
+            const response = await fetch(`${API_BASE_URL}/api/signup`, {
+>>>>>>> 138ac675901b12c0beee7a28f5c8f9761a663ad0
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),

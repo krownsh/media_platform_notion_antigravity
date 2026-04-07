@@ -1,4 +1,10 @@
 import puppeteer from 'puppeteer';
+import dotenv from 'dotenv';
+import fs from 'fs';
+
+console.log('[THREADS_CRAWLER_LOADED] Module is being loaded at ' + new Date().toISOString());
+
+dotenv.config({ path: './server/.env' });
 
 /**
  * Fallback function to scrape using Apify if Puppeteer fails.
@@ -28,11 +34,27 @@ export async function scrapeThreadsPost(url) {
     let browser = null;
 
     try {
+        console.log(`[ThreadsCrawler] 🟢 scrapeThreadsPost started for: ${url}`);
+
         // 1. Try Puppeteer
+        let executablePath = process.env.VITE_PUPPETEER_EXECUTABLE_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
+
+        // Auto-detect for Linux ARM (1Panel/Debian/Ubuntu)
+        if (!executablePath && process.platform === 'linux') {
+            if (fs.existsSync('/usr/bin/chromium')) {
+                executablePath = '/usr/bin/chromium';
+            } else if (fs.existsSync('/usr/bin/chromium-browser')) {
+                executablePath = '/usr/bin/chromium-browser';
+            }
+        }
+
+        console.log(`[ThreadsCrawler] �️ Final Executable Path: "${executablePath || 'DEFAULT'}"`);
+
         browser = await puppeteer.launch({
             headless: true,
+            executablePath: executablePath || undefined,
             defaultViewport: null,
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
         });
         const page = await browser.newPage();
 
@@ -114,6 +136,23 @@ export async function scrapeThreadsPost(url) {
                     // Clone the container to avoid modifying the live DOM
                     const clone = container.cloneNode(true);
 
+                    // 1. Extract links before removing elements
+                    const links = [];
+                    container.querySelectorAll('a').forEach(a => {
+                        const href = a.getAttribute('href');
+                        if (href && !href.startsWith('/') && !href.includes('threads.net')) {
+                            links.push(href);
+                        }
+                    });
+
+                    // Check for specialized link cards (previews)
+                    container.querySelectorAll('[aria-label*="http"], [role="link"]').forEach(el => {
+                        const href = el.getAttribute('href') || el.getAttribute('aria-label');
+                        if (href && href.startsWith('http') && !href.includes('threads.net')) {
+                            links.push(href);
+                        }
+                    });
+
                     // Remove UI elements that are not content
                     const elementsToRemove = [
                         'a[href^="/@"]',      // Author links
@@ -150,7 +189,7 @@ export async function scrapeThreadsPost(url) {
                         text = text.replace(pattern, '').trim();
                     });
 
-                    return text;
+                    return { text, links: [...new Set(links)] };
                 };
 
                 // Extract Main Post Data
@@ -170,7 +209,9 @@ export async function scrapeThreadsPost(url) {
                 const timeEl = mainContainer.querySelector('time');
                 if (timeEl) data.postedAt = timeEl.getAttribute('datetime');
 
-                data.content = extractContent(mainContainer);
+                const { text: mainText, links: mainLinks } = extractContent(mainContainer);
+                data.content = mainText;
+                data.extracted_links = mainLinks;
 
                 const pictureImages = Array.from(mainContainer.querySelectorAll('picture img'));
                 data.images = pictureImages
@@ -197,7 +238,7 @@ export async function scrapeThreadsPost(url) {
                         commentAuthor = commentAuthorLink.innerText || commentHandle;
                     }
 
-                    const commentContent = extractContent(container);
+                    const { text: commentContent, links: commentLinks } = extractContent(container);
                     const commentTimestamp = commentTime ? commentTime.getAttribute('datetime') : '';
 
                     // Extract images from comment
@@ -232,6 +273,7 @@ export async function scrapeThreadsPost(url) {
                         postedAt: commentTimestamp,
                         avatar: commentAvatar ? commentAvatar.src : '',
                         images: [...new Set(commentImages)],
+                        extracted_links: commentLinks,
                         replies: [] // Keep empty array for compatibility
                     };
 
@@ -275,11 +317,13 @@ export async function scrapeThreadsPost(url) {
                 author: detailedData.author || 'Unknown',
                 postedAt: detailedData.postedAt || '',
                 images: combinedImages,
+                extracted_links: detailedData.extracted_links || [],
                 replies: detailedData.comments.map(comment => ({
                     text: comment.text,
                     author: comment.user,
                     postedAt: comment.postedAt,
-                    images: comment.images || []
+                    images: comment.images || [],
+                    extracted_links: comment.extracted_links || []
                 }))
             }
         ];

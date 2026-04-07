@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
+import { socialMediaService } from './services/socialMediaService.js';
 import { supabase } from './supabaseClient.js';
 
 dotenv.config({ path: './server/.env' });
@@ -30,28 +31,72 @@ app.post('/api/process', async (req, res) => {
     try {
         const result = await orchestrator.processUrl(url);
 
-        // If it's a Threads or Twitter post with full_json, run AI analysis
-        if (result.data && result.data.full_json && (result.data.platform === 'threads' || result.data.platform === 'twitter')) {
-            console.log('[Server] Running AI analysis for Threads post...');
-            try {
-                const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                result.data.analysis = {
-                    summary: aiResult.summary,
-                    raw: aiResult.raw
-                };
-                console.log('[Server] AI analysis completed');
-            } catch (aiError) {
-                console.warn('[Server] AI analysis failed (continuing without it):', aiError.message);
-                result.data.analysis = {
-                    summary: '## AI 分析暫時無法使用\n\n' + aiError.message
-                };
+        // Run AI Analysis based on platform
+        if (result.data) {
+            const platform = result.data.platform;
+            const isSocial = platform === 'threads' || platform === 'twitter';
+            const isGeneric = platform === 'generic' || platform === 'unknown';
+
+            if (isSocial && result.data.full_json) {
+                console.log(`[Server] Running AI analysis for ${platform} post...`);
+                try {
+                    const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
+                    result.data.analysis = {
+                        summary: aiResult.summary,
+                        raw: aiResult.raw
+                    };
+                    console.log('[Server] Social AI analysis completed');
+                } catch (aiError) {
+                    console.warn('[Server] Social AI analysis failed:', aiError.message);
+                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                }
+            } else if (isGeneric && result.data.content) {
+                console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
+                try {
+                    const aiResult = await aiService.analyzeGenericPost(result.data);
+                    result.data.analysis = {
+                        summary: aiResult.summary,
+                        raw: aiResult.raw
+                    };
+                    console.log('[Server] Generic AI analysis completed');
+                } catch (aiError) {
+                    console.warn('[Server] Generic AI analysis failed:', aiError.message);
+                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                }
             }
         }
 
         res.json(result);
     } catch (error) {
         console.error('Error processing URL:', error);
-        res.status(500).json({ error: error.message });
+
+        // Identify if it's a core platform from the URL if result wasn't reached
+        const isCorePlatform = url.includes('threads.net') || url.includes('threads.com') ||
+            url.includes('twitter.com') || url.includes('x.com');
+
+        // If it's a core platform, we want to know it failed (Propagate error)
+        if (isCorePlatform) {
+            return res.status(500).json({ error: `核心平台抓取失敗: ${error.message}` });
+        }
+
+        // For generic URLs, use the Fallback: just save the link
+        try {
+            const fallbackData = {
+                source: 'fallback',
+                data: {
+                    platform: 'generic',
+                    original_url: url,
+                    title: '連結存檔 (自動容錯)',
+                    content: url,
+                    analysis: {
+                        summary: `⚠️ 此網址目前無法解析詳細內容，已為您自動轉為連結存檔模式。\n原因：${error.message}`
+                    }
+                }
+            };
+            res.json(fallbackData);
+        } catch (innerError) {
+            res.status(500).json({ error: error.message });
+        }
     }
 });
 
@@ -90,6 +135,7 @@ app.post('/api/rewrite', async (req, res) => {
 });
 
 // Remix Content Endpoint (New)
+// Remix Content Endpoint (New)
 app.post('/api/remix', async (req, res) => {
     const { sourceJson, sourceImages, userParams } = req.body;
 
@@ -102,6 +148,32 @@ app.post('/api/remix', async (req, res) => {
         res.json({ result });
     } catch (error) {
         console.error('Error remixing content:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Available Models Endpoint
+app.get('/api/models', async (req, res) => {
+    try {
+        const models = await aiService.getAvailableModels();
+        res.json({ models });
+    } catch (error) {
+        console.error('Error fetching models:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Generate Image Endpoint
+app.post('/api/generate-image', async (req, res) => {
+    const { prompt } = req.body;
+    if (!prompt) {
+        return res.status(400).json({ error: 'Prompt is required' });
+    }
+    try {
+        const imageUrl = await aiService.generateImageFromPrompt(prompt);
+        res.json({ imageUrl });
+    } catch (error) {
+        console.error('Error generating image:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -172,6 +244,66 @@ app.post('/api/signup', async (req, res) => {
     } catch (error) {
         console.error('Error creating user:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ========== Posts API ==========
+app.get('/api/posts', async (req, res) => {
+    if (!isSupabaseConfigured()) {
+        return res.json({ posts: [], collections: [] });
+    }
+
+    try {
+        // Fetch posts
+        const { data: posts, error: postsError } = await supabase
+            .from('posts')
+            .select(`
+                *,
+                post_media (*),
+                post_comments (*),
+                post_analysis (*),
+                user_annotations (*)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (postsError) throw postsError;
+
+        // Fetch collections
+        const { data: collections, error: collectionsError } = await supabase
+            .from('collections')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (collectionsError) throw collectionsError;
+
+        // Transform data to match frontend expectations
+        const formattedPosts = posts.map(post => ({
+            id: post.id,
+            dbId: post.id,
+            platform: post.platform,
+            author: post.author_name,
+            authorHandle: post.author_id,
+            avatar: post.author_avatar_url,
+            content: post.content,
+            postedAt: post.posted_at,
+            originalUrl: post.original_url,
+            createdAt: post.created_at,
+            fullJson: post.full_json,
+            collectionId: post.collection_id,
+            images: post.post_media?.filter(m => m.type === 'image').map(m => m.url) || [],
+            comments: post.post_comments?.map(c => ({
+                user: c.author_name,
+                text: c.content,
+                postedAt: c.commented_at
+            })) || [],
+            annotations: post.user_annotations || [],
+            analysis: post.post_analysis?.[0] || null
+        }));
+
+        res.json({ posts: formattedPosts, collections: collections || [] });
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        res.status(500).json({ error: 'Failed to fetch posts' });
     }
 });
 
@@ -248,6 +380,159 @@ app.post('/api/posts/:postId/annotations', async (req, res) => {
     } catch (error) {
         console.error('Error creating annotation:', error);
         res.status(500).json({ error: 'Failed to create annotation: ' + error.message });
+    }
+});
+
+// ========== Image Workflow API ==========
+
+// Step 1: Analyze Image
+app.post('/api/image-workflow/step1', async (req, res) => {
+    const { postId, imageUrl, prompt, userId } = req.body;
+    if (!imageUrl || !prompt) return res.status(400).json({ error: 'Image URL and prompt are required' });
+
+    try {
+        const output = await aiService.analyzeImageLogic(imageUrl, prompt);
+
+        // Save to DB
+        let logId = null;
+        if (isSupabaseConfigured()) {
+            const { data, error } = await supabase
+                .from('image_workflow_logs')
+                .insert({
+                    post_id: postId,
+                    user_id: userId,
+                    step_1_prompt: prompt,
+                    step_1_output: output
+                })
+                .select()
+                .single();
+
+            if (!error && data) logId = data.id;
+            else console.error('Failed to save workflow log:', error);
+        }
+
+        res.json({ output, logId });
+    } catch (error) {
+        console.error('Step 1 Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Step 2: Rewrite & Translate
+app.post('/api/image-workflow/step2', async (req, res) => {
+    const { logId, content, prompt } = req.body;
+    if (!content || !prompt) return res.status(400).json({ error: 'Content and prompt are required' });
+
+    try {
+        const output = await aiService.rewriteAndTranslate(content, prompt);
+
+        // Update DB
+        if (logId && isSupabaseConfigured()) {
+            await supabase
+                .from('image_workflow_logs')
+                .update({
+                    step_2_prompt: prompt,
+                    step_2_output: output
+                })
+                .eq('id', logId);
+        }
+
+        res.json({ output });
+    } catch (error) {
+        console.error('Step 2 Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Step 3: Generate Image
+app.post('/api/image-workflow/step3', async (req, res) => {
+    const { logId, prompt } = req.body;
+
+    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+
+    try {
+        console.log('[API] Step 3: Generating Image with Nano Banana Pro...');
+        const imageUrl = await aiService.generateImageWithNanoBanana(prompt);
+
+        // Update DB
+        if (logId && isSupabaseConfigured()) {
+            await supabase
+                .from('image_workflow_logs')
+                .update({
+                    step_3_prompt: prompt,
+                    step_3_output: imageUrl
+                })
+                .eq('id', logId);
+        }
+
+        res.json({ output: imageUrl });
+    } catch (error) {
+        console.error('Step 3 Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Step 4: Publish to Social Media
+app.post('/api/publish/instagram', async (req, res) => {
+    const { imageUrl, caption } = req.body;
+    if (!imageUrl || !caption) return res.status(400).json({ error: 'Image URL and caption are required' });
+
+    try {
+        const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+        const accountId = process.env.INSTAGRAM_ACCOUNT_ID;
+        const result = await socialMediaService.publishToInstagram(imageUrl, caption, accessToken, accountId);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/publish/threads', async (req, res) => {
+    const { imageUrl, text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Text is required' });
+
+    try {
+        const accessToken = process.env.THREADS_ACCESS_TOKEN;
+        const userId = process.env.THREADS_USER_ID;
+        const result = await socialMediaService.publishToThreads(imageUrl, text, accessToken, userId);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post('/api/publish/twitter', async (req, res) => {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ error: 'Text is required' });
+
+    try {
+        const accessToken = process.env.TWITTER_ACCESS_TOKEN;
+        const result = await socialMediaService.publishToTwitter(text, accessToken);
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get Workflow History for a Post
+
+// Get Workflow History for a Post
+app.get('/api/posts/:postId/image-workflows', async (req, res) => {
+    const { postId } = req.params;
+    if (!isSupabaseConfigured()) return res.json({ logs: [] });
+
+    try {
+        const { data, error } = await supabase
+            .from('image_workflow_logs')
+            .select('*')
+            .eq('post_id', postId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        res.json({ logs: data });
+    } catch (error) {
+        console.error('Error fetching workflow logs:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

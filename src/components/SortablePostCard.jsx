@@ -10,6 +10,7 @@ const SortablePostCard = ({
     onDelete,
     isOverlay = false
 }) => {
+    console.log('Rendering SortablePostCard:', post.id);
     const {
         attributes,
         listeners,

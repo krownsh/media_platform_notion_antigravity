@@ -73,7 +73,7 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
     );
 };
 
-const PostDetailView = () => {
+const PostDetailView = ({ onRemix }) => {
     const { postId } = useParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -82,15 +82,15 @@ const PostDetailView = () => {
     const [zoomedImage, setZoomedImage] = useState(null);
 
     // Get the post data from Redux store
-    const { items, loading } = useSelector(state => state.posts);
+    const { items, loading, initialized } = useSelector(state => state.posts);
     const post = items.find(p => p.id === postId || p.dbId === postId);
 
     // Fetch posts if not found (e.g., direct link or refresh)
     useEffect(() => {
-        if (!post && !loading && items.length === 0) {
+        if (!post && !loading && !initialized) {
             dispatch(fetchPosts());
         }
-    }, [post, loading, items.length, dispatch]);
+    }, [post, loading, initialized, dispatch]);
 
     // Handle keyboard navigation
     useEffect(() => {
@@ -293,9 +293,18 @@ const PostDetailView = () => {
                                 <span className="text-xs text-muted-foreground">@{post.authorHandle || 'unknown'}</span>
                             </div>
                         </div>
-                        <button className="text-muted-foreground hover:text-foreground transition-colors">
-                            <MoreHorizontal size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => onRemix && onRemix(post)}
+                                className="p-2 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
+                                title="AI 改寫"
+                            >
+                                <Sparkles size={18} />
+                            </button>
+                            <button className="p-2 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors">
+                                <MoreHorizontal size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Scrollable Content Area */}

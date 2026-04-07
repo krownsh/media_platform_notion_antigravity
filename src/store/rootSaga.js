@@ -1,4 +1,4 @@
-import { all, takeLatest, call, put } from 'redux-saga/effects';
+import { all, takeLatest, takeEvery, call, put } from 'redux-saga/effects';
 import {
   addPostByUrl,
   fetchPostSuccess,
@@ -9,9 +9,10 @@ import {
   addAnnotation,
   addAnnotationSuccess,
   addAnnotationFailure,
-  deletePost,
-  deletePostSuccess,
   deletePostFailure,
+  addTask,
+  updateTaskStatus,
+  removeTask,
   createCollection,
   createCollectionSuccess,
   createCollectionFailure,
@@ -22,8 +23,11 @@ import {
   movePostToCollectionSuccess,
   movePostToCollectionFailure,
   updateCollectionName,
-  updateCollectionNameSuccess
+  updateCollectionNameSuccess,
+  deletePost,
+  deletePostSuccess
 } from '../features/postsSlice';
+import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 
@@ -32,97 +36,34 @@ import { API_BASE_URL } from '../api/config';
 function* handleFetchPosts() {
   try {
     // 1. Ensure user is authenticated
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
+    const { data: { session } } = yield call(() => supabase.auth.getSession());
+    const user = session?.user;
 
     if (!user) {
       console.warn('[Saga] No user found during fetchPosts. User should be authenticated by ProtectedRoute.');
-      // We can either return here or let the query fail/return empty if RLS is on.
-      // Since we are implementing ProtectedRoute, this case shouldn't theoretically happen for the main view,
-      // but good to be safe.
+      // Return empty if no user, or handle as error
+      yield put(fetchPostsSuccess({ posts: [], collections: [] }));
+      return;
     }
 
-    // 2. Fetch posts
-    const { data: postsData, error: postsError } = yield call(() =>
-      supabase
-        .from('posts')
-        .select(`
-          *,
-          post_media (*),
-          post_comments (*),
-          post_analysis (*),
-          user_annotations (*)
-        `)
-        .order('created_at', { ascending: false })
-    );
+    // 2. Call Backend API
+    console.log('[Saga] Fetching posts from backend...');
+    const response = yield call(fetch, `${API_BASE_URL}/api/posts`, {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`
+      }
+    });
 
-    if (postsError) throw postsError;
+    if (!response.ok) {
+      throw new Error('Failed to fetch posts from backend');
+    }
 
-    // 3. Fetch collections
-    const { data: collectionsData, error: collectionsError } = yield call(() =>
-      supabase
-        .from('collections')
-        .select('*')
-        .order('created_at', { ascending: false })
-    );
-
-    if (collectionsError) throw collectionsError;
-
-    console.log('[Saga] Fetched posts from DB:', postsData);
-    console.log('[Saga] Fetched collections from DB:', collectionsData);
-
-    // Transform data to match frontend structure
-    const formattedPosts = postsData.map(post => ({
-      id: post.id,
-      dbId: post.id, // Database ID
-      platform: post.platform,
-      author: post.author_name,
-      authorHandle: post.author_id,
-      avatar: post.author_avatar_url,
-      content: post.content,
-      postedAt: post.posted_at,
-      originalUrl: post.original_url,
-      createdAt: post.created_at,
-      fullJson: post.full_json,
-      collectionId: post.collection_id, // Add collection_id
-
-      // Transform media array
-      images: post.post_media
-        ?.filter(m => m.type === 'image')
-        .sort((a, b) => a.order - b.order)
-        .map(m => m.url) || [],
-
-      media: post.post_media || [],
-
-      // Transform comments
-      comments: post.post_comments?.map(c => ({
-        user: c.author_name,
-        author: c.author_name,
-        text: c.content,
-        postedAt: c.commented_at,
-        handle: c.raw_data?.handle || c.raw_data?.authorHandle || '',
-        avatar: c.raw_data?.avatar || '',
-        replies: c.raw_data?.replies || [],
-        images: c.raw_data?.images || []
-      })) || [],
-
-      // Transform annotations (筆記)
-      annotations: post.user_annotations?.filter(a => a.type === 'note') || [],
-
-      // Transform analysis
-      analysis: post.post_analysis?.[0] ? {
-        summary: post.post_analysis[0].summary,
-        tags: post.post_analysis[0].tags || [],
-        topics: post.post_analysis[0].topics || [],
-        sentiment: post.post_analysis[0].sentiment,
-        insights: post.post_analysis[0].insights || []
-      } : null
-    }));
-
-    console.log('[Saga] Formatted posts:', formattedPosts);
+    const data = yield response.json();
+    console.log('[Saga] Fetched posts:', data.posts?.length);
 
     yield put(fetchPostsSuccess({
-      posts: formattedPosts,
-      collections: collectionsData || []
+      posts: data.posts || [],
+      collections: data.collections || []
     }));
   } catch (error) {
     console.error('[Saga] Fetch Posts Error:', error);
@@ -132,10 +73,12 @@ function* handleFetchPosts() {
 
 // Worker Saga: Handle adding a post by URL
 function* handleFetchPost(action) {
+  const { url, taskId } = action.payload;
   try {
-    const { url } = action.payload;
+    // 1. Initial State: Starting crawl
+    yield put(updateTaskStatus({ taskId, status: 'crawling' }));
 
-    // 1. Call Backend API (Orchestrator) to get raw data
+    // 2. Call Backend API (Orchestrator) to get raw data
     console.log('[Saga] Fetching post from backend:', url);
 <<<<<<< HEAD
     const response = yield call(fetch, `${import.meta.env.VITE_API_BASE_URL}/api/process`, {
@@ -155,6 +98,7 @@ function* handleFetchPost(action) {
     const postData = result.data;
 
     console.log('[Saga] Received postData from API:', postData);
+    yield put(updateTaskStatus({ taskId, status: 'analyzing' }));
 
     // 2. Authenticate user
     const { data: { user } } = yield call(() => supabase.auth.getUser());
@@ -294,10 +238,21 @@ function* handleFetchPost(action) {
 
     // 5. Return the post to Redux store for immediate display
     yield put(fetchPostSuccess(transformedPost));
+    yield put(addNotification({ message: '貼文已成功擷取', type: 'success' }));
+    yield put(removeTask(taskId));
 
   } catch (error) {
     console.error('[Saga] Error in handleFetchPost:', error);
+    yield put(addNotification({
+      message: `擷取失敗: ${error.message || '請確認網址是否正確或稍後再試'}`,
+      type: 'error'
+    }));
     yield put(fetchPostFailure(error.message));
+    yield put(updateTaskStatus({ taskId, status: 'failed' }));
+    // Wait a bit then remove failed task from UI or keep it? 
+    // For now, let's keep it for a while then remove
+    // yield delay(5000); 
+    // yield put(removeTask(taskId));
   }
 }
 
@@ -397,6 +352,7 @@ function* handleCreateCollection(action) {
     yield put(createCollectionSuccess(data));
   } catch (error) {
     console.error('[Saga] Create Collection Error:', error);
+    yield put(addNotification({ message: '建立資料夾失敗', type: 'error' }));
     yield put(createCollectionFailure(error.message));
   }
 }
@@ -447,6 +403,7 @@ function* handleMovePostToCollection(action) {
     yield put(movePostToCollectionSuccess({ postId, collectionId }));
   } catch (error) {
     console.error('[Saga] Move Post Error:', error);
+    yield put(addNotification({ message: '移動貼文失敗', type: 'error' }));
     yield put(movePostToCollectionFailure(error.message));
   }
 }
@@ -473,7 +430,7 @@ function* handleUpdateCollectionName(action) {
 
 // Watcher Saga
 function* watchPosts() {
-  yield takeLatest(addPostByUrl.type, handleFetchPost);
+  yield takeEvery(addPostByUrl.type, handleFetchPost);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);

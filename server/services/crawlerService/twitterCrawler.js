@@ -84,6 +84,14 @@ export async function scrapeTwitterPost(url) {
         // Deduplicate images
         images = [...new Set(images)];
 
+        // Extract Links
+        const extractedLinks = [];
+        if (legacy.entities && legacy.entities.urls) {
+            legacy.entities.urls.forEach(u => {
+                if (u.expanded_url) extractedLinks.push(u.expanded_url);
+            });
+        }
+
         // Construct Full JSON for AI
         const fullJsonData = [
             {
@@ -91,6 +99,7 @@ export async function scrapeTwitterPost(url) {
                 author: author,
                 postedAt: postedAt,
                 images: images,
+                extracted_links: [...new Set(extractedLinks)],
                 replies: [] // API response in doc doesn't include replies
             }
         ];

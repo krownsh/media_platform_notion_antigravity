@@ -79,3 +79,17 @@
 ## Phase 7: 測試與文件
 - [ ] **整合測試**：測試從 URL 輸入到資料入庫的完整流程 (Happy Path & Fallback Path)。
 - [ ] **更新文件**：根據實作細節更新 `README.md` 與 `agents.md`。
+
+## 後續優化與已知問題修復
+- [x] **修正內容擷取：支援內文連結提取**
+    - **解決方案**：更新 `threadsParser.js` 與 `twitterParser.js`，增加 Regex 匹配或 DOM `<a>` 標籤篩選，確保內文中的外部連結能被獨立識別並存儲。
+    - **思考**：許多知識型貼文的核心價值在於其引用的連結（如報導、論文），若遺失連結則 AI 分析的精準度會大幅下降。
+- [x] **修復併發競爭：支援多連結同時處理**
+    - **解決方案**：在後端 Orchestrator 引入任務隊列，並確保 `browser.js` 採用 `BrowserContext` 隔離。
+    - [x] **UI/UX 增強**：實作「骨架卡片」與「任務中心抽屜」以呈現佇列狀態。
+    - **詳細方案參照**：[docs/concurrency_strategy.md](./docs/concurrency_strategy.md)
+    - **思考**：當用戶一次貼上多個貼文時，目前系統可能因共用單一爬蟲實例或全域變數導致資料被覆蓋（Race Condition），需實作隔離處理。
+- [x] **增強 UX：實作擷取失敗的 SnackBar 反饋**
+    - [x] **解決方案**：在前端 `Layout.jsx` 中整合全域通知組件 `Notification.jsx`，並在 Saga 的 `catch` 動作中觸發顯示錯誤訊息。
+    - [x] **思考**：爬蟲行為具備高度不確定性，提供明確的視覺反饋能顯著提升使用者信心。
+```

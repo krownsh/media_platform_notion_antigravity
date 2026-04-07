@@ -1,18 +1,33 @@
 import React, { useState } from 'react';
 import { Link2, ArrowRight, Loader2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addPostByUrl } from '../features/postsSlice';
+import { addPostByUrl, addTask } from '../features/postsSlice';
 import { motion } from 'framer-motion';
+import { addNotification } from '../features/uiSlice';
 
 const UrlInput = () => {
     const [url, setUrl] = useState('');
     const dispatch = useDispatch();
-    const { loading } = useSelector((state) => state.posts);
+    const { tasks } = useSelector((state) => state.posts);
+    const isQueueFull = tasks.length >= 10;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (url.trim()) {
-            dispatch(addPostByUrl({ url }));
+            if (isQueueFull) {
+                dispatch(addNotification({ message: '佇列任務過多，請稍後再試', type: 'error' }));
+                return;
+            }
+
+            // Check for duplicate URLs in active tasks
+            if (tasks.some(t => t.url === url.trim())) {
+                dispatch(addNotification({ message: '此網址正在處理中', type: 'info' }));
+                return;
+            }
+
+            const taskId = crypto.randomUUID();
+            dispatch(addTask({ taskId, url: url.trim() }));
+            dispatch(addPostByUrl({ url: url.trim(), taskId }));
             setUrl('');
         }
     };
@@ -36,26 +51,17 @@ const UrlInput = () => {
                         type="text"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
-                        placeholder="貼上 Instagram, Twitter 或 Facebook 連結..."
+                        placeholder={isQueueFull ? "佇列已滿，請等候處理..." : "貼上 Instagram, Twitter 或 Facebook 連結..."}
                         className="flex-1 bg-transparent border-none outline-none text-foreground placeholder-muted-foreground px-4 py-3 text-lg"
-                        disabled={loading}
+                        disabled={isQueueFull}
                     />
                     <button
                         type="submit"
-                        disabled={loading || !url}
+                        disabled={isQueueFull || !url}
                         className="bg-accent hover:bg-accent/90 text-white px-8 py-3 rounded-full font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                     >
-                        {loading ? (
-                            <>
-                                <Loader2 size={18} className="animate-spin" />
-                                <span>處理中</span>
-                            </>
-                        ) : (
-                            <>
-                                <span>新增</span>
-                                <ArrowRight size={18} />
-                            </>
-                        )}
+                        <span>新增</span>
+                        <ArrowRight size={18} />
                     </button>
                 </form>
             </div>

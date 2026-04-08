@@ -8,27 +8,24 @@ const HomePage = ({ onRemix }) => {
 
     return (
         <div className="w-full mx-auto px-4">
-            <div className="text-center mb-16 pt-8">
-                <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6 tracking-tight">
-                    整理您的 <span className="text-gradient">數位思維</span>
-                </h2>
-                <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+            <div className="text-center mb-16 pt-[80px]">
+                <p className="notion-text-body-large text-[#615d59] max-w-2xl mx-auto mb-2">
                     儲存、分析並改寫來自 Instagram、Twitter 和 Facebook 的內容。
                     將社群雜訊轉化為結構化知識。
                 </p>
-                <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+                <p className="notion-text-body text-[#a39e98] max-w-2xl mx-auto">
                     (目前只有Threads/Twitter可以用，因為ig跟fb比較沒有知識性的文章)
                 </p>
             </div>
 
             <UrlInput />
 
-            <div className="mt-20">
+            <div className="mt-12">
                 <div className="flex items-center justify-between mb-8 px-2">
-                    <h3 className="text-xl font-semibold text-foreground/90">最近儲存</h3>
+                    <h3 className="notion-text-card-title text-[rgba(0,0,0,0.95)]">最近儲存</h3>
                     <button
                         onClick={() => navigate('/view-all')}
-                        className="text-sm text-muted-foreground hover:text-accent transition-colors font-medium"
+                        className="notion-btn-ghost"
                     >
                         查看全部
                     </button>

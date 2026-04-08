@@ -194,7 +194,7 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
                 ref={editorRef}
                 contentEditable
                 className={twMerge(
-                    "rich-editor w-full bg-white/50 border border-white/20 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 overflow-y-auto font-mono whitespace-pre-wrap",
+                    "rich-editor w-full bg-transparent border notion-whisper-border rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 overflow-y-auto font-mono whitespace-pre-wrap",
                     className
                 )}
                 style={{ minHeight: minHeight }}
@@ -205,13 +205,13 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
 
             {showMenu && filteredVariables.length > 0 && (
                 <div
-                    className="absolute z-50 bg-background border border-border rounded-lg shadow-lg overflow-hidden min-w-[150px]"
+                    className="absolute z-50 bg-background border border-[rgba(0,0,0,0.1)] rounded-lg shadow-deep overflow-hidden min-w-[150px]"
                     style={{ top: menuPosition.top, left: menuPosition.left }}
                 >
                     {filteredVariables.map((v, i) => (
                         <div
                             key={v.value}
-                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${i === selectedIndex ? 'bg-accent text-accent-foreground' : ''}`}
+                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-[#0075de] hover:text-[#0075de]-foreground ${i === selectedIndex ? 'bg-[#0075de] text-[#0075de]-foreground' : ''}`}
                             onClick={() => insertVariable(v)}
                         >
                             {v.label}

@@ -201,13 +201,14 @@ function* handleFetchPost(action) {
         }
 
         // 4.4 Insert Analysis (if exists)
-        if (transformedPost.analysis && transformedPost.analysis.summary) {
+        if (transformedPost.analysis && (transformedPost.analysis.summary || transformedPost.analysis.primary_category)) {
           console.log('[Saga] Saving AI analysis...');
           const { error: analysisError } = yield call(() =>
             supabase.from('post_analysis').insert({
               post_id: postId,
               user_id: userId,
-              summary: transformedPost.analysis.summary,
+              primary_category: transformedPost.analysis.primary_category || 'other',
+              summary: transformedPost.analysis.summary || null,
               tags: transformedPost.analysis.tags || [],
               topics: transformedPost.analysis.topics || [],
               sentiment: transformedPost.analysis.sentiment || null,
@@ -285,42 +286,27 @@ function* handleAddAnnotation(action) {
   }
 }
 
-// Worker Saga: Delete post
+// Worker Saga: Delete post (fire-and-forget backend)
 function* handleDeletePost(action) {
-  try {
-    const postId = action.payload;
-    console.log('[Saga] Deleting post:', postId);
+  const postId = action.payload;
+  console.log('[Saga] Optimistic delete, background DB cleanup for:', postId);
 
-    // 1. Delete from Supabase (if it has a DB ID)
-    // We try to delete by id (which is the UUID in Supabase)
-    // If the post only exists in Redux (not saved yet), this step might fail or do nothing, which is fine.
-
-    // Check if it's a valid UUID (simple check)
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
-
-    if (isUuid) {
+  // UI is already updated instantly by the optimistic reducer in postsSlice.
+  // Here we only handle the background DB deletion silently.
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
+  if (isUuid) {
+    try {
       const { error } = yield call(() =>
         supabase.from('posts').delete().eq('id', postId)
       );
-
       if (error) {
-        console.error('[Saga] Failed to delete post from DB:', error);
-        // We might still want to remove it from UI even if DB delete fails?
-        // For now, let's assume if DB delete fails, we shouldn't remove it from UI.
-        throw error;
+        console.error('[Saga] Background DB delete failed (silent):', error);
       } else {
         console.log('[Saga] ✅ Post deleted from DB');
       }
-    } else {
-      console.log('[Saga] Post ID is not a UUID, skipping DB delete (local only?)');
+    } catch (err) {
+      console.error('[Saga] Background DB delete exception (silent):', err);
     }
-
-    // 2. Update Redux store
-    yield put(deletePostSuccess(postId));
-
-  } catch (error) {
-    console.error('[Saga] Error deleting post:', error);
-    yield put(deletePostFailure(error.message));
   }
 }
 

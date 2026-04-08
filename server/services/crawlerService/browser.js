@@ -81,29 +81,53 @@ class CrawlerService {
 
             // Basic Extraction
             const extractedData = await page.evaluate(() => {
-                // Try to find the main content, fallback to body text
-                // Specific Notion check: .notion-page-content
-                const main = document.querySelector('.notion-page-content, .notion-body, article, main, .content, #content') || document.body;
+                const getMeta = (metaName) => {
+                    return document.querySelector(`meta[name="${metaName}"]`)?.content ||
+                        document.querySelector(`meta[property="og:${metaName}"]`)?.content ||
+                        document.querySelector(`meta[property="${metaName}"]`)?.content ||
+                        document.querySelector(`meta[name="twitter:${metaName}"]`)?.content || null;
+                };
 
-                // Helper to clean text: remove multiple spaces, tabs, and keep only meaningful text
                 const cleanText = (text) => {
+                    if (!text) return '';
                     return text
                         .replace(/\s+/g, ' ')
                         .replace(/\n\s*\n/g, '\n')
                         .trim();
                 };
 
-                const getMeta = (metaName) => {
-                    return document.querySelector(`meta[name="${metaName}"]`)?.content ||
-                        document.querySelector(`meta[property="og:${metaName}"]`)?.content ||
-                        document.querySelector(`meta[property="${metaName}"]`)?.content || null;
-                };
+                const url = window.location.href;
+                const hostname = window.location.hostname;
+
+                // 1. GitHub Specific Extraction
+                if (hostname.includes('github.com')) {
+                    const pathParts = window.location.pathname.split('/').filter(p => p);
+                    const repoName = pathParts.length >= 2 ? `${pathParts[0]}/${pathParts[1]}` : (pathParts[0] || 'GitHub');
+
+                    // Priority: Repository Description > OG Description > Title
+                    const description = document.querySelector('[itemprop="about"]')?.innerText ||
+                        getMeta('description') ||
+                        getMeta('og:description') || '';
+
+                    return {
+                        title: document.title,
+                        mainText: cleanText(description) || `GitHub repository: ${repoName}`,
+                        ogImage: getMeta('image') || getMeta('og:image'),
+                        author: repoName,
+                        platform: 'github'
+                    };
+                }
+
+                // 2. Generic Extraction (Notion, Blogs, etc.)
+                // Try to find the main content, fallback to body text
+                const main = document.querySelector('.notion-page-content, .notion-body, article, main, .content, #content, .post-content') || document.body;
 
                 return {
                     title: getMeta('title') || document.title,
                     mainText: cleanText(main.innerText),
-                    ogImage: getMeta('image'),
-                    author: getMeta('author')
+                    ogImage: getMeta('image') || getMeta('og:image'),
+                    author: getMeta('author') || getMeta('article:author') || null,
+                    platform: 'generic'
                 };
             });
 
@@ -125,13 +149,13 @@ class CrawlerService {
 
             return {
                 success: true,
-                platform: platform || 'generic',
+                platform: extractedData.platform || platform || 'generic',
                 originalUrl: url,
                 original_url: url,
                 title: extractedData.title || '未知標題',
-                content: finalContent,
+                content: extractedData.mainText || finalContent,
                 images: extractedData.ogImage ? [extractedData.ogImage] : [],
-                author: extractedData.author,
+                author: extractedData.author || 'Unknown',
                 crawledAt: new Date().toISOString()
             };
 

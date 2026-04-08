@@ -92,4 +92,25 @@
 - [x] **增強 UX：實作擷取失敗的 SnackBar 反饋**
     - [x] **解決方案**：在前端 `Layout.jsx` 中整合全域通知組件 `Notification.jsx`，並在 Saga 的 `catch` 動作中觸發顯示錯誤訊息。
     - [x] **思考**：爬蟲行為具備高度不確定性，提供明確的視覺反饋能顯著提升使用者信心。
+
+## Phase 8: Field Theory 功能內化 (分類、聚合與查詢)
+- [x] **分類機制 (Classification)**
+    - [x] 檢視與完善 `categoryRules.js` 與 `categoryProcessor.js`，對齊 `ft classify` 的正則與邏輯判斷。
+    - [x] 結合現有的 `aiService.js`，當正則無法涵蓋時自動透過 LLM 精準歸類目標標籤。
+- [x] **聚合與統計 (Aggregation)**
+    - [x] 擴充 `statsService.js`，實作如同 `ft categories`、`ft domains` 與 `ft stats` 的貼文數據統計。
+- [x] **資料視覺與全局查詢 (Visualization & Search)**
+    - [x] 完善剛建立的 `InsightPage.jsx` 儀表板 (對應 `ft viz`)，綁定 `StatCard` 與 `BarChart` 呈現數據。
+    - [x] 深入實作全域的全文檢索功能 (對應 `ft search`)，與依分類條件過慮。
+
+## Phase 9: 靜態資源本地化 & 儲存優化
+- [ ] **將外部圖片轉存至內部 Storage / 資料庫**
+    - [ ] 在爬蟲抓取時，自動將大頭貼 (Avatar) 與貼文圖檔 (Post Images) 下載並轉存到自有的資料庫或 Supabase Storage中。
+    - [ ] 更新貼文資料儲存邏輯，以內部儲存的網址取代原平台的 CDN 網址，徹底解決 CDN 過期導致的 403 破圖問題。
 ```
+- [x] **修復 AI 摘要 undefined 錯誤**
+    - [x] **問題診斷**：在 PostDetailView 中存取 nalysis.summary 時，若 AI 服務因配置或網路問題未回傳正確物件，前端會發生運行時崩潰。
+    - [x] **解決方案**：
+        - 更新 server/services/aiService.js 確保在所有失敗路徑下皆回傳預設 Mock 物件。
+        - 更新 server/index.js 增加對 AI 執行結果的防禦性檢查。
+        - 更新前端各組件 (PostDetailView, SidebarSearch, ViewAllPage) 增加屬性安全存取與類型檢查。

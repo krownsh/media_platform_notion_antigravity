@@ -28,6 +28,7 @@ class Orchestrator {
         if (url.includes('threads.net') || url.includes('threads.com')) return 'threads';
         if (url.includes('notion.so') || url.includes('notion.site')) return 'notion';
         if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+        if (url.includes('github.com')) return 'github';
         return 'generic';
     }
 
@@ -60,6 +61,7 @@ class Orchestrator {
             posted_at: postedAt || null,
             is_archived: data.is_archived ?? false,
             full_json: fullJson || null,
+            source_domains: data.source_domains || [],
         };
         // Remove undefined keys (Supabase will reject them for NOT NULL columns)
         Object.keys(upsertPayload).forEach(k => upsertPayload[k] === undefined && delete upsertPayload[k]);

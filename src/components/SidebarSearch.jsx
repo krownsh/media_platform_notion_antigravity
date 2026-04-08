@@ -33,7 +33,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
         const filtered = items.filter(post => {
             const contentMatch = post.content?.toLowerCase().includes(lowerQuery);
             const authorMatch = post.author?.toLowerCase().includes(lowerQuery);
-            const summaryMatch = post.analysis?.summary?.toLowerCase().includes(lowerQuery);
+            const summaryMatch = typeof post.analysis?.summary === 'string' && post.analysis.summary.toLowerCase().includes(lowerQuery);
             // Check comments if they exist
             const commentsMatch = post.comments?.some(c => c.text?.toLowerCase().includes(lowerQuery));
 
@@ -54,7 +54,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
             <div className="px-2 py-4 mb-2 flex justify-center">
                 <button
                     onClick={onExpand}
-                    className="p-3 rounded-2xl bg-secondary/20 text-muted-foreground hover:text-accent hover:bg-secondary/30 transition-all shadow-sm"
+                    className="p-3 rounded-lg bg-black/5 text-[#615d59] hover:text-[#0075de] hover:bg-black/5 transition-all shadow-soft-card"
                     title="搜尋"
                 >
                     <Search size={20} />
@@ -66,7 +66,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
     return (
         <div className="relative px-6 py-4 mb-2" ref={searchRef}>
             <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/70 group-focus-within:text-accent transition-colors duration-300" size={18} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[#0075de] transition-colors duration-300" size={18} />
                 <input
                     type="text"
                     value={query}
@@ -76,7 +76,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                     }}
                     onFocus={() => setIsOpen(true)}
                     placeholder="搜尋貼文..."
-                    className="w-full bg-secondary/20 border border-transparent hover:bg-secondary/30 focus:bg-white focus:border-accent/30 focus:shadow-sm rounded-full pl-11 pr-10 py-3 text-sm text-foreground placeholder-muted-foreground/60 focus:outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.3,1)]"
+                    className="w-full bg-black/5 border border-transparent hover:bg-black/5 focus:bg-white focus:border-accent/30 focus:shadow-soft-card rounded-full pl-11 pr-10 py-3 text-sm text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/60 focus:outline-none transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.3,1)]"
                 />
                 {query && (
                     <button
@@ -84,7 +84,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                             setQuery('');
                             setResults([]);
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-destructive transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#615d59] hover:text-destructive transition-colors"
                     >
                         <X size={16} />
                     </button>
@@ -98,7 +98,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.98 }}
                         transition={{ duration: 0.3, ease: [0.25, 0.8, 0.3, 1] }}
-                        className="absolute left-6 right-[-240px] top-full mt-4 bg-white/90 border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
+                        className="absolute left-6 right-[-240px] top-full mt-4 bg-transparent border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
                     >
                         {results.length > 0 ? (
                             <div className="py-2">
@@ -106,18 +106,18 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                                     <div
                                         key={post.id}
                                         onClick={() => handleSelect(post)}
-                                        className="px-5 py-4 hover:bg-secondary/20 cursor-pointer border-b border-border/30 last:border-0 transition-colors duration-200"
+                                        className="px-5 py-4 hover:bg-black/5 cursor-pointer border-b border-[rgba(0,0,0,0.1)]/30 last:border-0 transition-colors duration-200"
                                     >
                                         <div className="flex items-start gap-3">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1.5">
-                                                    <span className="font-semibold text-foreground text-sm truncate">{post.author}</span>
-                                                    <span className="text-xs text-muted-foreground/70">• {new Date(post.postedAt || post.createdAt).toLocaleDateString()}</span>
+                                                    <span className="font-semibold text-[rgba(0,0,0,0.95)] text-sm truncate">{post.author}</span>
+                                                    <span className="text-xs text-[#615d59]/70">• {new Date(post.postedAt || post.createdAt).toLocaleDateString()}</span>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2 leading-relaxed">{post.content || post.title}</p>
+                                                <p className="text-xs text-[#615d59] line-clamp-2 mb-2 leading-relaxed">{post.content || post.title}</p>
                                                 {/* Highlight AI Summary match if applicable */}
-                                                {post.analysis?.summary?.toLowerCase().includes(query.toLowerCase()) && (
-                                                    <div className="flex items-center gap-1.5 text-[10px] text-accent-foreground bg-accent/80 px-2.5 py-1 rounded-full w-fit shadow-sm">
+                                                {typeof post.analysis?.summary === 'string' && post.analysis.summary.toLowerCase().includes(query.toLowerCase()) && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-[#0075de]-foreground bg-[#0075de]/80 px-2.5 py-1 rounded-full w-fit shadow-soft-card">
                                                         <Sparkles size={10} />
                                                         <span className="truncate max-w-[200px]">{post.analysis.summary}</span>
                                                     </div>
@@ -128,7 +128,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                                 ))}
                             </div>
                         ) : (
-                            <div className="p-8 text-center text-muted-foreground text-sm">
+                            <div className="p-8 text-center text-[#615d59] text-sm">
                                 未找到結果
                             </div>
                         )}

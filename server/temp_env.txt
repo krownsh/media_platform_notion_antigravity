@@ -1,0 +1,4 @@
+MINIMAX_API_KEY=15f1f727829749aeb010e941cbf4ccfe
+MINIMAX_GROUP_ID=
+SUPABASE_URL=https://supabase_crawl.krownsh.work
+SUPABASE_SERVICE_KEY=your_service_key_here

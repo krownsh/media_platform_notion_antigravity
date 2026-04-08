@@ -69,8 +69,8 @@ const SignupPage = () => {
         <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
             {/* Background Elements */}
             <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none"></div>
-            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-accent/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-secondary/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0075de]/20 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-black/5 rounded-full blur-[120px] pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -78,14 +78,14 @@ const SignupPage = () => {
                 transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
                 className="w-full max-w-md p-6 relative z-10"
             >
-                <div className="bg-white/60 backdrop-blur-xl border border-white/50 rounded-3xl p-10 shadow-xl">
+                <div className="bg-transparent backdrop-blur-xl border notion-whisper-border rounded-lg p-10 shadow-deep">
                     <div className="text-center mb-10">
-                        <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">建立帳號</h1>
-                        <p className="text-muted-foreground">加入我們，開始您的旅程</p>
+                        <h1 className="text-3xl font-bold text-[rgba(0,0,0,0.95)] mb-3 tracking-tight">建立帳號</h1>
+                        <p className="text-[#615d59]">加入我們，開始您的旅程</p>
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-xl flex items-start gap-3 text-destructive text-sm">
+                        <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-lg flex items-start gap-3 text-destructive text-sm">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <span>{error}</span>
                         </div>
@@ -93,17 +93,17 @@ const SignupPage = () => {
 
                     {success ? (
                         <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <CheckCircle2 className="w-8 h-8 text-accent" />
+                            <div className="w-16 h-16 bg-[rgba(0,117,222,0.1)] rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle2 className="w-8 h-8 text-[#0075de]" />
                             </div>
-                            <h3 className="text-xl font-semibold text-foreground mb-2">檢查您的電子郵件</h3>
-                            <p className="text-muted-foreground mb-6">
-                                我們已發送確認連結至 <span className="text-foreground font-medium">{email}</span>。
+                            <h3 className="text-xl font-semibold text-[rgba(0,0,0,0.95)] mb-2">檢查您的電子郵件</h3>
+                            <p className="text-[#615d59] mb-6">
+                                我們已發送確認連結至 <span className="text-[rgba(0,0,0,0.95)] font-medium">{email}</span>。
                                 請驗證您的電子郵件以繼續。
                             </p>
                             <Link
                                 to="/login"
-                                className="inline-flex items-center justify-center px-6 py-3 bg-secondary/20 hover:bg-secondary/30 text-foreground rounded-xl transition-colors font-medium"
+                                className="inline-flex items-center justify-center px-6 py-3 bg-black/5 hover:bg-black/5 text-[rgba(0,0,0,0.95)] rounded-lg transition-colors font-medium"
                             >
                                 返回登入
                             </Link>
@@ -111,14 +111,14 @@ const SignupPage = () => {
                     ) : (
                         <form onSubmit={handleSignup} className="space-y-6">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground/80 ml-1">電子郵件</label>
+                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">電子郵件</label>
                                 <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-white/50 border border-border/20 rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-white/80 transition-all shadow-sm"
+                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
                                         placeholder="name@example.com"
                                         required
                                     />
@@ -126,14 +126,14 @@ const SignupPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground/80 ml-1">密碼</label>
+                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">密碼</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
                                     <input
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-white/50 border border-border/20 rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-white/80 transition-all shadow-sm"
+                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
                                         placeholder="建立密碼"
                                         required
                                     />
@@ -141,14 +141,14 @@ const SignupPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-foreground/80 ml-1">確認密碼</label>
+                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">確認密碼</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-accent transition-colors" />
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
                                     <input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-white/50 border border-border/20 rounded-xl py-3.5 pl-12 pr-4 text-foreground placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-white/80 transition-all shadow-sm"
+                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
                                         placeholder="確認您的密碼"
                                         required
                                     />
@@ -158,7 +158,7 @@ const SignupPage = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-3.5 rounded-xl transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-accent/20 mt-4"
+                                className="w-full bg-[#0075de] hover:bg-[#0075de]/90 text-white font-medium py-3.5 rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-deep shadow-accent/20 mt-4"
                             >
                                 {loading ? (
                                     <>
@@ -173,9 +173,9 @@ const SignupPage = () => {
                     )}
 
                     {!success && (
-                        <div className="mt-8 text-center text-muted-foreground text-sm">
+                        <div className="mt-8 text-center text-[#615d59] text-sm">
                             已經有帳號了嗎？{' '}
-                            <Link to="/login" className="text-accent hover:text-accent/80 font-medium transition-colors">
+                            <Link to="/login" className="text-[#0075de] hover:text-[#0075de]/80 font-medium transition-colors">
                                 登入
                             </Link>
                         </div>

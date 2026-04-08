@@ -104,6 +104,15 @@ export async function scrapeTwitterPost(url) {
             }
         ];
 
+        // Extract source domains (對齊 fieldtheory-cli 的 Domain Analysis)
+        const sourceDomains = [...new Set(
+            extractedLinks
+                .map(link => {
+                    try { return new URL(link).hostname.replace('www.', ''); } catch { return null; }
+                })
+                .filter(Boolean)
+        )];
+
         const finalData = {
             platform: 'twitter',
             originalUrl: url,
@@ -119,12 +128,13 @@ export async function scrapeTwitterPost(url) {
             content: content,
 
             images: images,
-            videos: [], // TODO: Add video support if needed
-            comments: [], // Comments require login to fetch, so we leave them empty for guest access
+            videos: [],
+            comments: [],
 
             full_json: fullJsonData,
+            source_domains: sourceDomains,
 
-            raw: data // Store raw response for debugging
+            raw: data
         };
 
         console.log('[TwitterCrawler] Scrape successful');

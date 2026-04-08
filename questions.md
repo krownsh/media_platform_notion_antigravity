@@ -52,3 +52,80 @@
 ### 3. 如何切換模型或設定？
 *   若要修改 API Key，請調整 `server/.env` 中的 `GOOGLE_GENERATIVE_AI_API_KEY` 或 `OPENROUTER_API_KEY`。
 *   若要調整分析邏輯，核心程式碼位於 `server/services/aiService.js` 的 `analyzeThreadsPost` 函式。
+
+---
+
+## 🔧 環境變數 `.env` 的配置與讀取路徑
+**時間**：2026-04-08
+**問題描述**：確認專案是否全部統一吃根目錄的 `.env`，而沒有 `server/.env`？
+
+### 1. 提問與解答
+**提問**：現在是不是都是吃根目錄的 `.env`，而沒有 `server` 的 `.env`？
+**解答**：不是的。專案目前依然維持「前端」與「後端」的環境變數分離配置，`server/.env` 仍然存在且被後端程式依賴。
+
+### 2. 環境變數檔存放差異
+*   **根目錄的 `.env` (包含 `.env.development` 等)**：僅供 **前端 (Vite)** 使用。裡面專門放置帶有 `VITE_` 前綴的公開暴露變數，例如 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY` 等。
+*   **`server/.env`**：供 **後端 (Node.js)** 使用。這裡面包含了所有伺服器的敏感資訊（不可暴露給前端），例如 `OPENROUTER_API_KEY`、`GOOGLE_GENERATIVE_AI_API_KEY`、後門高權限的 `SUPABASE_SERVICE_KEY` 等等。
+
+### 3. 程式碼驗證
+在後端主程式 `server/index.js` 及一些腳本中，依然明確指定了要讀取這份特定路徑的設定檔：
+```javascript
+// 例如 server/index.js 
+dotenv.config({ path: './server/.env' });
+
+// 或是某些執行腳本
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+```
+
+> [!IMPORTANT]
+> 為了安全及職責分離，請勿將後端依賴的密鑰搬家到根目錄（會被前端打包工具看見），後端依舊主要讀取 `server/.env`。
+
+---
+
+## 🔧 前後端 `.env.example` 變數需求解析
+**時間**：2026-04-08
+**問題描述**：兩個 `.env.example`（根目錄與 server 目錄）分別需要填寫哪些變數？用途為何？
+
+### 1. 根目錄 `.env.example` (前端 Vite 專用)
+這個檔案為**前端介面**需要的環境變數，變數名稱都必須以 `VITE_` 開頭才能被瀏覽器讀取：
+*   **`VITE_SUPABASE_URL`**：Supabase API 的專案連線網址。
+*   **`VITE_SUPABASE_ANON_KEY`**：Supabase 的公開金鑰 (Anon Key)，供前端一般使用者認證及受限資料存取使用（會受 Supabase RLS 規則限制）。
+*   **`VITE_API_BASE_URL`**：我們自己後端伺服器的網址。開發環境通常是 `http://localhost:3001` 或 `3501`，用來讓前端知道打哪支 API。
+
+### 2. `server/.env.example` (後端 Node.js 專用)
+這個檔案為**後端伺服器**需要的敏感資訊與環境配置，不會且**不該**暴露給前端：
+*   **【伺服器基本設定】**
+    *   `PORT`：後端伺服器啟動的 Port（如 3001 或 3501）。
+    *   `FRONTEND_URL`：允許跨域 (CORS) 呼叫的前端網址（如 `http://localhost:5173` 或正式域名）。
+*   **【Supabase 設定】**
+    *   `SUPABASE_URL`：與前端相同，即 Supabase 專案網址。
+    *   `SUPABASE_SERVICE_KEY`：這非常重要！這是**管理員級別的高權限金鑰 (Service Role Key)**，能夠繞過 RLS 防護，讓後端得以不受限制地將資料寫入或同步到資料庫。
+*   **【AI 及爬蟲服務】**
+    *   `OPENROUTER_API_KEY`：串接各大 AI 模型 (Grok, DALL-E) 的 OpenRouter 金鑰。
+    *   (`GOOGLE_GENERATIVE_AI_API_KEY`：雖然 `.example` 中目前沒明確列出，但實際 `.env` 中有配置給 Gemma 模型使用)。
+    *   `APIFY_API_TOKEN`：(選填) 作為備用的 Apify 爬蟲金鑰。
+    *   `PUPPETEER_EXECUTABLE_PATH`：由於 1Panel 伺服器架構等限制，用來明確指定系統原生 Chromium 執行檔的路徑 (例如：`/usr/bin/chromium`)。
+*   **【各大社群平台 API Tokens】**
+    *   `INSTAGRAM_ACCESS_TOKEN` / `INSTAGRAM_ACCOUNT_ID`：發 IG 用的長效金鑰與帳號 ID。
+    *   `THREADS_ACCESS_TOKEN` / `THREADS_USER_ID`：發 Threads 用的金鑰與帳號 ID。
+    *   `TWITTER_ACCESS_TOKEN`：發 Twitter(X) 的 OAuth 金鑰。
+
+---
+
+## 🎯 對齊目標：內化 `fieldtheory-cli` 架構 (commit 6b2f85de...)
+**時間**：2026-04-08
+**問題描述**：確認 commit 6b2f85de5f04dd0e2942c46c1e6cc1f071ea2a59 的開發方向，以及如何將 `afar1/fieldtheory-cli` 關於分類、聚合、查詢的功能內化到本系統。
+
+### 1. 進度與方向確認
+**現況解析**：在該 commit 中，已初步建立了以下模組，這是在為 Field Theory 的功能打底：
+*   **後端聚合與分類**：引入了 `categoryProcessor.js`、`categoryRules.js` 以及 `statsService.js`。
+*   **前端視覺化**：新增了 `InsightPage.jsx`、`BarChart.jsx`、`StatCard.jsx` 供儀表板使用。
+
+**對齊 `fieldtheory-cli` 核心功能**：
+*   `ft sync`：我們的爬蟲 Orchestrator 已部分實現此自動化抓取功能，未來只需強化增量紀錄。
+*   `ft classify`：對應剛建立的 `categoryRules.js` (正則) 與 LLM 處理邏輯，接下來需要確保新進來的貼文全數進行分類標記。
+*   `ft viz` / `ft stats` / `ft categories`：對應正開始製作的 `InsightPage.jsx`，將分類與聚合結果視覺化。
+*   `ft search`：利用現有架構補強全文檢索搜尋。
+
+### 2. 接下來的執行重點
+我已將這些對齊後的工作事項記錄在 `tasks.md` 的 `Phase 8` 中。目前的焦點將是：「**讓系統抓回來的雜亂發文，經過 `categoryProcessor` 結構化後存入資料庫，接著透過 `statsService` 將聚合資訊拋轉給 `InsightPage`，用一致性的介面給出最佳的個人資訊儀表板。**」

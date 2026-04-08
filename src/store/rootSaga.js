@@ -201,13 +201,14 @@ function* handleFetchPost(action) {
         }
 
         // 4.4 Insert Analysis (if exists)
-        if (transformedPost.analysis && transformedPost.analysis.summary) {
+        if (transformedPost.analysis && (transformedPost.analysis.summary || transformedPost.analysis.primary_category)) {
           console.log('[Saga] Saving AI analysis...');
           const { error: analysisError } = yield call(() =>
             supabase.from('post_analysis').insert({
               post_id: postId,
               user_id: userId,
-              summary: transformedPost.analysis.summary,
+              primary_category: transformedPost.analysis.primary_category || 'other',
+              summary: transformedPost.analysis.summary || null,
               tags: transformedPost.analysis.tags || [],
               topics: transformedPost.analysis.topics || [],
               sentiment: transformedPost.analysis.sentiment || null,

@@ -39,31 +39,42 @@ app.post('/api/process', async (req, res) => {
             const isSocial = platform === 'threads' || platform === 'twitter';
             const isGeneric = platform === 'generic' || platform === 'unknown';
 
+            // 1) 取得主要分類 (CategoryClassification)
+            const { categoryProcessor } = await import('./services/categoryProcessor.js');
+            const contentText = result.data.content || '';
+            const primaryCategory = await categoryProcessor.classify(contentText);
+
+            // 預設建立 analysis 物件
+            result.data.analysis = {
+                primary_category: primaryCategory
+            };
+
+            // 2) 擷取 AI Summary
             if (isSocial && result.data.full_json) {
                 console.log(`[Server] Running AI analysis for ${platform} post...`);
                 try {
                     const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                    result.data.analysis = {
-                        summary: aiResult.summary,
-                        raw: aiResult.raw
-                    };
+                    result.data.analysis.summary = aiResult.summary;
+                    result.data.analysis.raw = aiResult.raw;
+                    result.data.analysis.tags = aiResult.structured?.tags || [];
+                    result.data.analysis.topics = aiResult.structured?.topics || [];
                     console.log('[Server] Social AI analysis completed');
                 } catch (aiError) {
                     console.warn('[Server] Social AI analysis failed:', aiError.message);
-                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                    result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
                 }
             } else if (isGeneric && result.data.content) {
                 console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
                 try {
                     const aiResult = await aiService.analyzeGenericPost(result.data);
-                    result.data.analysis = {
-                        summary: aiResult.summary,
-                        raw: aiResult.raw
-                    };
+                    result.data.analysis.summary = aiResult.summary;
+                    result.data.analysis.raw = aiResult.raw;
+                    result.data.analysis.tags = aiResult.structured?.tags || [];
+                    result.data.analysis.topics = aiResult.structured?.topics || [];
                     console.log('[Server] Generic AI analysis completed');
                 } catch (aiError) {
                     console.warn('[Server] Generic AI analysis failed:', aiError.message);
-                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                    result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
                 }
             }
         }

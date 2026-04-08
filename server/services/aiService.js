@@ -17,7 +17,7 @@ class AiService {
         dotenv.config();
 
         this.minimaxApiKey = process.env.MINIMAX_API_KEY;
-        this.minimaxGroupId = process.env.MINIMAX_GROUP_ID; 
+        this.minimaxGroupId = process.env.MINIMAX_GROUP_ID;
         this.googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
         this.baseUrl = 'https://api.minimax.io/v1'; // 換成 .io 試試
 
@@ -27,7 +27,7 @@ class AiService {
         }
 
         console.log(`[AiService] Minimax Check: Key(len:${this.minimaxApiKey?.length || 0}), GroupId:${this.minimaxGroupId ? 'Valid' : 'None/Ignored'}`);
-        
+
         // Initialize Google AI
         if (this.googleApiKey) {
             this.genAI = new GoogleGenAI({ apiKey: this.googleApiKey });
@@ -35,8 +35,8 @@ class AiService {
 
         // Minimax Models (Official)
         this.freeModels = [
-            'abab6.5s-chat',
-            'minimax-01',
+            'minimax-m2.7',
+            'MiniMax-Text-01',
         ];
         this.currentFreeModelIndex = 0;
     }
@@ -140,7 +140,7 @@ class AiService {
         console.log(`[AiService] Google Analysis: ${modelName}`);
         const repliesText = (mainPost.replies || []).map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n') || '(No replies)';
         const textPart = `${systemPrompt}\n\nContent: ${mainPost.content || mainPost.main_text}\nAuthor: ${mainPost.author || 'Unknown'}\nReplies:\n${repliesText}`;
-        
+
         const parts = [{ text: textPart }];
         if (mainPost.images?.length > 0) {
             for (const url of mainPost.images.slice(0, 3)) {
@@ -172,12 +172,15 @@ class AiService {
             headers['x-group-id'] = this.minimaxGroupId;
         }
 
-        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify({
                 model: modelName,
-                messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userContent }],
+                messages: [
+                    { role: "system", name: "MiniMax AI", content: systemPrompt },
+                    { role: "user", name: "User", content: userContent }
+                ],
                 temperature: 0.1
             })
         });
@@ -222,12 +225,15 @@ class AiService {
             const headers = { 'Authorization': `Bearer ${this.minimaxApiKey}`, 'Content-Type': 'application/json' };
             if (this.minimaxGroupId) headers['x-group-id'] = this.minimaxGroupId;
 
-            const response = await fetch(`${this.baseUrl}/chat/completions`, {
+            const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({
                     model: this.currentFreeModel,
-                    messages: [{ role: "system", content: prompt }, { role: "user", content: content }]
+                    messages: [
+                        { role: "system", name: "MiniMax AI", content: prompt },
+                        { role: "user", name: "User", content: content }
+                    ]
                 })
             });
             const data = await response.json();
@@ -244,23 +250,25 @@ class AiService {
     async remixContent(sourceJson, sourceImages, userParams) {
         console.log('=== REMIX DEBUG START ===');
         console.log('[AiService] Remixing content...');
-        const systemPrompt = `You are an expert. Internalize this: ${JSON.stringify(sourceJson)}. Re-express it in ${userParams.style || 'insightful'} tone. Respond in JSON.`;
-        
+        const systemPrompt = `You are an expert. Internalize this: ${JSON.stringify(sourceJson)}. Re-express it in ${userParams.style || 'insightful'} tone. 
+Respond ONLY with a JSON object matching this strict schema:
+{
+    "remixed_content": "The completed markdown formatted rewrite",
+    "image_prompt": "A short English phrase for generating a cover image via Stable Diffusion"
+}`;
         try {
             // 終極測試組合：1. .io/v1 (國際版), 2. .chat/v1 (標準版), 3. .chat/v1 原生非 OpenAI 版
             const testConfigs = [
-                { url: 'https://api.minimax.io/v1/chat/completions', prefix: 'Bearer ' },
-                { url: 'https://api.minimax.chat/v1/chat/completions', prefix: 'Bearer ' },
-                { url: 'https://api.minimax.chat/v1/chat/completions', prefix: '' }
+                { url: 'https://api.minimax.io/v1/text/chatcompletion_v2', prefix: 'Bearer ' }
             ];
-            
+
             let lastErr;
 
             for (const config of testConfigs) {
                 try {
-                    const headers = { 
-                        'Authorization': `${config.prefix}${this.minimaxApiKey}`, 
-                        'Content-Type': 'application/json' 
+                    const headers = {
+                        'Authorization': `${config.prefix}${this.minimaxApiKey}`,
+                        'Content-Type': 'application/json'
                     };
                     if (this.minimaxGroupId) headers['x-group-id'] = this.minimaxGroupId;
 
@@ -269,7 +277,10 @@ class AiService {
                         headers: headers,
                         body: JSON.stringify({
                             model: this.currentFreeModel,
-                            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: "Go." }]
+                            messages: [
+                                { role: "system", name: "MiniMax AI", content: systemPrompt },
+                                { role: "user", name: "User", content: "Go." }
+                            ]
                         })
                     });
 
@@ -303,7 +314,7 @@ class AiService {
             if (match && match[0]) {
                 return JSON.parse(match[0]);
             }
-        } catch (e) {}
+        } catch (e) { }
         return { remixed_content: aiText, image_prompt: "N/A" };
     }
 

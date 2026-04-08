@@ -28,6 +28,7 @@ class Orchestrator {
         if (url.includes('threads.net') || url.includes('threads.com')) return 'threads';
         if (url.includes('notion.so') || url.includes('notion.site')) return 'notion';
         if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+        if (url.includes('github.com')) return 'github';
         return 'generic';
     }
 

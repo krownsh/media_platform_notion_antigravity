@@ -21,8 +21,9 @@ const PostCard = ({
     isMergeTarget = false,
     mergeProgress = 0,
     mergeReady = false,
+    showSummary = false,
 }) => {
-    const { platform, title, screenshot, analysis } = post;
+    const { platform, title, screenshot, analysis, category } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -44,7 +45,7 @@ const PostCard = ({
         const platformName = p?.toLowerCase();
         if (platformName === 'threads') {
             return {
-                icon: <ThreadsIcon size={14} className="text-foreground" />,
+                icon: <ThreadsIcon size={14} className="text-[rgba(0,0,0,0.95)]" />,
                 label: 'Threads',
             };
         }
@@ -74,13 +75,13 @@ const PostCard = ({
         }
         if (platformName === 'notion') {
             return {
-                icon: <FileText size={14} className="text-foreground" />,
+                icon: <FileText size={14} className="text-[rgba(0,0,0,0.95)]" />,
                 label: 'Notion',
             };
         }
         // Default to Generic
         return {
-            icon: <Globe size={14} className="text-muted-foreground" />,
+            icon: <Globe size={14} className="text-[#615d59]" />,
             label: 'Web Link',
         };
     };
@@ -122,27 +123,27 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="glass-card rounded-3xl group relative w-full max-w-[400px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+            className="notion-card rounded-lg group relative w-full max-w-[320px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
-                <div className="absolute inset-0 pointer-events-none rounded-3xl z-50">
-                    <div className="absolute inset-0 rounded-3xl bg-accent/10" />
+                <div className="absolute inset-0 pointer-events-none rounded-lg z-50">
+                    <div className="absolute inset-0 rounded-lg bg-[rgba(0,117,222,0.1)]" />
                     <div
-                        className="absolute inset-2 rounded-2xl border-2 border-accent/60"
+                        className="absolute inset-2 rounded-lg border-2 border-accent/60"
                         style={{ opacity: mergeReady ? 1 : mergeProgress * 0.9 }}
                     />
                 </div>
             )}
             {/* Platform Header Strip */}
-            <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white/30 backdrop-blur-sm border-b border-white/20 rounded-t-3xl">
+            <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white border-b notion-whisper-border rounded-t-lg">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#615d59] leading-none">
                         {platformStyle.label}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] text-muted-foreground/80 font-medium leading-none">
+                    <span className="text-[10px] text-[#615d59]/80 font-medium leading-none">
                         {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}
                     </span>
                 </div>
@@ -150,7 +151,7 @@ const PostCard = ({
                 {/* Menu */}
                 <div className="relative z-50">
                     <button
-                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground transition-colors"
+                        className="p-1.5 rounded-full hover:bg-black/5 text-[#615d59] transition-colors"
                         onClick={(e) => {
                             e.stopPropagation();
                             setShowMenu(!showMenu);
@@ -167,31 +168,31 @@ const PostCard = ({
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.95, y: -10 }}
                                 transition={{ duration: 0.2, ease: [0.25, 0.8, 0.3, 1] }}
-                                className="absolute right-0 top-full mt-2 w-48 bg-white border border-white/50 rounded-2xl shadow-xl z-50 backdrop-blur-xl"
+                                className="absolute right-0 top-full mt-2 w-48 bg-white border notion-whisper-border rounded-lg shadow-deep z-50 backdrop-blur-xl"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {/* Move To Submenu Trigger */}
                                 <div className="relative">
                                     <button
-                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 flex items-center justify-between transition-colors"
+                                        className="w-full px-4 py-3 text-left text-xs text-[rgba(0,0,0,0.95)] hover:bg-black/5 flex items-center justify-between transition-colors"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMoveMenu(!showMoveMenu);
                                         }}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <FolderInput size={14} className="text-muted-foreground" />
+                                            <FolderInput size={14} className="text-[#615d59]" />
                                             移動至...
                                         </div>
-                                        <ChevronRight size={12} className="text-muted-foreground" />
+                                        <ChevronRight size={12} className="text-[#615d59]" />
                                     </button>
 
                                     {/* Submenu */}
                                     {showMoveMenu && (
-                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl">
+                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 backdrop-blur-xl">
                                             {post.collectionId && (
                                                 <button
-                                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-b border-border/20"
+                                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-b border-[rgba(0,0,0,0.1)]/20"
                                                     onClick={(e) => handleMoveToCollection(e, null)}
                                                 >
                                                     <FolderMinus size={12} /> 從資料夾移除
@@ -201,21 +202,21 @@ const PostCard = ({
                                                 collections.map(collection => (
                                                     <button
                                                         key={collection.id}
-                                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 truncate"
+                                                        className="w-full px-4 py-3 text-left text-xs text-[rgba(0,0,0,0.95)] hover:bg-black/5 truncate"
                                                         onClick={(e) => handleMoveToCollection(e, collection.id)}
                                                     >
                                                         {collection.name}
                                                     </button>
                                                 ))
                                             ) : (
-                                                <div className="px-4 py-3 text-xs text-muted-foreground italic">無資料夾</div>
+                                                <div className="px-4 py-3 text-xs text-[#615d59] italic">無資料夾</div>
                                             )}
                                         </div>
                                     )}
                                 </div>
 
                                 <button
-                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-t border-border/20"
+                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-t border-[rgba(0,0,0,0.1)]/20"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setShowMenu(false);
@@ -233,26 +234,26 @@ const PostCard = ({
             </div>
 
             {/* Author Info */}
-            <div className="px-4 py-2 border-b border-white/20 flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-white/20">
+            <div className="px-4 py-2 border-b notion-whisper-border flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-white">
                 {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/30 shadow-sm" />
+                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border notion-whisper-border shadow-soft-card" />
                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/30 shadow-sm">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-[rgba(0,0,0,0.95)] border notion-whisper-border shadow-soft-card">
                         {post.author?.[0] || 'U'}
                     </div>
                 )}
                 <div className="flex flex-col justify-center min-w-0">
-                    <span className="text-sm font-semibold text-foreground leading-none truncate max-w-[180px]">
+                    <span className="text-sm font-semibold text-[rgba(0,0,0,0.95)] leading-none truncate max-w-[180px]">
                         {post.author || 'Unknown'}
                     </span>
-                    <span className="text-[10px] text-muted-foreground/80 leading-none mt-1 font-medium truncate">
+                    <span className="text-[10px] text-[#615d59]/80 leading-none mt-1 font-medium truncate">
                         @{post.authorHandle || 'unknown'}
                     </span>
                 </div>
             </div>
 
-            {/* Image Carousel Section - Reduced Height */}
-            <div className="relative w-full h-44 bg-muted/20 overflow-hidden group/image flex-shrink-0">
+            {/* Image Carousel Section - 110px */}
+            <div className="relative w-full h-[150px] bg-muted/20 overflow-hidden group/image flex-shrink-0">
                 {images.length > 0 ? (
                     <div className="relative w-full h-full">
                         {/* Image Slider */}
@@ -280,7 +281,7 @@ const PostCard = ({
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={prevImage}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
+                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-transparent text-[rgba(0,0,0,0.95)] hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-soft-card"
                                     >
                                         <ChevronLeft size={16} />
                                     </button>
@@ -289,7 +290,7 @@ const PostCard = ({
                                     <button
                                         onPointerDown={(e) => e.stopPropagation()}
                                         onClick={nextImage}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-transparent text-[rgba(0,0,0,0.95)] hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-soft-card"
                                     >
                                         <ChevronRight size={16} />
                                     </button>
@@ -300,34 +301,34 @@ const PostCard = ({
                                     {images.map((_, idx) => (
                                         <div
                                             key={idx}
-                                            className={`w-1 h-1 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
+                                            className={`w-1 h-1 rounded-full transition-all duration-300 shadow-soft-card ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-transparent'}`}
                                         />
                                     ))}
                                 </div>
 
                                 {/* Image Counter Badge */}
-                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 backdrop-blur-md text-[9px] font-medium text-white border border-white/10">
+                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 backdrop-blur-md text-[9px] font-medium text-white border notion-whisper-border">
                                     {currentImageIndex + 1} / {images.length}
                                 </div>
                             </>
                         )}
                     </div>
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-secondary/10">
-                        <span className="text-muted-foreground text-sm">無圖片</span>
+                    <div className="w-full h-full flex items-center justify-center bg-black/5">
+                        <span className="text-[#615d59] text-sm">無圖片</span>
                     </div>
                 )}
             </div>
 
             {/* Action Bar - Reduced Height */}
-            <div className="px-4 flex items-center justify-end border-b border-white/20 h-10 flex-shrink-0 bg-white/10">
+            <div className="px-4 flex items-center justify-end border-b notion-whisper-border h-10 flex-shrink-0 bg-white">
                 <div className="flex items-center gap-2">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onRemix && onRemix(post);
                         }}
-                        className="p-1.5 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
+                        className="p-1.5 rounded-full hover:bg-[rgba(0,117,222,0.1)] text-[#0075de] hover:text-[#0075de]-foreground transition-colors duration-300"
                         title="AI 改寫"
                     >
                         <Sparkles size={16} />
@@ -336,7 +337,7 @@ const PostCard = ({
                         href={post.originalUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors duration-300"
+                        className="p-1.5 rounded-full hover:bg-black/5 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] transition-colors duration-300"
                         title="開啟原始貼文"
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -346,71 +347,96 @@ const PostCard = ({
             </div>
 
             {/* Content Section - Flexible with Padding */}
-            <div className="px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white/30 rounded-b-3xl">
+            <div className="px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white rounded-b-lg">
                 {/* Caption - Flexible Height */}
-                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-2 font-medium flex-grow">
-                    <span className="font-bold text-foreground mr-2">{post.author}</span>
-                    {post.content || title}
+                <div className="flex-shrink-0 mb-1">
+                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-[11px]">{post.author}</span>
                 </div>
+
+                <div
+                    className="text-[11px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
+                    style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 12,
+                        WebkitBoxOrient: 'vertical',
+                        maxHeight: '182px'
+                    }}
+                >
+                    {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
+                </div>
+
+                {/* Spacer */}
+                <div className="flex-grow" />
 
                 {/* Tags - Fixed Height */}
                 <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-full bg-secondary/20 text-[9px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
+                        <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[9px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
                         </span>
                     ))}
                 </div>
 
                 {/* AI Summary - Fixed Height */}
-                <div className="bg-accent/5 border border-accent/10 rounded-xl p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
-                    {analysis?.summary ? (
-                        <>
-                            <div className="flex items-center gap-1 mb-0.5">
-                                <Sparkles size={10} className="text-accent" />
-                                <span className="text-[9px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
-                            </div>
-                            <div className="text-xs text-muted-foreground leading-snug line-clamp-2 group-hover/summary:text-foreground transition-colors">
-                                {(() => {
-                                    let summary = analysis.summary;
+                {showSummary && (
+                    <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
+                        {analysis?.summary ? (
+                            <>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                    <Sparkles size={10} className="text-[#0075de]" />
+                                    <span className="text-[9px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
+                                </div>
+                                <div className="text-xs text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
+                                    {(() => {
+                                        let summary = analysis.summary;
 
-                                    // 1. Try to parse JSON string if it looks like JSON
-                                    if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
-                                        try {
-                                            const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
-                                            const parsed = JSON.parse(cleanJson);
-                                            if (parsed && typeof parsed === 'object') {
-                                                summary = parsed;
+                                        // 1. Try to parse JSON string if it looks like JSON
+                                        if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
+                                            try {
+                                                const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
+                                                const parsed = JSON.parse(cleanJson);
+                                                if (parsed && typeof parsed === 'object') {
+                                                    summary = parsed;
+                                                }
+                                            } catch (e) {
+                                                // Ignore parse error
                                             }
-                                        } catch (e) {
-                                            // Ignore parse error
                                         }
-                                    }
 
-                                    // 2. Handle Object (Parsed or original)
-                                    if (typeof summary === 'object' && summary !== null) {
-                                        return summary.core_insight || "點擊查看詳情";
-                                    }
+                                        // 2. Handle Object (Parsed or original)
+                                        if (typeof summary === 'object' && summary !== null) {
+                                            return summary.core_insight || "點擊查看詳情";
+                                        }
 
-                                    // 3. Handle String (Strip Markdown)
-                                    if (typeof summary === 'string') {
-                                        // Remove ## headings, bold markers (**), code blocks (```)
-                                        return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
-                                    }
+                                        // 3. Handle String (Strip Markdown)
+                                        if (typeof summary === 'string') {
+                                            // Remove ## headings, bold markers (**), code blocks (```)
+                                            return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
+                                        }
 
-                                    return summary || "無摘要";
-                                })()}
+                                        return summary || "無摘要";
+                                    })()}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-xs text-[#615d59]/50 italic">
+                                無 AI 摘要
                             </div>
-                        </>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground/50 italic">
-                            無 AI 摘要
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
 
-                {/* Footer Info - Fixed at Bottom */}
-                <div className="mt-auto pt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-muted-foreground uppercase tracking-widest opacity-60 flex-shrink-0">
+                {/* Field Theory Category - Simplified */}
+                {analysis?.primary_category && analysis.primary_category !== 'other' && (
+                    <div className="mb-2">
+                        <span className="px-1.5 py-0.5 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[10px] font-bold uppercase tracking-tight">
+                            {analysis.primary_category}
+                        </span>
+                    </div>
+                )}
+
+                {/* Footer Info - Follows content */}
+                <div className="mt-auto flex items-center justify-between text-[9px] text-[#615d59] uppercase tracking-widest opacity-60 flex-shrink-0">
                     <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
                 </div>
             </div>

@@ -53,7 +53,7 @@ const ViewAllPage = ({ onRemix }) => {
         displayedPosts = displayedPosts.filter(post => {
             const contentMatch = post.content?.toLowerCase().includes(lowerQuery);
             const authorMatch = post.author?.toLowerCase().includes(lowerQuery);
-            const summaryMatch = post.analysis?.summary?.toLowerCase().includes(lowerQuery);
+            const summaryMatch = typeof post.analysis?.summary === 'string' && post.analysis.summary.toLowerCase().includes(lowerQuery);
             return contentMatch || authorMatch || summaryMatch;
         });
     }
@@ -73,11 +73,11 @@ const ViewAllPage = ({ onRemix }) => {
         <div className="w-full mx-auto px-4 pb-20">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pt-8 pl-2">
                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-accent/10 rounded-xl">
-                        <Layers className="text-accent" size={24} />
+                    <div className="p-2.5 bg-[rgba(0,117,222,0.1)] rounded-lg">
+                        <Layers className="text-[#0075de]" size={24} />
                     </div>
-                    <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-                    <span className="text-muted-foreground text-sm ml-2 font-medium">
+                    <h1 className="text-2xl font-bold text-[rgba(0,0,0,0.95)]">{title}</h1>
+                    <span className="text-[#615d59] text-sm ml-2 font-medium">
                         {displayedPosts.length} 篇貼文
                     </span>
                 </div>
@@ -86,23 +86,23 @@ const ViewAllPage = ({ onRemix }) => {
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Search Bar */}
                     <div className="relative group flex-1 md:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 group-focus-within:text-accent transition-colors" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[#0075de] transition-colors" size={16} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="全文搜尋 (作者/內容/總結)"
-                            className="w-full bg-white/50 border border-border focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-4 py-2 text-sm text-foreground focus:outline-none transition-all"
+                            className="w-full bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-4 py-2 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all"
                         />
                     </div>
 
                     {/* Category Filter */}
                     <div className="relative flex-shrink-0">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 pointer-events-none" size={14} />
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 pointer-events-none" size={14} />
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="appearance-none bg-white/50 border border-border focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-10 py-2 text-sm text-foreground focus:outline-none transition-all font-medium cursor-pointer"
+                            className="appearance-none bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-10 py-2 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all font-medium cursor-pointer"
                         >
                             {CATEGORIES.map(c => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -115,11 +115,11 @@ const ViewAllPage = ({ onRemix }) => {
             {loading ? (
                 <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="glass-card rounded-3xl overflow-hidden animate-pulse w-[360px] h-[560px] bg-white/20" />
+                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-[360px] h-[560px] bg-transparent" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground/60">
+                <div className="flex flex-col items-center justify-center py-20 text-[#615d59]/60">
                     <p className="text-lg font-medium">未找到貼文</p>
                 </div>
             ) : (

@@ -63,6 +63,27 @@ const CATEGORY_RULES = [
             /\b(imo|in my opinion|i think|thread:|🧵)\b/i,
         ],
     },
+    {
+        slug: 'productivity',
+        patterns: [
+            /\b(productivity|notion|obsidian|linear|workflow|efficient|efficiency)\b/i,
+            /\b(生產力|工作流|效率|筆記|整理術|時間管理)\b/i,
+        ],
+    },
+    {
+        slug: 'design',
+        patterns: [
+            /\b(design|ui|ux|figma|typography|palette|prototype|frontend design)\b/i,
+            /\b(設計|視覺|介面|使用者體驗|美感|排版|字體)\b/i,
+        ],
+    },
+    {
+        slug: 'crypto',
+        patterns: [
+            /\b(crypto|web3|blockchain|nft|dao|defi|solana|ethereum|bitcoin|btc|eth)\b/i,
+            /\b(加密貨幣|區塊鏈|空投|挖礦|鏈上|智能合約)\b/i,
+        ],
+    },
 ];
 
 /**
@@ -89,7 +110,7 @@ export function classifyByRules(content) {
  * 合法的分類 Slug 集合，用於驗證 LLM 回傳值
  */
 export const VALID_CATEGORIES = new Set([
-    'ai', 'tool', 'security', 'market', 'research', 'launch', 'opinion', 'other',
+    'ai', 'tool', 'security', 'market', 'research', 'launch', 'opinion', 'productivity', 'design', 'crypto', 'other',
 ]);
 
 /**

@@ -49,29 +49,14 @@ export async function batchClassify({ ruleOnly = false, limit = 100 } = {}) {
 
         for (const record of batch) {
             try {
+                const { categoryProcessor } = await import('./categoryProcessor.js');
                 const content = extractContent(record);
-                let category = 'other';
 
-                if (ruleOnly) {
-                    // 純 Rule-based 分類
-                    category = classifyByRules(content);
-                    console.log(`[BatchProcessor] Rule 分類 post_analysis:${record.id} -> ${category}`);
-                } else {
-                    // 先用 Rule-based 嘗試
-                    const ruleResult = classifyByRules(content);
-                    if (ruleResult !== 'other') {
-                        category = ruleResult;
-                        console.log(`[BatchProcessor] Rule 分類 post_analysis:${record.id} -> ${category}`);
-                    } else {
-                        // Rule 無法分類，嘗試從現有 summary 的 JSON 中提取
-                        const summaryCategory = extractCategoryFromSummary(record.summary);
-                        if (summaryCategory && summaryCategory !== 'other') {
-                            category = summaryCategory;
-                            console.log(`[BatchProcessor] Summary 提取分類 post_analysis:${record.id} -> ${category}`);
-                        }
-                        // 如果仍為 other，保留為 other（不再調用 LLM，節省成本）
-                    }
-                }
+                // 使用動態分類處理器（支援 Rule + AI Fallback + DB Configs）
+                console.log(`[BatchProcessor] 分析中 record:${record.id}...`);
+                const category = await categoryProcessor.classify(content, !ruleOnly);
+
+                console.log(`[BatchProcessor] 分類結果 record:${record.id} -> ${category}`);
 
                 // 3. 更新 primary_category
                 const { error: updateError } = await supabase

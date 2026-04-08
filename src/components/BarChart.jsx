@@ -20,10 +20,10 @@ const CATEGORY_COLORS = {
     other: 'bg-gray-400',
 };
 
-const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-accent' }) => {
+const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0075de]' }) => {
     if (!data || data.length === 0) {
         return (
-            <div className="flex items-center justify-center h-24 text-muted-foreground/50 text-sm">
+            <div className="flex items-center justify-center h-24 text-[#615d59]/50 text-sm">
                 暫無資料
             </div>
         );
@@ -46,7 +46,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-acc
                         className="flex items-center gap-3"
                     >
                         {/* Label */}
-                        <span className="text-xs text-foreground/80 font-medium w-20 shrink-0 text-right truncate capitalize">
+                        <span className="text-xs text-[rgba(0,0,0,0.95)]/80 font-medium w-20 shrink-0 text-right truncate capitalize">
                             {item.label}
                         </span>
 
@@ -62,7 +62,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-acc
 
                         {/* Value */}
                         {showValues && (
-                            <span className="text-xs font-bold text-foreground/60 w-8 text-left shrink-0">
+                            <span className="text-xs font-bold text-[rgba(0,0,0,0.95)]/60 w-8 text-left shrink-0">
                                 {item.value}
                             </span>
                         )}

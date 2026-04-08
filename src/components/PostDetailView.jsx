@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft } from 'lucide-react';
+import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library } from 'lucide-react';
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
@@ -30,13 +30,13 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
     const images = comment.images || [];
 
     return (
-        <div className={`flex flex-col ${depth === 0 ? 'bg-secondary/10 p-4 rounded-2xl' : 'mt-2'}`}>
+        <div className={`flex flex-col ${depth === 0 ? 'bg-black/5 p-4 rounded-lg' : 'mt-2'}`}>
             {authorName && (
                 <div className="mb-1">
-                    <span className="text-xs font-bold text-foreground/70">{authorName}</span>
+                    <span className="text-xs font-bold text-[rgba(0,0,0,0.95)]/70">{authorName}</span>
                 </div>
             )}
-            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-sm text-[rgba(0,0,0,0.95)]/90 leading-relaxed whitespace-pre-wrap break-words">
                 {comment.text}
             </p>
 
@@ -48,7 +48,7 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
                             key={idx}
                             src={proxyImage(img)}
                             alt="Comment attachment"
-                            className="max-h-48 rounded-lg object-contain border border-border/20 cursor-zoom-in hover:opacity-90 transition-opacity"
+                            className="max-h-48 rounded-lg object-contain border border-[rgba(0,0,0,0.1)]/20 cursor-zoom-in hover:opacity-90 transition-opacity"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onImageClick(img);
@@ -59,7 +59,7 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
             )}
 
             {hasReplies && (
-                <div className="border-l-2 border-border/30 ml-0.5 pl-3 mt-2">
+                <div className="border-l-2 border-[rgba(0,0,0,0.1)]/30 ml-0.5 pl-3 mt-2">
                     {comment.replies.map((reply, idx) => (
                         <CommentItem key={idx} comment={reply} depth={depth + 1} onImageClick={onImageClick} />
                     ))}
@@ -76,6 +76,7 @@ const PostDetailView = ({ onRemix }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [noteInput, setNoteInput] = useState('');
     const [zoomedImage, setZoomedImage] = useState(null);
+    const [isNoteOpen, setIsNoteOpen] = useState(false);
 
     // Get the post data from Redux store
     const { items, loading, initialized } = useSelector(state => state.posts);
@@ -93,9 +94,9 @@ const PostDetailView = ({ onRemix }) => {
         const handleKeyDown = (e) => {
             if (e.key === 'Escape') {
                 if (zoomedImage) setZoomedImage(null);
-                else navigate(-1);
+                else isNoteOpen ? setIsNoteOpen(false) : navigate(-1);
             }
-            if (!zoomedImage && post) {
+            if (!zoomedImage && post && !isNoteOpen) {
                 const images = post.images && post.images.length > 0 ? post.images : (post.screenshot ? [post.screenshot] : []);
                 if (e.key === 'ArrowLeft' && currentImageIndex > 0) setCurrentImageIndex(prev => prev - 1);
                 if (e.key === 'ArrowRight' && currentImageIndex < images.length - 1) setCurrentImageIndex(prev => prev + 1);
@@ -103,7 +104,7 @@ const PostDetailView = ({ onRemix }) => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [currentImageIndex, zoomedImage, post, navigate]);
+    }, [currentImageIndex, zoomedImage, post, navigate, isNoteOpen]);
 
     if (!post) {
         if (loading) {
@@ -115,13 +116,13 @@ const PostDetailView = ({ onRemix }) => {
         }
         return (
             <div className="flex flex-col items-center justify-center h-full gap-4">
-                <p className="text-lg text-muted-foreground">找不到貼文</p>
-                <button onClick={() => navigate('/')} className="text-accent hover:underline">返回首頁</button>
+                <p className="text-lg text-[#615d59]">找不到貼文</p>
+                <button onClick={() => navigate('/')} className="text-[#0075de] hover:underline">返回首頁</button>
             </div>
         );
     }
 
-    const { platform, title, screenshot, analysis } = post;
+    const { platform, title, screenshot, analysis, annotations } = post;
 
     const getPlatformStyle = (p) => {
         const platformName = p?.toLowerCase();
@@ -131,14 +132,14 @@ const PostDetailView = ({ onRemix }) => {
                 label: 'Instagram',
             };
         }
-        if (platformName === 'twitter' || platformName === 'x') {
+        if (platformName === 'twitter' || platformName === 'x' || platformName === 'github') {
             return {
-                icon: <Twitter size={14} className="text-blue-400" />,
-                label: 'X',
+                icon: platformName === 'github' ? <Share2 size={14} /> : <Twitter size={14} className="text-blue-400" />,
+                label: platformName.toUpperCase(),
             };
         }
         return {
-            icon: <ThreadsIcon size={14} className="text-foreground" />,
+            icon: <ThreadsIcon size={14} className="text-[rgba(0,0,0,0.95)]" />,
             label: 'Threads',
         };
     };
@@ -173,143 +174,137 @@ const PostDetailView = ({ onRemix }) => {
         }
     };
 
-    const nextImage = (e) => {
-        e.stopPropagation();
-        if (currentImageIndex < images.length - 1) {
-            setCurrentImageIndex(prev => prev + 1);
-        }
-    };
-
-    const prevImage = (e) => {
-        e.stopPropagation();
-        if (currentImageIndex > 0) {
-            setCurrentImageIndex(prev => prev - 1);
-        }
-    };
-
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="flex flex-col min-h-screen gap-8 pb-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col h-[calc(100vh-40px)] max-h-[calc(100vh-40px)] overflow-hidden"
         >
-            {/* Back Button Area */}
-            <div
-                className="flex-shrink-0 w-full cursor-pointer py-2 group"
-                onClick={() => navigate(-1)}
-            >
-                <div className="flex items-center gap-2 text-muted-foreground group-hover:text-foreground transition-colors">
-                    <ArrowLeft size={20} />
+            {/* --- Top Header / Navigation --- */}
+            <div className="flex items-center justify-between py-4 px-2 flex-shrink-0">
+                <div
+                    className="flex items-center gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group"
+                    onClick={() => navigate(-1)}
+                >
+                    <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
                     <span className="text-sm font-medium">返回</span>
+                    <span className="mx-2 text-neutral-300">/</span>
+                    <div className="flex items-center gap-2">
+                        {platformStyle.icon}
+                        <span className="text-xs font-semibold text-neutral-500">{platformStyle.label}</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => onRemix && onRemix(post)}
+                        className="notion-btn-ghost text-[#0075de] flex items-center gap-2"
+                    >
+                        <Sparkles size={16} />
+                        AI 改寫
+                    </button>
+                    <button
+                        onClick={() => setIsNoteOpen(true)}
+                        className="notion-btn-primary bg-amber-500 hover:bg-amber-600 border-amber-600/20 flex items-center gap-2"
+                    >
+                        <Library size={16} />
+                        我的筆記 ({annotations?.length || 0})
+                    </button>
                 </div>
             </div>
 
-            {/* Main Content Area - 3 Columns Unified */}
-            <div className="flex flex-col md:flex-row md:h-[80vh] h-auto flex-shrink-0 bg-white/40 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl overflow-hidden">
-                {/* Left Column: Image (30%) - Only show if images exist */}
-                {images.length > 0 && (
-                    <div className="w-full md:w-[30%] h-[50vh] md:h-full bg-black/5 relative flex items-center justify-center border-b md:border-b-0 md:border-r border-white/20 group">
-                        <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-                            <motion.div
-                                className="flex w-full h-full"
-                                animate={{ x: `-${currentImageIndex * 100}%` }}
-                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            >
-                                {images.map((img, idx) => (
-                                    <div key={idx} className="w-full h-full flex-shrink-0 flex items-center justify-center p-4">
-                                        <img
-                                            src={proxyImage(img)}
-                                            alt={`${title} - ${idx + 1}`}
-                                            className="max-w-full max-h-full object-contain"
-                                            draggable={false}
-                                            onClick={() => setZoomedImage(img)}
-                                        />
-                                    </div>
-                                ))}
-                            </motion.div>
+            {/* --- Main Content Layout --- */}
+            <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden pb-4">
 
-                            {/* Navigation Controls */}
-                            {images.length > 1 && (
-                                <>
-                                    {currentImageIndex > 0 && (
-                                        <button
-                                            onClick={prevImage}
-                                            className="absolute left-4 p-2 rounded-full bg-white/80 text-foreground hover:bg-white transition-colors opacity-0 group-hover:opacity-100 shadow-md z-10"
-                                        >
-                                            <ChevronLeft size={24} />
-                                        </button>
-                                    )}
-                                    {currentImageIndex < images.length - 1 && (
-                                        <button
-                                            onClick={nextImage}
-                                            className="absolute right-4 p-2 rounded-full bg-white/80 text-foreground hover:bg-white transition-colors opacity-0 group-hover:opacity-100 shadow-md z-10"
-                                        >
-                                            <ChevronRight size={24} />
-                                        </button>
-                                    )}
-
-                                    {/* Dots */}
-                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 px-3 py-1.5 rounded-full bg-black/10 backdrop-blur-sm z-10">
-                                        {images.map((_, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
-                                            />
-                                        ))}
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Middle Column: Content & Comments (45% or 60%) */}
-                <div className={`w-full ${images.length > 0 ? 'md:w-[45%]' : 'md:w-[60%]'} h-[60vh] md:h-full bg-white/20 flex flex-col border-b md:border-b-0 md:border-r border-white/20 transition-all duration-300`}>
-                    {/* Header */}
-                    <div className="p-5 border-b border-border/20 flex items-center justify-between flex-shrink-0 bg-white/20 backdrop-blur-sm">
+                {/* 1. Left Section: Instagram Style (Image top, Content bottom) */}
+                <div className="flex-[3] flex flex-col bg-white rounded-2xl border notion-whisper-border shadow-soft-card overflow-hidden">
+                    {/* User Header */}
+                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center gap-3">
                             {post.avatar ? (
-                                <img src={proxyImage(post.avatar)} alt={post.author} className="w-9 h-9 rounded-full object-cover border border-white/50 shadow-sm" />
+                                <img src={proxyImage(post.avatar)} alt={post.author} className="w-10 h-10 rounded-full object-cover border notion-whisper-border" />
                             ) : (
-                                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/50 shadow-sm">
+                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-sm font-bold text-neutral-600 border">
                                     {post.author?.[0] || 'U'}
                                 </div>
                             )}
                             <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-foreground">{post.author || 'Unknown'}</span>
-                                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-secondary/20 border border-secondary/30">
-                                        {platformStyle.icon}
-                                        <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
-                                            {platformStyle.label}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span className="text-xs text-muted-foreground">@{post.authorHandle || 'unknown'}</span>
+                                <p className="text-sm font-bold text-neutral-900">{post.author || 'Unknown'}</p>
+                                <p className="text-xs text-neutral-500">@{post.authorHandle || 'unknown'}</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => onRemix && onRemix(post)}
-                                className="p-2 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
-                                title="AI 改寫"
-                            >
-                                <Sparkles size={18} />
-                            </button>
-                            <button className="p-2 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors">
-                                <MoreHorizontal size={20} />
-                            </button>
-                        </div>
+                        <button className="text-neutral-400 hover:text-neutral-900 transition-colors">
+                            <MoreHorizontal size={20} />
+                        </button>
                     </div>
 
-                    {/* Scrollable Content Area */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 custom-scrollbar">
-                        {/* Caption/Post Content */}
-                        <div className="mb-6">
-                            <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap font-medium break-words">
+                    {/* Scrollable Area for Image and Content */}
+                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                        {/* Image(s) at Top */}
+                        {images.length > 0 && (
+                            <div className="relative bg-neutral-50 border-b border-neutral-50 group">
+                                <div className="max-w-3xl mx-auto py-2">
+                                    <div className="relative aspect-auto flex items-center justify-center overflow-hidden">
+                                        <motion.div
+                                            className="flex w-full"
+                                            animate={{ x: `-${currentImageIndex * 100}%` }}
+                                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                                        >
+                                            {images.map((img, idx) => (
+                                                <div key={idx} className="w-full flex-shrink-0 flex items-center justify-center">
+                                                    <img
+                                                        src={proxyImage(img)}
+                                                        alt={`${title} - ${idx + 1}`}
+                                                        className="max-w-full max-h-[60vh] object-contain shadow-soft-card cursor-zoom-in"
+                                                        onClick={() => setZoomedImage(img)}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </motion.div>
+
+                                        {images.length > 1 && (
+                                            <>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); if (currentImageIndex > 0) setCurrentImageIndex(i => i - 1) }}
+                                                    className="absolute left-4 p-2 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    disabled={currentImageIndex === 0}
+                                                >
+                                                    <ChevronLeft size={20} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); if (currentImageIndex < images.length - 1) setCurrentImageIndex(i => i + 1) }}
+                                                    className="absolute right-4 p-2 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    disabled={currentImageIndex === images.length - 1}
+                                                >
+                                                    <ChevronRight size={20} />
+                                                </button>
+                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 p-1 rounded-full bg-black/20">
+                                                    {images.map((_, i) => (
+                                                        <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentImageIndex ? 'bg-white' : 'bg-white/40'}`} />
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Content below Image */}
+                        <div className="p-6 max-w-2xl mx-auto">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Heart size={20} className="text-neutral-600 hover:text-red-500 cursor-pointer transition-colors" />
+                                    <MessageSquare size={20} className="text-neutral-600 hover:text-blue-500 cursor-pointer transition-colors" />
+                                    <Share2 size={20} className="text-neutral-600 hover:text-green-500 cursor-pointer transition-colors" />
+                                </div>
+                            </div>
+
+                            <h1 className="text-lg font-bold text-neutral-900 mb-4">{title}</h1>
+
+                            <p className="text-base text-neutral-800 leading-relaxed whitespace-pre-wrap mb-6">
                                 {(() => {
-                                    const text = post.content || title || '';
+                                    const text = post.content || '';
                                     const urlRegex = /(https?:\/\/[^\s]+)/g;
                                     const parts = text.split(urlRegex);
 
@@ -321,8 +316,7 @@ const PostDetailView = ({ onRemix }) => {
                                                     href={part}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-accent hover:text-accent/80 hover:underline break-all"
-                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-[#0075de] hover:underline break-all"
                                                 >
                                                     {part}
                                                 </a>
@@ -332,215 +326,186 @@ const PostDetailView = ({ onRemix }) => {
                                     });
                                 })()}
                             </p>
-                            <div className="mt-2 text-xs text-muted-foreground">
-                                {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '剛剛'}
-                            </div>
-                        </div>
 
-                        {/* Comments Section */}
-                        {comments.length > 0 && (
-                            <>
-                                <div className="h-px bg-border/20 my-4" />
-                                <div className="space-y-4">
+                            <div className="text-xs text-neutral-400 mb-8 pb-8 border-b border-neutral-100 uppercase tracking-widest">
+                                {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '剛剛'}
+                            </div>
+
+                            {/* Comments inside the scrollable area */}
+                            {comments.length > 0 && (
+                                <div className="space-y-6">
+                                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">留言回覆</h3>
                                     {comments.map((comment, idx) => (
                                         <CommentItem key={idx} comment={comment} onImageClick={setZoomedImage} />
                                     ))}
                                 </div>
-                            </>
-                        )}
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="p-4 border-t border-border/20 bg-white/30 flex-shrink-0">
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="新增留言..."
-                                className="w-full bg-transparent text-sm text-foreground placeholder-muted-foreground focus:outline-none"
-                            />
-                            <button className="absolute right-0 top-0 text-sm font-semibold text-accent hover:text-accent/80">
-                                發佈
-                            </button>
+                            )}
                         </div>
                     </div>
                 </div>
 
-                {/* Right Column: AI Summary (25% or 40%) */}
-                <div className={`w-full ${images.length > 0 ? 'md:w-[25%]' : 'md:w-[40%]'} h-auto md:h-full bg-accent/5 flex flex-col transition-all duration-300`}>
-                    {/* AI Summary Header */}
-                    <div className="p-5 border-b border-accent/10 flex-shrink-0 bg-gradient-to-b from-accent/10 to-transparent">
-                        <div className="flex items-center gap-2">
-                            <Sparkles size={16} className="text-accent" />
-                            <span className="text-sm font-bold text-accent uppercase tracking-wider">AI 摘要</span>
-                        </div>
+                {/* 2. Right Section: AI Summary */}
+                <div className="flex-1 min-w-[320px] max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden">
+                    <div className="p-5 border-b border-neutral-100 flex items-center gap-2 bg-white">
+                        <Sparkles size={16} className="text-[#0075de]" />
+                        <span className="text-sm font-bold text-neutral-700 uppercase tracking-wider">AI 知識摘要</span>
                     </div>
 
-                    {/* AI Summary Content */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
                         {analysis?.summary ? (
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 {(() => {
                                     let data = analysis.summary;
-                                    // Try to parse if it's a string that looks like JSON
                                     if (typeof data === 'string' && (data.trim().startsWith('{') || data.includes('```json'))) {
                                         try {
                                             const cleanJson = data.replace(/```json\s*|\s*```/g, '').trim();
                                             data = JSON.parse(cleanJson);
-                                        } catch (e) {
-                                            // Keep as string if parse fails
-                                        }
+                                        } catch (e) { }
                                     }
 
-                                    if (typeof data === 'object' && data !== null) {
+                                    if (!data) return <p className='text-sm text-neutral-400 italic'>無效的摘要結構</p>;
+
+                                     if (typeof data === 'object' && data !== null) {
                                         return (
-                                            <div className="bg-white/60 border border-white/50 rounded-2xl p-5 shadow-sm text-foreground/90">
-                                                {/* Core Insight */}
+                                            <>
                                                 {data.core_insight && (
-                                                    <div className="mb-6">
-                                                        <h4 className="flex items-center gap-2 text-sm font-bold text-accent uppercase tracking-wider mb-2">
-                                                            <Sparkles size={14} />
-                                                            核心洞察
-                                                        </h4>
-                                                        <p className="text-sm leading-relaxed font-medium">
-                                                            {data.core_insight}
-                                                        </p>
+                                                    <div className="bg-white p-5 rounded-xl border notion-whisper-border shadow-soft-card">
+                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0075de] mb-3">核心洞察</h4>
+                                                        <p className="text-sm font-medium leading-relaxed text-neutral-800">{data.core_insight}</p>
                                                     </div>
                                                 )}
-
-                                                {/* Key Points */}
-                                                {data.key_points && data.key_points.length > 0 && (
-                                                    <div className="mb-6">
-                                                        <h4 className="text-xs font-bold text-foreground/70 uppercase tracking-wider mb-3">關鍵要點</h4>
-                                                        <ul className="space-y-2">
-                                                            {data.key_points.map((point, idx) => (
-                                                                <li key={idx} className="text-sm flex items-start gap-2 leading-relaxed">
-                                                                    <span className="font-bold text-accent mt-0.5">•</span>
-                                                                    <span>{point}</span>
+                                                {data.key_points && (
+                                                    <div className="bg-white p-5 rounded-xl border notion-whisper-border shadow-soft-card">
+                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-400 mb-3">關鍵要點</h4>
+                                                        <ul className="space-y-3">
+                                                            {data.key_points.map((p, i) => (
+                                                                <li key={i} className="text-sm text-neutral-700 flex gap-2 leading-relaxed">
+                                                                    <span className="text-[#0075de] font-bold">•</span>
+                                                                    <span>{p}</span>
                                                                 </li>
                                                             ))}
                                                         </ul>
                                                     </div>
                                                 )}
-
-                                                {/* Actionable Knowledge */}
                                                 {data.actionable_knowledge && (
-                                                    <div className="mb-6">
-                                                        <h4 className="text-xs font-bold text-foreground/70 uppercase tracking-wider mb-2">實用知識</h4>
-                                                        <p className="text-sm leading-relaxed">
-                                                            {data.actionable_knowledge}
-                                                        </p>
+                                                    <div className="bg-[#0075de]/5 p-5 rounded-xl border border-[#0075de]/10 shadow-soft-card">
+                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0075de] mb-3">實用建議</h4>
+                                                        <p className="text-sm leading-relaxed text-neutral-800">{data.actionable_knowledge}</p>
                                                     </div>
                                                 )}
-
-                                                {/* Tags */}
-                                                {data.tags && data.tags.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2 pt-2 border-t border-border/10">
-                                                        {data.tags.map((tag, idx) => (
-                                                            <span key={idx} className="text-xs text-muted-foreground hover:text-accent transition-colors cursor-pointer">
-                                                                #{tag}
-                                                            </span>
+                                                {data.tags && (
+                                                    <div className="flex flex-wrap gap-2 pt-2">
+                                                        {data.tags.map((t, i) => (
+                                                            <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500 border border-neutral-200 hover:bg-neutral-200 transition-colors cursor-pointer">#{t}</span>
                                                         ))}
                                                     </div>
                                                 )}
-                                            </div>
-                                        );
-                                    } else {
-                                        // Fallback for raw string
-                                        let content = typeof data === 'string' ? data : JSON.stringify(data);
-                                        // Strip Markdown syntax (headers, bold, code blocks)
-                                        if (typeof content === 'string') {
-                                            content = content.replace(/##\s*|###\s*|\*\*/g, '').replace(/`/g, '').trim();
-                                        }
-
-                                        return (
-                                            <div className="bg-white/60 border border-white/50 rounded-2xl p-5 shadow-sm">
-                                                <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words">
-                                                    {content}
-                                                </p>
-                                            </div>
+                                            </>
                                         );
                                     }
+                                    return <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">{typeof data === 'string' ? data : JSON.stringify(data)}</p>;
                                 })()}
-
-                                {analysis?.sentiment && (
-                                    <div className="bg-white/60 border border-white/50 rounded-2xl p-4 shadow-sm">
-                                        <h4 className="text-xs font-bold text-accent uppercase tracking-wider mb-2">情緒分析</h4>
-                                        <p className="text-xs text-muted-foreground break-words">{analysis.sentiment}</p>
-                                    </div>
-                                )}
                             </div>
                         ) : (
-                            <div className="flex items-center justify-center h-full">
-                                <div className="text-center text-muted-foreground/50">
-                                    <Sparkles size={32} className="mx-auto mb-2 opacity-30" />
-                                    <p className="text-xs">無 AI 分析</p>
-                                </div>
+                            <div className="h-full flex flex-col items-center justify-center opacity-30 italic text-neutral-400">
+                                <Sparkles size={40} className="mb-2" />
+                                <p className="text-sm">尚未產生 AI 摘要</p>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Bottom Section: Notes (Reorganized) */}
-            <div className="h-[100vh] flex-shrink-0 bg-amber-50/50 rounded-3xl border border-amber-100/50 flex flex-col shadow-sm overflow-hidden">
-                {/* Top Row: Input and Save */}
-                <div className="p-4 border-b border-amber-100/50 flex gap-3 items-start bg-white/30">
-                    <div className="p-1.5 rounded-lg bg-amber-100/50 text-amber-600 flex-shrink-0 mt-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                    </div>
-                    <textarea
-                        placeholder="添加我的筆記..."
-                        className="flex-1 bg-white/50 border border-white/50 rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-amber-400/50 focus:bg-white/80 transition-all shadow-inner resize-none custom-scrollbar"
-                        rows={5}
-                        value={noteInput}
-                        onChange={(e) => setNoteInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                                handleSaveNote();
-                            }
-                        }}
-                    />
-                    <button
-                        onClick={handleSaveNote}
-                        disabled={!noteInput.trim()}
-                        className="px-6 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm whitespace-nowrap mt-1"
-                    >
-                        儲存
-                    </button>
-                </div>
-
-                {/* Bottom Area: Notes List */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
-                    {post.annotations && post.annotations.length > 0 ? (
-                        <div className="space-y-2">
-                            {post.annotations.map((note, idx) => (
-                                <div key={idx} className="p-3 rounded-xl bg-white/60 border border-white/50 shadow-sm flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-2 flex-shrink-0" />
-                                    <div className="flex-1">
-                                        <p className="text-sm text-foreground/80 leading-relaxed">{note.content}</p>
-                                        <div className="mt-1 text-[10px] text-muted-foreground">
-                                            {new Date(note.created_at).toLocaleDateString(undefined, {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            })}
-                                        </div>
+            {/* --- Notes Drawer (Collapsible Right Side Overlay) --- */}
+            <AnimatePresence>
+                {isNoteOpen && (
+                    <>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setIsNoteOpen(false)}
+                            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[100]"
+                        />
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                            className="fixed right-0 top-0 h-full w-full max-w-[450px] bg-amber-50 shadow-deep rounded-l-3xl z-[110] flex flex-col overflow-hidden"
+                        >
+                            <div className="p-6 border-b border-amber-200/50 flex items-center justify-between flex-shrink-0 bg-white/50 backdrop-blur-md">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
+                                        <Library size={20} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-amber-900">學術筆記</h2>
+                                        <p className="text-xs text-amber-700/60 font-medium">整理與紀錄此貼文的個人見解</p>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50 italic text-sm">
-                            <p>尚未新增筆記</p>
-                            <p className="text-xs mt-1 opacity-70">在上方輸入並按下 Enter 鍵</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+                                <button
+                                    onClick={() => setIsNoteOpen(false)}
+                                    className="p-2 rounded-full hover:bg-amber-100 text-amber-800 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {/* Note Content */}
+                            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                                {/* New Note Input */}
+                                <div className="bg-white rounded-2xl p-4 shadow-soft-card border border-amber-200">
+                                    <textarea
+                                        placeholder="輸入您的見解或筆記 (Ctrl + Enter 儲存)..."
+                                        className="w-full bg-transparent border-none text-neutral-800 placeholder-amber-900/40 text-sm leading-relaxed resize-none focus:ring-0 h-32"
+                                        value={noteInput}
+                                        onChange={(e) => setNoteInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveNote();
+                                        }}
+                                    />
+                                    <div className="flex justify-end mt-2">
+                                        <button
+                                            onClick={handleSaveNote}
+                                            disabled={!noteInput.trim()}
+                                            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all disabled:opacity-30 disabled:grayscale shadow-soft-card"
+                                        >
+                                            新增筆記
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Notes List */}
+                                <div className="space-y-4 pt-4">
+                                    <h3 className="text-[10px] uppercase font-bold text-amber-800/40 tracking-widest pl-2">已儲存的筆記 ({annotations?.length || 0})</h3>
+                                    {annotations && annotations.length > 0 ? (
+                                        annotations.map((note, idx) => (
+                                            <div key={idx} className="bg-white/80 p-4 rounded-xl border border-amber-200 shadow-sm relative group">
+                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-[8px] text-amber-500 font-bold uppercase">{idx + 1}</p>
+                                                </div>
+                                                <p className="text-sm text-neutral-800 leading-relaxed">{note.content}</p>
+                                                <div className="mt-2 flex items-center justify-between">
+                                                    <span className="text-[10px] text-amber-700/60 font-medium">
+                                                        {new Date(note.created_at).toLocaleDateString(undefined, {
+                                                            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                                        })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-center py-10 opacity-30">
+                                            <p className="text-sm italic text-amber-900">尚無筆記</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
 
             {/* Zoomed Image Overlay */}
             <AnimatePresence>
@@ -556,7 +521,7 @@ const PostDetailView = ({ onRemix }) => {
                         }}
                     >
                         <button
-                            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                            className="absolute top-4 right-4 p-2 rounded-full bg-transparent text-white hover:bg-transparent transition-colors"
                             onClick={() => setZoomedImage(null)}
                         >
                             <X size={24} />

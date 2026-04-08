@@ -108,3 +108,9 @@
     - [ ] 在爬蟲抓取時，自動將大頭貼 (Avatar) 與貼文圖檔 (Post Images) 下載並轉存到自有的資料庫或 Supabase Storage中。
     - [ ] 更新貼文資料儲存邏輯，以內部儲存的網址取代原平台的 CDN 網址，徹底解決 CDN 過期導致的 403 破圖問題。
 ```
+- [x] **修復 AI 摘要 undefined 錯誤**
+    - [x] **問題診斷**：在 PostDetailView 中存取 nalysis.summary 時，若 AI 服務因配置或網路問題未回傳正確物件，前端會發生運行時崩潰。
+    - [x] **解決方案**：
+        - 更新 server/services/aiService.js 確保在所有失敗路徑下皆回傳預設 Mock 物件。
+        - 更新 server/index.js 增加對 AI 執行結果的防禦性檢查。
+        - 更新前端各組件 (PostDetailView, SidebarSearch, ViewAllPage) 增加屬性安全存取與類型檢查。

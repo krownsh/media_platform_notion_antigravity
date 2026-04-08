@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Try to get from environment variables first
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'http://64.181.223.48:8000';

@@ -14,13 +14,13 @@ const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' 
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative bg-white/40 backdrop-blur-xl rounded-2xl border border-white/50 shadow-md p-5 flex flex-col gap-2 overflow-hidden"
+            className="relative bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-5 flex flex-col gap-2 overflow-hidden"
         >
             {/* 背景裝飾光暈 */}
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-current opacity-5 blur-xl" style={{ color: 'currentColor' }} />
 
             <div className="flex items-start justify-between">
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+                <span className="text-xs font-semibold text-[#615d59] uppercase tracking-wider">{label}</span>
                 {icon && <span className={`${colorClass} opacity-80`}>{icon}</span>}
             </div>
 
@@ -29,7 +29,7 @@ const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' 
             </div>
 
             {subtext && (
-                <p className="text-xs text-muted-foreground leading-relaxed">{subtext}</p>
+                <p className="text-xs text-[#615d59] leading-relaxed">{subtext}</p>
             )}
         </motion.div>
     );

@@ -13,20 +13,20 @@ import { Activity } from 'lucide-react';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <div
-        className={`flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.25,0.8,0.3,1)] group ${active
-            ? 'bg-secondary/40 text-foreground font-medium shadow-sm'
-            : 'text-muted-foreground hover:bg-secondary/20 hover:text-foreground hover:translate-x-1'
-            } ${collapsed ? 'justify-center px-2' : ''}`}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-sm cursor-pointer transition-colors group ${active
+            ? 'bg-black/5 text-[rgba(0,0,0,0.95)] font-semibold'
+            : 'text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)]'
+            } ${collapsed ? 'justify-center px-1' : ''}`}
         onClick={onClick}
         title={collapsed ? label : ''}
     >
-        <Icon size={20} className={`transition-transform duration-500 ${active ? 'text-accent' : 'group-hover:text-accent'}`} />
+        <Icon size={16} className={`transition-colors ${active ? 'text-[rgba(0,0,0,0.95)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
         {!collapsed && (
-            <span className="flex-1 whitespace-nowrap overflow-hidden transition-all duration-300">{label}</span>
+            <span className="flex-1 whitespace-nowrap overflow-hidden text-sm">{label}</span>
         )}
         {!collapsed && hasSubmenu && (
-            <div className="text-muted-foreground/70">
-                {expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            <div className="text-[#615d59]/70">
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </div>
         )}
     </div>
@@ -108,19 +108,19 @@ const Layout = ({ children }) => {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden text-foreground bg-background">
+        <div className="flex h-screen overflow-hidden text-[rgba(0,0,0,0.95)] bg-background">
             {/* Sidebar */}
-            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} flex-shrink-0 glass-panel flex flex-col border-r border-border/40 z-50 relative transition-all duration-300 ease-in-out`}>
+            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} flex-shrink-0 bg-white notion-whisper-border shadow-soft-card flex flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-all duration-300 ease-in-out`}>
                 <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                     {!isSidebarCollapsed && (
                         <div className="cursor-pointer overflow-hidden" onClick={() => navigate('/')}>
-                            <h1 className="text-xl font-bold tracking-tight text-foreground/80 font-serif whitespace-nowrap">社群筆記</h1>
-                            <p className="text-[10px] text-muted-foreground mt-0.5 tracking-widest uppercase opacity-70 whitespace-nowrap">Social Knowledge</p>
+                            <h1 className="text-xl font-bold tracking-tight text-[rgba(0,0,0,0.95)]/80 font-serif whitespace-nowrap">社群筆記</h1>
+                            <p className="text-[10px] text-[#615d59] mt-0.5 tracking-widest uppercase opacity-70 whitespace-nowrap">Social Knowledge</p>
                         </div>
                     )}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary/20 transition-colors"
+                        className="p-1.5 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] rounded-lg hover:bg-black/5 transition-colors"
                     >
                         {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </button>
@@ -178,20 +178,20 @@ const Layout = ({ children }) => {
                                         return (
                                             <div key={collection.id}>
                                                 <div
-                                                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl cursor-pointer text-sm transition-all duration-300 ${isActive
-                                                        ? 'bg-secondary/30 text-foreground font-medium'
-                                                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/10 hover:translate-x-1'
+                                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-sm cursor-pointer text-sm transition-colors ${isActive
+                                                        ? 'bg-black/5 text-[rgba(0,0,0,0.95)] font-medium'
+                                                        : 'text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-black/5'
                                                         }`}
                                                     onClick={() => toggleCollection(collection.id)}
                                                 >
-                                                    <Folder size={14} className={isActive ? 'text-accent' : 'opacity-70'} />
+                                                    <Folder size={14} className={isActive ? 'text-[rgba(0,0,0,0.95)]' : 'opacity-70'} />
                                                     <span className="truncate flex-1">{collection.name}</span>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                     {collections.length === 0 && (
-                                        <div className="px-4 py-2 text-xs text-muted-foreground/60 italic">
+                                        <div className="px-3 py-1.5 text-xs text-[#615d59]/60 italic">
                                             尚無收藏夾
                                         </div>
                                     )}
@@ -203,26 +203,26 @@ const Layout = ({ children }) => {
 
                 <div className="p-4 mt-auto">
                     {user ? (
-                        <div className={`bg-white/40 border border-white/20 rounded-2xl p-3 shadow-sm backdrop-blur-md flex items-center gap-3 group hover:bg-white/60 transition-all duration-300 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                            <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-accent border border-accent/20 flex-shrink-0">
-                                <UserIcon size={18} />
+                        <div className={`bg-white border notion-whisper-border rounded-lg p-2 shadow-soft-card flex items-center gap-2 group hover:bg-black/5 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                            <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#615d59] border border-black/10 flex-shrink-0">
+                                <UserIcon size={16} />
                             </div>
                             {!isSidebarCollapsed && (
                                 <>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-foreground truncate">
+                                        <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate">
                                             {user.email?.split('@')[0]}
                                         </p>
-                                        <p className="text-[10px] text-muted-foreground truncate opacity-70">
+                                        <p className="text-[10px] text-[#615d59] truncate opacity-70">
                                             {user.email}
                                         </p>
                                     </div>
                                     <button
                                         onClick={handleLogout}
-                                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                        className="p-1 text-[#615d59] hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                                         title="登出"
                                     >
-                                        <LogOut size={16} />
+                                        <LogOut size={14} />
                                     </button>
                                 </>
                             )}
@@ -230,10 +230,10 @@ const Layout = ({ children }) => {
                     ) : (
                         <button
                             onClick={() => navigate('/login')}
-                            className={`w-full flex items-center justify-center gap-2 bg-accent text-white py-3 rounded-2xl font-medium hover:bg-accent/90 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 ${isSidebarCollapsed ? 'px-0' : ''}`}
+                            className={`w-full flex items-center justify-center gap-2 bg-[rgba(0,0,0,0.95)] text-white py-2 rounded-md font-medium hover:bg-black transition-colors shadow-soft-card ${isSidebarCollapsed ? 'px-0' : ''}`}
                             title={isSidebarCollapsed ? "登入" : ""}
                         >
-                            <LogIn size={18} />
+                            <LogIn size={16} />
                             {!isSidebarCollapsed && <span>登入</span>}
                         </button>
                     )}
@@ -241,19 +241,17 @@ const Layout = ({ children }) => {
             </aside>
 
             {/* Main Content */}
-            <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-gradient-to-br from-background via-background to-secondary/10">
-                <div className="w-full p-8 max-w-full">
+            <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-background">
+                <div className="w-full p-4 md:p-8">
                     {children}
                 </div>
 
                 {/* Floating Task Center Toggle */}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                <button
                     onClick={() => dispatch(toggleTaskCenter())}
-                    className="fixed bottom-8 right-8 w-14 h-14 bg-accent text-white rounded-full shadow-lg flex items-center justify-center z-[60] hover:shadow-xl transition-shadow group"
+                    className="fixed bottom-8 right-8 w-12 h-12 bg-white text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-full shadow-deep flex items-center justify-center z-[60] hover:bg-black/5 transition-colors group"
                 >
-                    <Activity size={24} className={tasks.length > 0 ? 'animate-pulse' : ''} />
+                    <Activity size={20} className={tasks.length > 0 ? 'animate-pulse text-[#dd5b00]' : 'text-[#615d59]'} />
 
                     {/* Badge */}
                     <AnimatePresence>
@@ -270,10 +268,10 @@ const Layout = ({ children }) => {
                     </AnimatePresence>
 
                     {/* Tooltip */}
-                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-xl">
+                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-deep">
                         {tasks.length > 0 ? `${tasks.length} 個任務處理中` : '任務中心'}
                     </div>
-                </motion.button>
+                </button>
 
                 <TaskCenter />
             </main>

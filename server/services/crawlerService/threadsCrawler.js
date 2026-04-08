@@ -4,7 +4,12 @@ import fs from 'fs';
 
 console.log('[THREADS_CRAWLER_LOADED] Module is being loaded at ' + new Date().toISOString());
 
-dotenv.config({ path: './server/.env' });
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 /**
  * Fallback function to scrape using Apify if Puppeteer fails.

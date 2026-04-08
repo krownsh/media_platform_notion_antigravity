@@ -129,3 +129,26 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 ### 2. 接下來的執行重點
 我已將這些對齊後的工作事項記錄在 `tasks.md` 的 `Phase 8` 中。目前的焦點將是：「**讓系統抓回來的雜亂發文，經過 `categoryProcessor` 結構化後存入資料庫，接著透過 `statsService` 將聚合資訊拋轉給 `InsightPage`，用一致性的介面給出最佳的個人資訊儀表板。**」
+
+---
+
+## 📂 雙軌分類系統 (Manual Folders vs. Auto Categories)
+**時間**：2026-04-08
+**問題描述**：使用者詢問關於 `fieldtheory-cli` 內化策略下，自動分類與手動收藏的差異。
+
+### 1. 提問與解答 (對齊 Field Theory 策略)
+1. **自動分類標示**：
+   * 貼文會透過 `categoryProcessor` 自動掃描關鍵字並打上標籤。
+   * **顯示位置**：目前呈現為 `PostCard` 內容區下方的 **#標籤 (Tags)**。
+2. **新增分類規則**：
+   * 目前規則存放在 `server/services/categoryRules.js`。
+   * 您可以透過更新該檔案的正則表達式來新增自動分類邏輯（未來計畫提供介面化設定）。
+3. **歸屬數量差異**：
+   * **手動收藏（Collections）**：一對一。像「資料夾」，確保管理清晰。
+   * **自動分類（Categories/Tags）**：一對多。一篇文可以同時具備多個領域屬性（如：AI + Web），會完整反映在儀表板的統計中。
+
+### 2. 技術架構對稱
+* **後端處理**：`categoryProcessor.js` (內化 `ft classify`)。
+* **聚合顯示**：`InsightPage.jsx` (內化 `ft stats` / `ft categories`)。
+
+

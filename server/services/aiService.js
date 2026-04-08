@@ -13,12 +13,14 @@ dotenv.config();
  */
 class AiService {
     constructor() {
-        // 強制優先讀取根目錄環境變數
-        dotenv.config();
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        // 強制優先讀取伺服器目錄下的環境變數 (不論 CWD 在哪)
+        dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-        this.minimaxApiKey = process.env.MINIMAX_API_KEY;
-        this.minimaxGroupId = process.env.MINIMAX_GROUP_ID;
-        this.googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+        this.minimaxApiKey = process.env.MINIMAX_API_KEY?.trim();
+        this.minimaxGroupId = process.env.MINIMAX_GROUP_ID?.trim();
+        this.googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
         this.baseUrl = 'https://api.minimax.io/v1'; // 換成 .io 試試
 
         // 徹底過濾無效字元
@@ -54,30 +56,43 @@ class AiService {
      * Analyze a Threads post
      */
     async analyzeThreadsPost(fullJsonData) {
+        if (!fullJsonData || !Array.isArray(fullJsonData) || fullJsonData.length === 0) {
+            console.warn('[AiService] No valid data provided for Threads analysis');
+            return this.mockAnalysis();
+        }
         console.log('[AiService] Analyzing Threads post...');
         const mainPost = fullJsonData[0];
-        if (!mainPost) throw new Error("No post data found");
+        if (!mainPost) {
+            return this.mockAnalysis();
+        }
 
         const systemPrompt = await this.getSystemPrompt();
 
         try {
-            // 1. Try Google Gemma 3 first
-            if (this.googleApiKey) {
-                try {
-                    return await this.analyzeWithGoogle(mainPost, systemPrompt, 'gemma-3-27b-it');
-                } catch (error) {
-                    console.warn('[AiService] Google Gemini failed, falling back...', error.message);
-                }
-            }
-
-            // 2. Try Minimax (Official API)
+            // 1. Try Minimax (Official API) - User Preference
             try {
                 return await this.analyzeWithMinimax(mainPost, systemPrompt, this.currentFreeModel);
             } catch (error) {
                 console.warn(`[AiService] Minimax model ${this.currentFreeModel} failed:`, error.message);
                 this.switchToNextFreeModel();
-                return await this.analyzeWithMinimax(mainPost, systemPrompt, this.currentFreeModel);
+                try {
+                    return await this.analyzeWithMinimax(mainPost, systemPrompt, this.currentFreeModel);
+                } catch (retryError) {
+                    console.warn('[AiService] Minimax retry failed, checking Google fallback...');
+                }
             }
+
+            // 2. Fallback to Google Gemini
+            if (this.googleApiKey) {
+                try {
+                    return await this.analyzeWithGoogle(mainPost, systemPrompt, 'gemini-1.5-flash');
+                } catch (error) {
+                    console.warn('[AiService] Google Gemini fallback failed:', error.message);
+                }
+            }
+
+            // 如果全部嘗試都失敗了且沒有丟出錯誤，也要回傳 mock
+            return this.mockAnalysis();
         } catch (finalError) {
             console.error('[AiService] All analysis models failed:', finalError.message);
             return this.mockAnalysis();
@@ -91,14 +106,6 @@ class AiService {
         console.log('[AiService] Analyzing Generic post...');
         const systemPrompt = await this.getGenericSystemPrompt();
 
-        if (this.googleApiKey) {
-            try {
-                return await this.analyzeWithGoogle(contentData, systemPrompt, 'gemma-3-27b-it');
-            } catch (error) {
-                console.warn('[AiService] Gemma 3 failed for generic post:', error.message);
-            }
-        }
-
         if (this.minimaxApiKey) {
             for (const model of this.freeModels) {
                 try {
@@ -106,6 +113,14 @@ class AiService {
                 } catch (error) {
                     console.warn(`[AiService] Minimax model ${model} failed:`, error.message);
                 }
+            }
+        }
+
+        if (this.googleApiKey) {
+            try {
+                return await this.analyzeWithGoogle(contentData, systemPrompt, 'gemini-1.5-flash');
+            } catch (error) {
+                console.warn('[AiService] Google Gemini failed for generic post:', error.message);
             }
         }
 
@@ -136,7 +151,7 @@ class AiService {
         }
     }
 
-    async analyzeWithGoogle(mainPost, systemPrompt, modelName = 'gemma-3-27b-it') {
+    async analyzeWithGoogle(mainPost, systemPrompt, modelName = 'gemini-1.5-flash') {
         console.log(`[AiService] Google Analysis: ${modelName}`);
         const repliesText = (mainPost.replies || []).map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n') || '(No replies)';
         const textPart = `${systemPrompt}\n\nContent: ${mainPost.content || mainPost.main_text}\nAuthor: ${mainPost.author || 'Unknown'}\nReplies:\n${repliesText}`;
@@ -187,7 +202,14 @@ class AiService {
 
         const data = await response.json();
         if (!response.ok) throw new Error(`Minimax API Error: ${response.status} - ${JSON.stringify(data)}`);
-        return this.parseAiResponse(data.choices[0].message.content, modelName, data, mainPost.content || mainPost.main_text);
+
+        const aiContent = data.choices?.[0]?.message?.content;
+        if (!aiContent) {
+            console.warn('[AiService] Minimax returned empty content or no choices');
+            throw new Error('AI returned no content');
+        }
+
+        return this.parseAiResponse(aiContent, modelName, data, mainPost.content || mainPost.main_text);
     }
 
     parseAiResponse(aiText, modelName, rawData = null, originalContent = '') {

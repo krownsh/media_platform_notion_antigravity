@@ -1,14 +1,19 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
 import { supabase } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
-
-dotenv.config({ path: './server/.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -37,7 +42,7 @@ app.post('/api/process', async (req, res) => {
         if (result.data) {
             const platform = result.data.platform;
             const isSocial = platform === 'threads' || platform === 'twitter';
-            const isGeneric = platform === 'generic' || platform === 'unknown';
+            const isGeneric = platform === 'generic' || platform === 'unknown' || platform === 'github' || platform === 'notion' || platform === 'youtube';
 
             // 1) 取得主要分類 (CategoryClassification)
             const { categoryProcessor } = await import('./services/categoryProcessor.js');
@@ -54,11 +59,15 @@ app.post('/api/process', async (req, res) => {
                 console.log(`[Server] Running AI analysis for ${platform} post...`);
                 try {
                     const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                    result.data.analysis.summary = aiResult.summary;
-                    result.data.analysis.raw = aiResult.raw;
-                    result.data.analysis.tags = aiResult.structured?.tags || [];
-                    result.data.analysis.topics = aiResult.structured?.topics || [];
-                    console.log('[Server] Social AI analysis completed');
+                    if (aiResult) {
+                        result.data.analysis.summary = aiResult.summary;
+                        result.data.analysis.raw = aiResult.raw;
+                        result.data.analysis.tags = aiResult.structured?.tags || [];
+                        result.data.analysis.topics = aiResult.structured?.topics || [];
+                        console.log('[Server] Social AI analysis completed');
+                    } else {
+                        throw new Error('AI analysis returned no results');
+                    }
                 } catch (aiError) {
                     console.warn('[Server] Social AI analysis failed:', aiError.message);
                     result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
@@ -67,11 +76,15 @@ app.post('/api/process', async (req, res) => {
                 console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
                 try {
                     const aiResult = await aiService.analyzeGenericPost(result.data);
-                    result.data.analysis.summary = aiResult.summary;
-                    result.data.analysis.raw = aiResult.raw;
-                    result.data.analysis.tags = aiResult.structured?.tags || [];
-                    result.data.analysis.topics = aiResult.structured?.topics || [];
-                    console.log('[Server] Generic AI analysis completed');
+                    if (aiResult) {
+                        result.data.analysis.summary = aiResult.summary;
+                        result.data.analysis.raw = aiResult.raw;
+                        result.data.analysis.tags = aiResult.structured?.tags || [];
+                        result.data.analysis.topics = aiResult.structured?.topics || [];
+                        console.log('[Server] Generic AI analysis completed');
+                    } else {
+                        throw new Error('Generic AI analysis returned no results');
+                    }
                 } catch (aiError) {
                     console.warn('[Server] Generic AI analysis failed:', aiError.message);
                     result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
@@ -631,7 +644,7 @@ app.get('/api/stats/tags', async (req, res) => {
 
 // POST /api/batch-classify - 手動觸發批量分類
 app.post('/api/batch-classify', async (req, res) => {
-    const { ruleOnly = true, limit = 100 } = req.body;
+    const { ruleOnly = false, limit = 100 } = req.body;
     try {
         console.log('[BatchClassify] Triggered manually...');
         const result = await batchClassify({ ruleOnly, limit });

@@ -21,8 +21,8 @@ const TaskCenter = () => {
 
     const getStatusIcon = (status) => {
         switch (status) {
-            case 'pending': return <Clock size={16} className="text-muted-foreground" />;
-            case 'crawling': return <Loader2 size={16} className="text-accent animate-spin" />;
+            case 'pending': return <Clock size={16} className="text-[#615d59]" />;
+            case 'crawling': return <Loader2 size={16} className="text-[#0075de] animate-spin" />;
             case 'analyzing': return <Loader2 size={16} className="text-primary animate-spin" />;
             case 'failed': return <AlertCircle size={16} className="text-destructive" />;
             default: return <Clock size={16} />;
@@ -58,19 +58,19 @@ const TaskCenter = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] flex flex-col border-l border-white/20"
+                        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] flex flex-col border-l notion-whisper-border"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-10">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-transparent backdrop-blur-md sticky top-0 z-10">
                             <div>
-                                <h2 className="text-xl font-bold text-foreground">任務中心</h2>
-                                <p className="text-sm text-muted-foreground mt-1">
+                                <h2 className="text-xl font-bold text-[rgba(0,0,0,0.95)]">任務中心</h2>
+                                <p className="text-sm text-[#615d59] mt-1">
                                     {activeTasksCount} 個進行中 · {failedTasksCount} 個失敗
                                 </p>
                             </div>
                             <button
                                 onClick={() => dispatch(toggleTaskCenter())}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-muted-foreground"
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors text-[#615d59]"
                             >
                                 <X size={24} />
                             </button>
@@ -79,7 +79,7 @@ const TaskCenter = () => {
                         {/* Task List */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
                             {tasks.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-4 opacity-60">
+                                <div className="h-full flex flex-col items-center justify-center text-[#615d59] gap-4 opacity-60">
                                     <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
                                         <CheckCircle2 size={32} />
                                     </div>
@@ -92,37 +92,37 @@ const TaskCenter = () => {
                                         layout
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        className={`p-4 rounded-2xl border transition-all duration-300 ${task.status === 'failed'
+                                        className={`p-4 rounded-lg border transition-all duration-300 ${task.status === 'failed'
                                             ? 'bg-destructive/5 border-destructive/20'
-                                            : 'bg-white border-gray-100 shadow-sm hover:shadow-md'
+                                            : 'bg-white border-gray-100 shadow-soft-card hover:shadow-soft-card'
                                             }`}
                                     >
                                         <div className="flex items-start gap-4">
-                                            <div className={`mt-1 p-2 rounded-xl ${task.status === 'failed' ? 'bg-destructive/10' : 'bg-accent/10'
+                                            <div className={`mt-1 p-2 rounded-lg ${task.status === 'failed' ? 'bg-destructive/10' : 'bg-[rgba(0,117,222,0.1)]'
                                                 }`}>
                                                 {getStatusIcon(task.status)}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${task.status === 'failed' ? 'text-destructive' : 'text-accent'
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${task.status === 'failed' ? 'text-destructive' : 'text-[#0075de]'
                                                         }`}>
                                                         {task.platform || 'URL'} 擷取
                                                     </span>
-                                                    <span className="text-[10px] text-muted-foreground">
+                                                    <span className="text-[10px] text-[#615d59]">
                                                         {new Date(task.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
 
                                                 <div className="mt-1 flex items-center gap-1 group">
-                                                    <p className="text-sm font-medium text-foreground truncate flex-1">
+                                                    <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate flex-1">
                                                         {task.url}
                                                     </p>
                                                     <a
                                                         href={task.url}
                                                         target="_blank"
                                                         rel="noreferrer"
-                                                        className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent"
+                                                        className="text-[#615d59] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[#0075de]"
                                                     >
                                                         <ExternalLink size={14} />
                                                     </a>
@@ -130,12 +130,12 @@ const TaskCenter = () => {
 
                                                 <div className="mt-2 flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`text-xs ${task.status === 'failed' ? 'text-destructive font-semibold' : 'text-muted-foreground'
+                                                        <span className={`text-xs ${task.status === 'failed' ? 'text-destructive font-semibold' : 'text-[#615d59]'
                                                             }`}>
                                                             {getStatusText(task.status)}
                                                         </span>
                                                         {task.status !== 'failed' && (
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-[#0075de] animate-pulse" />
                                                         )}
                                                     </div>
 
@@ -143,14 +143,14 @@ const TaskCenter = () => {
                                                         <div className="flex items-center gap-3">
                                                             <button
                                                                 onClick={() => handleRetry(task)}
-                                                                className="text-xs text-accent hover:text-accent/80 flex items-center gap-1 transition-colors font-semibold"
+                                                                className="text-xs text-[#0075de] hover:text-[#0075de]/80 flex items-center gap-1 transition-colors font-semibold"
                                                             >
                                                                 <RotateCcw size={12} />
                                                                 <span>重試</span>
                                                             </button>
                                                             <button
                                                                 onClick={() => dispatch(removeTask(task.id))}
-                                                                className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors"
+                                                                className="text-xs text-[#615d59] hover:text-destructive flex items-center gap-1 transition-colors"
                                                             >
                                                                 <Trash2 size={12} />
                                                                 <span>清除</span>
@@ -167,7 +167,7 @@ const TaskCenter = () => {
 
                         {/* Footer (Optional info) */}
                         <div className="p-6 bg-gray-50 border-t border-gray-100">
-                            <div className="text-[10px] text-muted-foreground text-center uppercase tracking-[0.2em] font-bold">
+                            <div className="text-[10px] text-[#615d59] text-center uppercase tracking-[0.2em] font-bold">
                                 Concurrency Strategy Active (Max 3)
                             </div>
                         </div>

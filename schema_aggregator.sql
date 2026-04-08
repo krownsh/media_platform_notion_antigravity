@@ -41,6 +41,24 @@ CREATE INDEX IF NOT EXISTS idx_posts_user_posted_at
 CREATE INDEX IF NOT EXISTS idx_posts_source_domains
     ON public.posts USING gin(source_domains);
 
+-- -----------------------------------------------------------------------------
+-- 4. category_configs 表：自動分類標籤定義與規則 (Field Theory Core)
+--    儲存 slug、輔助顯示的 label、以及用於 LLM Prompt 的 description
+--    patterns 則儲存用於第一層 Regex 匹配的正則字串陣列
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.category_configs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    slug VARCHAR(50) UNIQUE NOT NULL,
+    label VARCHAR(100) NOT NULL,
+    description TEXT,
+    patterns JSONB DEFAULT '[]'::jsonb,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+COMMENT ON TABLE public.category_configs IS 
+    '儲存自動分類的規則與定義（Field Theory），用於動態生成 AI Prompt 與前端分類徽章。';
+
 -- =============================================================================
 -- 完成
 -- =============================================================================

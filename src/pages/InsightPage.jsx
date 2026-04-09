@@ -165,9 +165,9 @@ const InsightPage = () => {
             className="w-full max-w-5xl mx-auto px-4 pb-20"
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-8 pt-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pt-8">
                 <div>
-                    <h2 className="text-3xl font-bold text-[rgba(0,0,0,0.95)] flex items-center gap-3">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] flex items-center gap-3">
                         <BarChart3 className="text-[#0075de]" size={28} />
                         情報趨勢看板
                     </h2>

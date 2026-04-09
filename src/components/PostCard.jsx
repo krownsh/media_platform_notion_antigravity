@@ -123,7 +123,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative w-full max-w-[320px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
+            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
@@ -139,11 +139,11 @@ const PostCard = ({
             <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white border-b notion-whisper-border rounded-t-lg">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#615d59] leading-none">
+                    <span className="text-xs sm:text-[10px] font-bold uppercase tracking-wider text-[#615d59] leading-none">
                         {platformStyle.label}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] text-[#615d59]/80 font-medium leading-none">
+                    <span className="text-xs sm:text-[10px] text-[#615d59]/80 font-medium leading-none">
                         {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}
                     </span>
                 </div>
@@ -243,10 +243,10 @@ const PostCard = ({
                     </div>
                 )}
                 <div className="flex flex-col justify-center min-w-0">
-                    <span className="text-sm font-semibold text-[rgba(0,0,0,0.95)] leading-none truncate max-w-[180px]">
+                    <span className="text-base sm:text-sm font-semibold text-[rgba(0,0,0,0.95)] leading-none truncate max-w-[180px]">
                         {post.author || 'Unknown'}
                     </span>
-                    <span className="text-[10px] text-[#615d59]/80 leading-none mt-1 font-medium truncate">
+                    <span className="text-xs sm:text-[10px] text-[#615d59]/80 leading-none mt-1 font-medium truncate">
                         @{post.authorHandle || 'unknown'}
                     </span>
                 </div>
@@ -347,19 +347,19 @@ const PostCard = ({
             </div>
 
             {/* Content Section - Flexible with Padding */}
-            <div className="px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white rounded-b-lg">
+            <div className="px-3 sm:px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white rounded-b-lg">
                 {/* Caption - Flexible Height */}
                 <div className="flex-shrink-0 mb-1">
-                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-[11px]">{post.author}</span>
+                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-xs sm:text-[11px]">{post.author}</span>
                 </div>
 
                 <div
-                    className="text-[11px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
+                    className="text-sm sm:text-[11px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
                     style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 12,
                         WebkitBoxOrient: 'vertical',
-                        maxHeight: '182px'
+                        maxHeight: '210px'
                     }}
                 >
                     {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
@@ -371,7 +371,7 @@ const PostCard = ({
                 {/* Tags - Fixed Height */}
                 <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[9px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
+                        <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[11px] sm:text-[9px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
                         </span>
                     ))}

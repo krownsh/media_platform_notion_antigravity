@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3 } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -41,6 +41,7 @@ const Layout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const [user, setUser] = useState(null);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     React.useEffect(() => {
         // Check active session
@@ -108,9 +109,136 @@ const Layout = ({ children }) => {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden text-[rgba(0,0,0,0.95)] bg-background">
-            {/* Sidebar */}
-            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} flex-shrink-0 bg-white notion-whisper-border shadow-soft-card flex flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-all duration-300 ease-in-out`}>
+        <div className="flex flex-col md:flex-row h-screen overflow-hidden text-[rgba(0,0,0,0.95)] bg-background">
+            {/* Mobile Header (Sticky at top) */}
+            <header className="md:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-[rgba(0,0,0,0.1)] z-[60] sticky top-0">
+                <div className="cursor-pointer" onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}>
+                    <h1 className="text-lg font-bold tracking-tight text-[rgba(0,0,0,0.95)]/80 font-serif">社群筆記</h1>
+                </div>
+                <button
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="p-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] rounded-lg hover:bg-black/5 transition-colors"
+                >
+                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+            </header>
+
+            {/* Mobile Menu Overlay */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.2 }}
+                        className="md:hidden fixed inset-x-0 top-[65px] bg-white z-50 border-b border-[rgba(0,0,0,0.1)] shadow-deep overflow-y-auto max-h-[calc(100vh-65px)]"
+                    >
+                        <div className="p-4 space-y-4">
+                            <SidebarSearch
+                                collapsed={false}
+                                onExpand={() => { }}
+                                onSearchSelect={() => setIsMobileMenuOpen(false)}
+                            />
+
+                            <nav className="space-y-1">
+                                <SidebarItem
+                                    icon={Home}
+                                    label="首頁"
+                                    active={location.pathname === '/'}
+                                    onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
+                                    icon={LayoutGrid}
+                                    label="所有貼文"
+                                    active={location.pathname === '/view-all'}
+                                    onClick={() => { navigate('/view-all'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
+                                    icon={BarChart3}
+                                    label="趨勢看板"
+                                    active={location.pathname === '/insight'}
+                                    onClick={() => { navigate('/insight'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
+                                    icon={Library}
+                                    label="收藏夾"
+                                    onClick={() => setIsCollectionsExpanded(!isCollectionsExpanded)}
+                                    hasSubmenu
+                                    expanded={isCollectionsExpanded}
+                                />
+
+                                {isCollectionsExpanded && (
+                                    <div className="pl-4 space-y-1 mt-1">
+                                        {collections.map(collection => {
+                                            const isActive = location.pathname === `/collection/${collection.id}`;
+                                            return (
+                                                <div
+                                                    key={collection.id}
+                                                    className={`flex items-center gap-2 px-3 py-2 rounded-sm cursor-pointer text-sm transition-colors ${isActive
+                                                        ? 'bg-black/5 text-[rgba(0,0,0,0.95)] font-medium'
+                                                        : 'text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-black/5'
+                                                        }`}
+                                                    onClick={() => { navigate(`/collection/${collection.id}`); setIsMobileMenuOpen(false); }}
+                                                >
+                                                    <Folder size={14} className={isActive ? 'text-[rgba(0,0,0,0.95)]' : 'opacity-70'} />
+                                                    <span className="truncate flex-1">{collection.name}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </nav>
+
+                            <div className="pt-4 border-t border-black/5">
+                                {user ? (
+                                    <div className="flex items-center justify-between p-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#615d59] border border-black/10">
+                                                <UserIcon size={16} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate">
+                                                    {user.email?.split('@')[0]}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                                            className="p-2 text-[#615d59] hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                                        >
+                                            <LogOut size={18} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => { navigate('/login'); setIsMobileMenuOpen(false); }}
+                                        className="w-full flex items-center justify-center gap-2 bg-[rgba(0,0,0,0.95)] text-white py-2.5 rounded-md font-medium"
+                                    >
+                                        <LogIn size={18} />
+                                        <span>登入</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Backdrop for Mobile Menu */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="md:hidden fixed inset-0 bg-black/20 z-40 backdrop-blur-[2px]"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* Sidebar (Tablet & Desktop) */}
+            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} hidden md:flex flex-shrink-0 bg-white notion-whisper-border shadow-soft-card flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-all duration-300 ease-in-out`}>
                 <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                     {!isSidebarCollapsed && (
                         <div className="cursor-pointer overflow-hidden" onClick={() => navigate('/')}>
@@ -242,7 +370,7 @@ const Layout = ({ children }) => {
 
             {/* Main Content */}
             <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-background">
-                <div className="w-full p-4 md:p-8">
+                <div className="w-full p-4 sm:p-6 md:p-8">
                     {children}
                 </div>
 

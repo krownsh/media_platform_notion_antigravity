@@ -168,7 +168,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {/* --- Top Section: Folders --- */}
                 <div
                     ref={headerRef}
-                    className={`border-b notion-whisper-border sticky top-0 z-[60] -mx-4 md:-mx-8 transition-all duration-300 px-6 ${isStuck ? 'pt-1 pb-1 shadow-soft-card bg-white/90 backdrop-blur-md' : 'pt-2 pb-2 bg-white'}`}
+                    className={`hidden md:block border-b notion-whisper-border sticky top-0 z-[60] -mx-4 md:-mx-8 transition-all duration-300 px-6 ${isStuck ? 'pt-1 pb-1 shadow-soft-card bg-white/90 backdrop-blur-md' : 'pt-2 pb-2 bg-white'}`}
                 >
                     <div className="w-full">
                         <div className={`flex items-center justify-between transition-all duration-300 ${isStuck ? 'mb-1' : 'mb-2'}`}>
@@ -233,7 +233,7 @@ const CollectionBoard = ({ onRemix }) => {
                 </div>
 
                 {/* --- Bottom Section: Uncategorized Posts --- */}
-                <div className="max-w-full w-full px-4">
+                <div className="max-w-full w-full px-2 sm:px-4">
                     <h2 className="text-lg font-semibold text-[rgba(0,0,0,0.95)] mb-6 pl-3 border-l-4 border-accent/50">
                         未分類貼文
                     </h2>
@@ -245,7 +245,7 @@ const CollectionBoard = ({ onRemix }) => {
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4 md:gap-5">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 sm:gap-4 md:gap-5">
                                 {/* --- Task Queue Skeletons --- */}
                                 {tasks.map((task) => (
                                     <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[320px] h-[480px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">

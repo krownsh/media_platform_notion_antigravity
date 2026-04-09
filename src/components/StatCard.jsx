@@ -24,7 +24,7 @@ const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' 
                 {icon && <span className={`${colorClass} opacity-80`}>{icon}</span>}
             </div>
 
-            <div className={`text-3xl font-bold tracking-tight ${colorClass}`}>
+            <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${colorClass}`}>
                 {value !== undefined && value !== null ? value : '—'}
             </div>
 

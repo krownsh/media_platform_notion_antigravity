@@ -7,9 +7,9 @@ const HomePage = ({ onRemix }) => {
     const navigate = useNavigate();
 
     return (
-        <div className="w-full mx-auto px-4">
-            <div className="text-center mb-16 pt-[80px]">
-                <p className="notion-text-body-large text-[#615d59] max-w-2xl mx-auto mb-2">
+        <div className="w-full mx-auto px-2 sm:px-4">
+            <div className="text-center mb-8 md:mb-16 pt-[40px] md:pt-[80px]">
+                <p className="notion-text-body-large text-[#615d59] max-w-2xl mx-auto mb-2 px-2">
                     儲存、分析並改寫來自 Instagram、Twitter 和 Facebook 的內容。
                     將社群雜訊轉化為結構化知識。
                 </p>

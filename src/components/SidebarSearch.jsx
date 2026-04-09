@@ -98,7 +98,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.98 }}
                         transition={{ duration: 0.3, ease: [0.25, 0.8, 0.3, 1] }}
-                        className="absolute left-6 right-[-240px] top-full mt-4 bg-transparent border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
+                        className="absolute left-6 md:right-[-240px] right-6 top-full mt-4 bg-transparent border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
                     >
                         {results.length > 0 ? (
                             <div className="py-2">

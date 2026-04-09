@@ -178,43 +178,43 @@ const PostDetailView = ({ onRemix }) => {
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col h-[calc(100vh-40px)] max-h-[calc(100vh-40px)] overflow-hidden"
+            className="flex flex-col md:h-[calc(100vh-40px)] md:max-h-[calc(100vh-40px)] md:overflow-hidden"
         >
             {/* --- Top Header / Navigation --- */}
-            <div className="flex items-center justify-between py-4 px-2 flex-shrink-0">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 px-2 flex-shrink-0 gap-4">
                 <div
-                    className="flex items-center gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group"
+                    className="flex items-center gap-1.5 sm:gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group"
                     onClick={() => navigate(-1)}
                 >
                     <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium">返回</span>
-                    <span className="mx-2 text-neutral-300">/</span>
-                    <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-medium">返回</span>
+                    <span className="mx-1 sm:mx-2 text-neutral-300">/</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
                         {platformStyle.icon}
-                        <span className="text-xs font-semibold text-neutral-500">{platformStyle.label}</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-neutral-500 truncate max-w-[80px] sm:max-w-none">{platformStyle.label}</span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                     <button
                         onClick={() => onRemix && onRemix(post)}
-                        className="notion-btn-ghost text-[#0075de] flex items-center gap-2"
+                        className="notion-btn-ghost text-[#0075de] flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
                     >
                         <Sparkles size={16} />
                         AI 改寫
                     </button>
                     <button
                         onClick={() => setIsNoteOpen(true)}
-                        className="notion-btn-primary bg-amber-500 hover:bg-amber-600 border-amber-600/20 flex items-center gap-2"
+                        className="notion-btn-primary bg-amber-500 hover:bg-amber-600 border-amber-600/20 flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
                     >
                         <Library size={16} />
-                        我的筆記 ({annotations?.length || 0})
+                        <span>筆記 ({annotations?.length || 0})</span>
                     </button>
                 </div>
             </div>
 
             {/* --- Main Content Layout --- */}
-            <div className="flex-1 flex flex-col md:flex-row gap-6 overflow-hidden pb-4">
+            <div className="flex-1 flex flex-col md:flex-row gap-6 md:overflow-hidden pb-4">
 
                 {/* 1. Left Section: Instagram Style (Image top, Content bottom) */}
                 <div className="flex-[3] flex flex-col bg-white rounded-2xl border notion-whisper-border shadow-soft-card overflow-hidden">
@@ -239,7 +239,7 @@ const PostDetailView = ({ onRemix }) => {
                     </div>
 
                     {/* Scrollable Area for Image and Content */}
-                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 md:overflow-y-auto custom-scrollbar">
                         {/* Image(s) at Top */}
                         {images.length > 0 && (
                             <div className="relative bg-neutral-50 border-b border-neutral-50 group">
@@ -345,13 +345,13 @@ const PostDetailView = ({ onRemix }) => {
                 </div>
 
                 {/* 2. Right Section: AI Summary */}
-                <div className="flex-1 min-w-[320px] max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden">
+                <div className="flex-1 w-full md:min-w-[320px] md:max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden">
                     <div className="p-5 border-b border-neutral-100 flex items-center gap-2 bg-white">
                         <Sparkles size={16} className="text-[#0075de]" />
                         <span className="text-sm font-bold text-neutral-700 uppercase tracking-wider">AI 知識摘要</span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                    <div className="flex-1 md:overflow-y-auto p-5 custom-scrollbar">
                         {analysis?.summary ? (
                             <div className="space-y-6">
                                 {(() => {
@@ -365,7 +365,7 @@ const PostDetailView = ({ onRemix }) => {
 
                                     if (!data) return <p className='text-sm text-neutral-400 italic'>無效的摘要結構</p>;
 
-                                     if (typeof data === 'object' && data !== null) {
+                                    if (typeof data === 'object' && data !== null) {
                                         return (
                                             <>
                                                 {data.core_insight && (

@@ -107,10 +107,21 @@
 - [ ] **將外部圖片轉存至內部 Storage / 資料庫**
     - [ ] 在爬蟲抓取時，自動將大頭貼 (Avatar) 與貼文圖檔 (Post Images) 下載並轉存到自有的資料庫或 Supabase Storage中。
     - [ ] 更新貼文資料儲存邏輯，以內部儲存的網址取代原平台的 CDN 網址，徹底解決 CDN 過期導致的 403 破圖問題。
-```
+
+## Phase 10: 介面優化與響應式設計
+- [x] **響應式 Sidebar 調整**
+    - [x] 在小螢幕時將 Sidebar 改為置頂導覽列 (Sticky Header)。
+    - [x] 實作下拉式選單以顯示導覽選項。
+    - [x] 調整小螢幕時的整體版面配置 (Main Content 寬度與 Padding)。
+- [x] **各頁面內容響應式優化**
+    - [x] 優化 InsightPage 在手機端的圖表與數據顯示。
+    - [x] 優化 ViewAllPage 的卡片網格佈局。
+    - [x] 檢查 Modal 與通知彈窗在手機端的比例。
+
 - [x] **修復 AI 摘要 undefined 錯誤**
-    - [x] **問題診斷**：在 PostDetailView 中存取 nalysis.summary 時，若 AI 服務因配置或網路問題未回傳正確物件，前端會發生運行時崩潰。
+    - [x] **問題診斷**：在 PostDetailView 中存取  nalysis.summary 時，若 AI 服務因配置或網路問題未回傳正確物件，前端會發生運行時崩潰。
     - [x] **解決方案**：
         - 更新 server/services/aiService.js 確保在所有失敗路徑下皆回傳預設 Mock 物件。
         - 更新 server/index.js 增加對 AI 執行結果的防禦性檢查。
         - 更新前端各組件 (PostDetailView, SidebarSearch, ViewAllPage) 增加屬性安全存取與類型檢查。
+```

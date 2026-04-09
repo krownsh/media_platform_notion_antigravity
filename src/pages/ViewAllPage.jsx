@@ -70,7 +70,7 @@ const ViewAllPage = ({ onRemix }) => {
     displayedPosts = [...displayedPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return (
-        <div className="w-full mx-auto px-4 pb-20">
+        <div className="w-full mx-auto px-2 sm:px-4 pb-20">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pt-8 pl-2">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-[rgba(0,117,222,0.1)] rounded-lg">
@@ -113,7 +113,7 @@ const ViewAllPage = ({ onRemix }) => {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 md:gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
                         <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-[360px] h-[560px] bg-transparent" />
                     ))}
@@ -123,7 +123,7 @@ const ViewAllPage = ({ onRemix }) => {
                     <p className="text-lg font-medium">未找到貼文</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-[repeat(auto-fit,360px)] gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
                     {displayedPosts.map((post) => (
                         <PostCard
                             key={post.id}

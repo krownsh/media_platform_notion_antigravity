@@ -252,7 +252,7 @@ const PostCard = ({
                 </div>
             </div>
 
-            {/* Image Carousel Section - 110px */}
+            {/* Image Carousel Section - 180px */}
             <div className="relative w-full h-[180px] bg-muted/20 overflow-hidden group/image flex-shrink-0">
                 {images.length > 0 ? (
                     <div className="relative w-full h-full">
@@ -320,7 +320,7 @@ const PostCard = ({
                 )}
             </div>
 
-            {/* Action Bar - Reduced Height */}
+            {/* Action Bar - 40px */}
             <div className="px-4 flex items-center justify-end border-b notion-whisper-border h-10 flex-shrink-0 bg-white">
                 <div className="flex items-center gap-2">
                     <button
@@ -346,94 +346,76 @@ const PostCard = ({
                 </div>
             </div>
 
-            {/* Content Section - Flexible with Padding */}
-            <div className="px-3 sm:px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white rounded-b-lg">
-                {/* Caption - Flexible Height */}
-                <div className="flex-shrink-0 mb-1">
-                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-sm sm:text-[13px]">{post.author}</span>
-                </div>
+            {/* --- Content Area (Total Remaining: 320px) --- */}
+            <div className="px-4 py-3 flex-1 flex flex-col bg-white rounded-b-lg overflow-hidden">
 
-                <div
-                    className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden"
-                    style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 8,
-                        WebkitBoxOrient: 'vertical',
-                        maxHeight: '180px'
-                    }}
-                >
-                    {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
-                </div>
-
-                {/* Fixed Footer Area - Doesn't shrink */}
-                <div className="flex-shrink-0 flex flex-col pt-4 border-t border-black/5">
-                    {/* Tags - Fixed Height */}
-                    <div className="flex flex-wrap gap-1.5 h-[28px] mb-2 overflow-hidden">
-                        {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                            <span key={i} className="px-2.5 py-1 rounded-full bg-black/5 text-[13px] sm:text-[11px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
-                                #{tag}
-                            </span>
-                        ))}
+                {/* 1. Upper Content Block: FIXED 190px */}
+                <div className="h-[190px] flex-shrink-0 overflow-hidden mb-3">
+                    {/* Author Prefix - Fixed 24px */}
+                    <div className="h-6 overflow-hidden mb-1">
+                        <span className="font-bold text-[rgba(0,0,0,0.95)] text-sm sm:text-[13px]">{post.author}</span>
                     </div>
 
-                    {/* AI Summary - Fixed Height */}
-                    {showSummary && (
-                        <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2.5 mb-2 h-[68px] overflow-hidden relative group/summary">
-                            {analysis?.summary ? (
-                                <>
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                        <Sparkles size={11} className="text-[#0075de]" />
-                                        <span className="text-[11px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
-                                    </div>
-                                    <div className="text-sm sm:text-[13px] text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
-                                        {(() => {
-                                            let summary = analysis.summary;
+                    {/* Main Text - Fixed Height (Line Clamped) */}
+                    <div
+                        className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
+                        style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 7,
+                            WebkitBoxOrient: 'vertical'
+                        }}
+                    >
+                        {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
+                    </div>
+                </div>
 
-                                            // 1. Try to parse JSON string if it looks like JSON
-                                            if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
-                                                try {
-                                                    const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
-                                                    const parsed = JSON.parse(cleanJson);
-                                                    if (parsed && typeof parsed === 'object') {
-                                                        summary = parsed;
-                                                    }
-                                                } catch (e) {
-                                                    // Ignore parse error
-                                                }
-                                            }
+                {/* 2. Divider - Fixed */}
+                <div className="h-px bg-black/5 w-full mb-3 flex-shrink-0" />
 
-                                            // 2. Handle Object (Parsed or original)
-                                            if (typeof summary === 'object' && summary !== null) {
-                                                return summary.core_insight || "點擊查看詳情";
-                                            }
+                {/* 3. Bottom Footer Block: FIXED 100px */}
+                <div className="h-[100px] flex-shrink-0 mt-auto flex flex-col justify-between">
+                    {/* Tags Area - Fixed 24px */}
+                    <div className="h-6 overflow-hidden flex items-center gap-1.5 flex-shrink-0">
+                        {analysis?.tags && analysis.tags.length > 0 ? analysis.tags.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[12px] sm:text-[10px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 whitespace-nowrap">
+                                #{tag}
+                            </span>
+                        )) : <div className="h-4" />}
+                    </div>
 
-                                            // 3. Handle String (Strip Markdown)
-                                            if (typeof summary === 'string') {
-                                                // Remove ## headings, bold markers (**), code blocks (```)
-                                                return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
-                                            }
-
-                                            return summary || "無摘要";
-                                        })()}
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-xs text-[#615d59]/50 italic">
-                                    無 AI 摘要
+                    {/* AI Info / Summary Area - Fixed 50px */}
+                    <div className="h-[50px] overflow-hidden flex-shrink-0">
+                        {showSummary && analysis?.summary && (
+                            <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2 h-full flex flex-col justify-center">
+                                <div className="text-[10px] font-bold text-[#0075de] uppercase tracking-wider leading-none mb-1">AI 摘要</div>
+                                <div className="text-sm sm:text-[11px] text-[#615d59] leading-tight line-clamp-2">
+                                    {(() => {
+                                        let summary = analysis.summary;
+                                        if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
+                                            try {
+                                                const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
+                                                const parsed = JSON.parse(cleanJson);
+                                                if (parsed && typeof parsed === 'object') summary = parsed;
+                                            } catch (e) { }
+                                        }
+                                        if (typeof summary === 'object' && summary !== null) return summary.core_insight || "點擊查看詳情";
+                                        if (typeof summary === 'string') return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
+                                        return summary || "無摘要";
+                                    })()}
                                 </div>
-                            )}
-                        </div>
-                    )}
+                            </div>
+                        )}
+                    </div>
 
-                    {/* Field Theory Category & Footer - Bottom aligned */}
-                    <div className="flex items-center justify-between mt-1">
+                    {/* Final Bottom Row - Fixed 20px */}
+                    <div className="h-5 flex items-center justify-between flex-shrink-0">
                         {analysis?.primary_category && analysis.primary_category !== 'other' ? (
-                            <span className="px-2 py-0.5 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[11px] font-bold uppercase tracking-tight">
+                            <span className="px-1.5 py-0.5 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[9px] font-bold uppercase tracking-tight leading-none">
                                 {analysis.primary_category}
                             </span>
                         ) : <div />}
 
-                        <div className="text-[11px] text-[#615d59] uppercase tracking-widest opacity-60">
+                        <div className="text-[10px] text-[#615d59] uppercase tracking-widest opacity-60 font-medium leading-none">
                             {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}
                         </div>
                     </div>

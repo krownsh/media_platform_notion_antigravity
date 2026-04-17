@@ -123,7 +123,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[420px] h-[620px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
+            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[420px] h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
@@ -354,90 +354,89 @@ const PostCard = ({
                 </div>
 
                 <div
-                    className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
+                    className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden"
                     style={{
                         display: '-webkit-box',
-                        WebkitLineClamp: 12,
+                        WebkitLineClamp: 8,
                         WebkitBoxOrient: 'vertical',
-                        maxHeight: '260px'
+                        maxHeight: '180px'
                     }}
                 >
                     {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
                 </div>
 
-                {/* Spacer */}
-                <div className="flex-grow" />
+                {/* Fixed Footer Area - Doesn't shrink */}
+                <div className="flex-shrink-0 flex flex-col pt-4 border-t border-black/5">
+                    {/* Tags - Fixed Height */}
+                    <div className="flex flex-wrap gap-1.5 h-[28px] mb-2 overflow-hidden">
+                        {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
+                            <span key={i} className="px-2.5 py-1 rounded-full bg-black/5 text-[13px] sm:text-[11px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
+                                #{tag}
+                            </span>
+                        ))}
+                    </div>
 
-                {/* Tags - Fixed Height */}
-                <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
-                    {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                        <span key={i} className="px-2.5 py-1 rounded-full bg-black/5 text-[13px] sm:text-[11px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
-                            #{tag}
-                        </span>
-                    ))}
-                </div>
+                    {/* AI Summary - Fixed Height */}
+                    {showSummary && (
+                        <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2.5 mb-2 h-[68px] overflow-hidden relative group/summary">
+                            {analysis?.summary ? (
+                                <>
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                        <Sparkles size={11} className="text-[#0075de]" />
+                                        <span className="text-[11px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
+                                    </div>
+                                    <div className="text-sm sm:text-[13px] text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
+                                        {(() => {
+                                            let summary = analysis.summary;
 
-                {/* AI Summary - Fixed Height */}
-                {showSummary && (
-                    <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
-                        {analysis?.summary ? (
-                            <>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <Sparkles size={11} className="text-[#0075de]" />
-                                    <span className="text-[11px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
-                                </div>
-                                <div className="text-sm sm:text-[13px] text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
-                                    {(() => {
-                                        let summary = analysis.summary;
-
-                                        // 1. Try to parse JSON string if it looks like JSON
-                                        if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
-                                            try {
-                                                const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
-                                                const parsed = JSON.parse(cleanJson);
-                                                if (parsed && typeof parsed === 'object') {
-                                                    summary = parsed;
+                                            // 1. Try to parse JSON string if it looks like JSON
+                                            if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
+                                                try {
+                                                    const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
+                                                    const parsed = JSON.parse(cleanJson);
+                                                    if (parsed && typeof parsed === 'object') {
+                                                        summary = parsed;
+                                                    }
+                                                } catch (e) {
+                                                    // Ignore parse error
                                                 }
-                                            } catch (e) {
-                                                // Ignore parse error
                                             }
-                                        }
 
-                                        // 2. Handle Object (Parsed or original)
-                                        if (typeof summary === 'object' && summary !== null) {
-                                            return summary.core_insight || "點擊查看詳情";
-                                        }
+                                            // 2. Handle Object (Parsed or original)
+                                            if (typeof summary === 'object' && summary !== null) {
+                                                return summary.core_insight || "點擊查看詳情";
+                                            }
 
-                                        // 3. Handle String (Strip Markdown)
-                                        if (typeof summary === 'string') {
-                                            // Remove ## headings, bold markers (**), code blocks (```)
-                                            return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
-                                        }
+                                            // 3. Handle String (Strip Markdown)
+                                            if (typeof summary === 'string') {
+                                                // Remove ## headings, bold markers (**), code blocks (```)
+                                                return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
+                                            }
 
-                                        return summary || "無摘要";
-                                    })()}
+                                            return summary || "無摘要";
+                                        })()}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-xs text-[#615d59]/50 italic">
+                                    無 AI 摘要
                                 </div>
-                            </>
-                        ) : (
-                            <div className="flex items-center justify-center h-full text-xs text-[#615d59]/50 italic">
-                                無 AI 摘要
-                            </div>
-                        )}
-                    </div>
-                )}
+                            )}
+                        </div>
+                    )}
 
-                {/* Field Theory Category - Simplified */}
-                {analysis?.primary_category && analysis.primary_category !== 'other' && (
-                    <div className="mb-2">
-                        <span className="px-2 py-1 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[12px] font-bold uppercase tracking-tight">
-                            {analysis.primary_category}
-                        </span>
-                    </div>
-                )}
+                    {/* Field Theory Category & Footer - Bottom aligned */}
+                    <div className="flex items-center justify-between mt-1">
+                        {analysis?.primary_category && analysis.primary_category !== 'other' ? (
+                            <span className="px-2 py-0.5 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[11px] font-bold uppercase tracking-tight">
+                                {analysis.primary_category}
+                            </span>
+                        ) : <div />}
 
-                {/* Footer Info - Follows content */}
-                <div className="mt-auto flex items-center justify-between text-[11px] text-[#615d59] uppercase tracking-widest opacity-60 flex-shrink-0">
-                    <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
+                        <div className="text-[11px] text-[#615d59] uppercase tracking-widest opacity-60">
+                            {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}
+                        </div>
+                    </div>
                 </div>
             </div>
         </motion.div>

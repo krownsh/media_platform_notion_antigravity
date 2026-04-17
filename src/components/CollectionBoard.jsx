@@ -248,7 +248,7 @@ const CollectionBoard = ({ onRemix }) => {
                             <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-3 sm:gap-4 md:gap-5">
                                 {/* --- Task Queue Skeletons --- */}
                                 {tasks.map((task) => (
-                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[620px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
+                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[640px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
                                         {/* Shimmer Effect Overlay */}
                                         {task.status !== 'failed' && (
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />

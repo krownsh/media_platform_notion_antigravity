@@ -115,7 +115,7 @@ const ViewAllPage = ({ onRemix }) => {
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-6 md:gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[620px] bg-transparent" />
+                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[640px] bg-transparent" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (

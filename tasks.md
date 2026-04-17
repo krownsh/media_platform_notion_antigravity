@@ -125,3 +125,11 @@
         - 更新 server/index.js 增加對 AI 執行結果的防禦性檢查。
         - 更新前端各組件 (PostDetailView, SidebarSearch, ViewAllPage) 增加屬性安全存取與類型檢查。
 ```
+
+## Phase 11: 介面細節優化與尺寸調整
+- [ ] **調整 PostCard 尺寸與字體**
+    - [ ] 增加卡片最大寬度 (加寬)。
+    - [ ] 加大卡片內文、標籤、作者資訊等字體大小。
+- [ ] **優化網格佈局以適應新尺寸**
+    - [ ] 調整 `CollectionBoard` 與 `ViewAllPage` 的網格最小寬度。
+    - [ ] 更新骨架卡片尺寸與主卡片保持一致。

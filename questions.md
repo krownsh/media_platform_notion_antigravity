@@ -152,3 +152,21 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 * **聚合顯示**：`InsightPage.jsx` (內化 `ft stats` / `ft categories`)。
 
 
+
+---
+
+## 🐦 Twitter (X) 抓取留言 (Comments) 的設計現況
+**時間**：2026-04-17
+**問題描述**：使用者詢問 Twitter 抓取時沒有抓到留言內容，是本來就沒設計嗎？
+
+### 1. 現狀說明
+**是的，目前的設計確實尚未包含留言抓取。**
+*   **技術限制**：目前的 `twitterCrawler.js` 是透過 Twitter 的 GraphQL API (`TweetResultByRestId`) 進行抓取。
+*   **資料結構**：該 API 節點主要回傳「貼文主體」資訊（內文、媒體、作者、統計）。留言（Replies）在 Twitter 的系統中屬於另一個層級的資料，通常需要呼叫 `TweetDetail` 或類似的 Timeline 介限 API 才能獲取完整的對話樹。
+*   **目前重點**：現階段系統的設計重心在於「主貼文內容」的備份、AI 摘要與分類。為了保持抓取速度與避免 Guest Token 過快被限制，目前僅抓取單篇貼文的核心內容。
+
+### 2. 未來規劃
+若未來有「留言分析」的需求，我們可以在 `twitterCrawler.js` 中擴充 `comments` 的提取邏輯：
+*   需要額外解析 API 回傳中的 `replies` 陣列（若有）。
+*   或是針對目標貼文 ID 進行二次遞迴請求以獲取留言列表。
+*   **目前的程式碼預留位**：在回傳物件中，`comments` 欄位目前固定回傳空陣列 `[]`。

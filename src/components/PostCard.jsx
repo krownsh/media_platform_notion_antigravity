@@ -123,7 +123,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[360px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
+            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[420px] h-[620px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {isMergeTarget && (
@@ -139,11 +139,11 @@ const PostCard = ({
             <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white border-b notion-whisper-border rounded-t-lg">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-xs sm:text-[10px] font-bold uppercase tracking-wider text-[#615d59] leading-none">
+                    <span className="text-sm sm:text-[11px] font-bold uppercase tracking-wider text-[#615d59] leading-none">
                         {platformStyle.label}
                     </span>
-                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-xs sm:text-[10px] text-[#615d59]/80 font-medium leading-none">
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                    <span className="text-sm sm:text-[11px] text-[#615d59]/80 font-medium leading-none">
                         {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}
                     </span>
                 </div>
@@ -243,17 +243,17 @@ const PostCard = ({
                     </div>
                 )}
                 <div className="flex flex-col justify-center min-w-0">
-                    <span className="text-base sm:text-sm font-semibold text-[rgba(0,0,0,0.95)] leading-none truncate max-w-[180px]">
+                    <span className="text-base sm:text-sm font-semibold text-[rgba(0,0,0,0.95)] leading-none truncate max-w-[220px]">
                         {post.author || 'Unknown'}
                     </span>
-                    <span className="text-xs sm:text-[10px] text-[#615d59]/80 leading-none mt-1 font-medium truncate">
+                    <span className="text-sm sm:text-[12px] text-[#615d59]/80 leading-none mt-1.5 font-medium truncate">
                         @{post.authorHandle || 'unknown'}
                     </span>
                 </div>
             </div>
 
             {/* Image Carousel Section - 110px */}
-            <div className="relative w-full h-[150px] bg-muted/20 overflow-hidden group/image flex-shrink-0">
+            <div className="relative w-full h-[180px] bg-muted/20 overflow-hidden group/image flex-shrink-0">
                 {images.length > 0 ? (
                     <div className="relative w-full h-full">
                         {/* Image Slider */}
@@ -350,16 +350,16 @@ const PostCard = ({
             <div className="px-3 sm:px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white rounded-b-lg">
                 {/* Caption - Flexible Height */}
                 <div className="flex-shrink-0 mb-1">
-                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-xs sm:text-[11px]">{post.author}</span>
+                    <span className="font-bold text-[rgba(0,0,0,0.95)] text-sm sm:text-[13px]">{post.author}</span>
                 </div>
 
                 <div
-                    className="text-sm sm:text-[11px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
+                    className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium overflow-hidden flex-shrink-0"
                     style={{
                         display: '-webkit-box',
                         WebkitLineClamp: 12,
                         WebkitBoxOrient: 'vertical',
-                        maxHeight: '210px'
+                        maxHeight: '260px'
                     }}
                 >
                     {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
@@ -371,7 +371,7 @@ const PostCard = ({
                 {/* Tags - Fixed Height */}
                 <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
                     {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[11px] sm:text-[9px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
+                        <span key={i} className="px-2.5 py-1 rounded-full bg-black/5 text-[13px] sm:text-[11px] font-medium text-[rgba(0,0,0,0.95)]/70 border border-secondary/30 hover:bg-black/5 transition-colors cursor-pointer whitespace-nowrap">
                             #{tag}
                         </span>
                     ))}
@@ -382,11 +382,11 @@ const PostCard = ({
                     <div className="bg-[#0075de]/5 border border-accent/10 rounded-lg p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
                         {analysis?.summary ? (
                             <>
-                                <div className="flex items-center gap-1 mb-0.5">
-                                    <Sparkles size={10} className="text-[#0075de]" />
-                                    <span className="text-[9px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                    <Sparkles size={11} className="text-[#0075de]" />
+                                    <span className="text-[11px] font-bold text-[#0075de] uppercase tracking-wider">AI 摘要</span>
                                 </div>
-                                <div className="text-xs text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
+                                <div className="text-sm sm:text-[13px] text-[#615d59] leading-snug line-clamp-2 group-hover/summary:text-[rgba(0,0,0,0.95)] transition-colors">
                                     {(() => {
                                         let summary = analysis.summary;
 
@@ -429,14 +429,14 @@ const PostCard = ({
                 {/* Field Theory Category - Simplified */}
                 {analysis?.primary_category && analysis.primary_category !== 'other' && (
                     <div className="mb-2">
-                        <span className="px-1.5 py-0.5 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[10px] font-bold uppercase tracking-tight">
+                        <span className="px-2 py-1 rounded-sm bg-[#0075de]/10 text-[#0075de] text-[12px] font-bold uppercase tracking-tight">
                             {analysis.primary_category}
                         </span>
                     </div>
                 )}
 
                 {/* Footer Info - Follows content */}
-                <div className="mt-auto flex items-center justify-between text-[9px] text-[#615d59] uppercase tracking-widest opacity-60 flex-shrink-0">
+                <div className="mt-auto flex items-center justify-between text-[11px] text-[#615d59] uppercase tracking-widest opacity-60 flex-shrink-0">
                     <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
                 </div>
             </div>

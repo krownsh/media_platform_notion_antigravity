@@ -113,9 +113,9 @@ const ViewAllPage = ({ onRemix }) => {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-6 md:gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-[360px] h-[560px] bg-transparent" />
+                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[620px] bg-transparent" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (
@@ -123,7 +123,7 @@ const ViewAllPage = ({ onRemix }) => {
                     <p className="text-lg font-medium">未找到貼文</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
                     {displayedPosts.map((post) => (
                         <PostCard
                             key={post.id}

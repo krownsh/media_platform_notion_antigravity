@@ -245,10 +245,10 @@ const CollectionBoard = ({ onRemix }) => {
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-3 sm:gap-4 md:gap-5">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-3 sm:gap-4 md:gap-5">
                                 {/* --- Task Queue Skeletons --- */}
                                 {tasks.map((task) => (
-                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[320px] h-[480px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
+                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[620px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
                                         {/* Shimmer Effect Overlay */}
                                         {task.status !== 'failed' && (
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
@@ -310,14 +310,14 @@ const CollectionBoard = ({ onRemix }) => {
                                             </div>
 
                                             <div className="flex gap-2 mt-1">
-                                                <div className="h-5 w-12 rounded-full bg-transparent" />
-                                                <div className="h-5 w-16 rounded-full bg-transparent" />
+                                                <div className="h-6 w-14 rounded-full bg-transparent" />
+                                                <div className="h-6 w-20 rounded-full bg-transparent" />
                                             </div>
 
-                                            <div className="h-16 rounded-lg bg-[#0075de]/5 border border-accent/10 mt-2 p-3 flex flex-col gap-2">
-                                                <div className="h-2 w-12 bg-[#0075de]/20 rounded" />
-                                                <div className="h-2 w-full bg-[rgba(0,117,222,0.1)] rounded" />
-                                                <div className="h-2 w-3/4 bg-[rgba(0,117,222,0.1)] rounded" />
+                                            <div className="h-24 rounded-lg bg-[#0075de]/5 border border-accent/10 mt-3 p-3 flex flex-col gap-2">
+                                                <div className="h-2.5 w-14 bg-[#0075de]/20 rounded" />
+                                                <div className="h-2.5 w-full bg-[rgba(0,117,222,0.1)] rounded" />
+                                                <div className="h-2.5 w-3/4 bg-[rgba(0,117,222,0.1)] rounded" />
                                             </div>
                                         </div>
                                     </div>
@@ -353,7 +353,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {createPortal(
                     <DragOverlay>
                         {activeItem ? (
-                            <div className={`w-full max-w-[320px] opacity-90 pointer-events-none transition-all duration-300 ${isHoveringFolder ? 'scale-[0.2] rotate-0' : 'scale-105 rotate-3'}`}>
+                            <div className={`w-full max-w-[420px] opacity-90 pointer-events-none transition-all duration-300 ${isHoveringFolder ? 'scale-[0.2] rotate-0' : 'scale-105 rotate-3'}`}>
                                 <SortablePostCard
                                     post={activeItem}
                                     onRemix={() => { }}
@@ -375,7 +375,7 @@ const CollectionBoard = ({ onRemix }) => {
                                     position: 'fixed',
                                     left: dropAnimation.startRect.left,
                                     top: dropAnimation.startRect.top,
-                                    width: 320, // Matching max-width
+                                    width: 420, // Matching max-width
                                     scale: 1,
                                     opacity: 1,
                                     zIndex: 9999

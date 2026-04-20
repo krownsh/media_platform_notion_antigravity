@@ -29,14 +29,14 @@ app.get('/', (req, res) => {
 
 // Process URL Endpoint
 app.post('/api/process', async (req, res) => {
-    const { url } = req.body;
+    const { url, userId } = req.body;
 
     if (!url) {
         return res.status(400).json({ error: 'URL is required' });
     }
 
     try {
-        const result = await orchestrator.processUrl(url);
+        const result = await orchestrator.processUrl(url, userId);
 
         // Run AI Analysis based on platform
         if (result.data) {
@@ -88,6 +88,62 @@ app.post('/api/process', async (req, res) => {
                 } catch (aiError) {
                     console.warn('[Server] Generic AI analysis failed:', aiError.message);
                     result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
+                }
+            }
+
+            // 3) 將分析結果與媒體存回資料庫 (Server-side Persistence)
+            const postId = result.data.dbId;
+            const finalUserId = userId || process.env.SUPABASE_SYSTEM_USER_ID;
+
+            if (postId && finalUserId) {
+                console.log(`[Server] Persisting supplementary data for post ${postId}...`);
+
+                // Save Analysis
+                try {
+                    await supabase.from('post_analysis').delete().eq('post_id', postId);
+                    await supabase.from('post_analysis').insert({
+                        post_id: postId,
+                        user_id: finalUserId,
+                        primary_category: result.data.analysis.primary_category,
+                        summary: result.data.analysis.summary,
+                        tags: result.data.analysis.tags || [],
+                        topics: result.data.analysis.topics || [],
+                        sentiment: result.data.analysis.sentiment || null
+                    });
+                    console.log('[Server] AI analysis persisted');
+                } catch (e) { console.error('[Server] Failed to persist analysis:', e.message); }
+
+                // Save Media (Clean then Insert to avoid primary key/unique issues without complex upsert logic)
+                if (result.data.images && result.data.images.length > 0) {
+                    try {
+                        const mediaRecords = result.data.images.map((imgUrl, idx) => ({
+                            post_id: postId,
+                            user_id: finalUserId,
+                            type: 'image',
+                            url: imgUrl,
+                            order: idx
+                        }));
+                        await supabase.from('post_media').delete().eq('post_id', postId);
+                        await supabase.from('post_media').insert(mediaRecords);
+                        console.log(`[Server] ${mediaRecords.length} media items persisted`);
+                    } catch (e) { console.error('[Server] Failed to persist media:', e.message); }
+                }
+
+                // Save Comments
+                if (result.data.comments && result.data.comments.length > 0) {
+                    try {
+                        const commentRecords = result.data.comments.map(c => ({
+                            post_id: postId,
+                            user_id: finalUserId,
+                            author_name: c.user || c.author,
+                            content: c.text,
+                            commented_at: c.postedAt ? new Date(c.postedAt) : new Date(),
+                            raw_data: c
+                        }));
+                        await supabase.from('post_comments').delete().eq('post_id', postId);
+                        await supabase.from('post_comments').insert(commentRecords);
+                        console.log(`[Server] ${commentRecords.length} comments persisted`);
+                    } catch (e) { console.error('[Server] Failed to persist comments:', e.message); }
                 }
             }
         }

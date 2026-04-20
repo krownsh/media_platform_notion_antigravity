@@ -102,14 +102,14 @@ node test_supabase.js
 ### 新增貼文流程
 1. 使用者在 `UrlInput` 輸入 URL
 2. Redux 觸發 `addPostByUrl` action
-3. Saga 呼叫後端 API (`/api/process`)
-4. 後端使用 Crawler 抓取資料 + AI 分析
-5. Saga 將資料寫入 Supabase：
-   - 插入 posts
-   - 插入 post_media
-   - 插入 post_analysis
-6. Redux 更新前端狀態
-7. UI 自動顯示新貼文
+3. Saga 取得當前 `userId` 並呼叫後端 API (`/api/process`)
+4. 後端執行 Crawler 抓取 + AI 分析，並**自動將資料存入 Supabase**：
+   - 插入/更新 `posts`
+   - 插入 `post_media` (媒體檔案)
+   - 插入 `post_analysis` (AI 總結與標籤)
+   - 插入 `post_comments` (留言)
+5. Saga 接收後端回傳的資料（含資料庫 `dbId`）並更新 Redux 狀態
+6. UI 自動顯示新貼文（已完成雲端同步）
 
 ### 載入貼文流程
 1. `CollectionBoard` 掛載時觸發 `fetchPosts`

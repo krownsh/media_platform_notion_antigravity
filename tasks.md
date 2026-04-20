@@ -133,3 +133,9 @@
 - [ ] **優化網格佈局以適應新尺寸**
     - [ ] 調整 `CollectionBoard` 與 `ViewAllPage` 的網格最小寬度。
     - [ ] 更新骨架卡片尺寸與主卡片保持一致。
+
+## Phase 12: 系統架構重構與身份驗證優化
+- [ ] **API 身份驗證與資料歸屬優化 (Attribution Refinement)**
+    - [x] 重構 `/api/process` 與 `orchestrator.js` 以支援傳遞 `userId` 並處理後端自動存檔。 (已實作)
+    - [x] 遷移前端 Saga 的資料寫入邏輯至後端，消除雙重寫入隱患。 (已實作)
+    - [x] 實作 `SUPABASE_SYSTEM_USER_ID` Fallback 機制，確保 API 直接呼叫（如 Postman）仍能正確歸屬。 (已實作)

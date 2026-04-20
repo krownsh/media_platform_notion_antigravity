@@ -78,41 +78,39 @@ function* handleFetchPost(action) {
     // 1. Initial State: Starting crawl
     yield put(updateTaskStatus({ taskId, status: 'crawling' }));
 
-    // 2. Call Backend API (Orchestrator) to get raw data
-    console.log('[Saga] Fetching post from backend:', url);
+    // 2. Get current authenticated user
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+    const userId = user?.id;
+
+    // 3. Call Backend API (Orchestrator) to get data AND save to DB
+    console.log('[Saga] Requesting backend to process & save:', url, 'for user:', userId);
     const response = yield call(fetch, `${API_BASE_URL}/api/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify({ url, userId }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch post data from backend');
+      const errorData = yield response.json();
+      throw new Error(errorData.error || 'Failed to fetch post data from backend');
     }
 
     const result = yield response.json();
     const postData = result.data;
 
-    console.log('[Saga] Received postData from API:', postData);
+    console.log('[Saga] Received processed post from backend:', postData.dbId);
     yield put(updateTaskStatus({ taskId, status: 'analyzing' }));
 
-    // 2. Authenticate user
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
-
-    let userId = user?.id;
-    if (!userId) {
-      console.warn('[Saga] No user found. Data will NOT be saved to DB.');
-    }
-
-    // 3. Transform data for frontend (immediate display)
+    // 4. Transform data for frontend display
     const transformedPost = {
       id: crypto.randomUUID(),
+      dbId: postData.dbId, // Backend provided ID
       platform: postData.platform || 'threads',
       author: postData.author || 'Unknown',
       authorHandle: postData.authorHandle || 'unknown',
       avatar: postData.avatar,
       content: postData.content,
-      postedAt: postData.postedAt,
+      postedAt: postData.postedAt || postData.posted_at,
       originalUrl: postData.originalUrl || url,
       createdAt: new Date().toISOString(),
       images: postData.images || [],
@@ -122,120 +120,11 @@ function* handleFetchPost(action) {
       collectionId: null
     };
 
-    console.log('[Saga] Transformed post for display:', transformedPost);
+    console.log('[Saga] Final transformed post for UI:', transformedPost);
 
-    // 4. Save to Supabase (if authenticated)
-    if (userId) {
-      try {
-        console.log('[Saga] Saving to database...');
-
-        // 4.1 Insert Post
-        const { data: savedPost, error: postError } = yield call(() =>
-          supabase.from('posts').insert({
-            user_id: userId,
-            platform: transformedPost.platform,
-            original_url: transformedPost.originalUrl,
-            platform_post_id: postData.id || null,
-            author_name: transformedPost.author,
-            author_id: transformedPost.authorHandle,
-            author_avatar_url: transformedPost.avatar,
-            content: transformedPost.content,
-            posted_at: transformedPost.postedAt ? new Date(transformedPost.postedAt) : new Date(),
-            full_json: transformedPost.fullJson || null
-          }).select().single()
-        );
-
-        if (postError) {
-          console.error('[Saga] Failed to save post:', postError);
-          throw postError;
-        }
-
-        console.log('[Saga] ✅ Post saved:', savedPost.id);
-        const postId = savedPost.id;
-        transformedPost.dbId = postId;
-
-        // 4.2 Insert Media (Images)
-        if (transformedPost.images && transformedPost.images.length > 0) {
-          console.log(`[Saga] Saving ${transformedPost.images.length} images...`);
-          const mediaRecords = transformedPost.images.map((imgUrl, index) => ({
-            post_id: postId,
-            user_id: userId,
-            type: 'image',
-            url: imgUrl,
-            order: index,
-            meta_data: {}
-          }));
-
-          const { error: mediaError } = yield call(() =>
-            supabase.from('post_media').insert(mediaRecords)
-          );
-
-          if (mediaError) {
-            console.error('[Saga] Failed to save media:', mediaError);
-          } else {
-            console.log(`[Saga] ✅ Saved ${mediaRecords.length} media items`);
-          }
-        }
-
-        // 4.3 Insert Comments
-        if (transformedPost.comments && transformedPost.comments.length > 0) {
-          console.log(`[Saga] Saving ${transformedPost.comments.length} comments...`);
-          const commentRecords = transformedPost.comments.map(comment => ({
-            post_id: postId,
-            user_id: userId,
-            author_name: comment.user || comment.author,
-            content: comment.text,
-            commented_at: comment.postedAt ? new Date(comment.postedAt) : new Date(),
-            raw_data: comment // Store the entire comment object as JSONB
-          }));
-
-          const { error: commentsError } = yield call(() =>
-            supabase.from('post_comments').insert(commentRecords)
-          );
-
-          if (commentsError) {
-            console.error('[Saga] Failed to save comments:', commentsError);
-          } else {
-            console.log(`[Saga] ✅ Saved ${commentRecords.length} comments`);
-          }
-        }
-
-        // 4.4 Insert Analysis (if exists)
-        if (transformedPost.analysis && (transformedPost.analysis.summary || transformedPost.analysis.primary_category)) {
-          console.log('[Saga] Saving AI analysis...');
-          const { error: analysisError } = yield call(() =>
-            supabase.from('post_analysis').insert({
-              post_id: postId,
-              user_id: userId,
-              primary_category: transformedPost.analysis.primary_category || 'other',
-              summary: transformedPost.analysis.summary || null,
-              tags: transformedPost.analysis.tags || [],
-              topics: transformedPost.analysis.topics || [],
-              sentiment: transformedPost.analysis.sentiment || null,
-              insights: transformedPost.analysis.insights || []
-            })
-          );
-
-          if (analysisError) {
-            console.error('[Saga] Failed to save analysis:', analysisError);
-          } else {
-            console.log('[Saga] ✅ Saved AI analysis');
-          }
-        }
-
-        console.log('[Saga] ✅ All data saved successfully!');
-
-      } catch (dbError) {
-        console.error('[Saga] Database save error:', dbError);
-        // Continue to display data even if DB save fails
-      }
-    } else {
-      console.warn('[Saga] No user ID - data not saved to database');
-    }
-
-    // 5. Return the post to Redux store for immediate display
+    // 5. Update Redux store for immediate display
     yield put(fetchPostSuccess(transformedPost));
-    yield put(addNotification({ message: '貼文已成功擷取', type: 'success' }));
+    yield put(addNotification({ message: '貼文已成功擷取並存入資料庫', type: 'success' }));
     yield put(removeTask(taskId));
 
   } catch (error) {
@@ -246,10 +135,6 @@ function* handleFetchPost(action) {
     }));
     yield put(fetchPostFailure(error.message));
     yield put(updateTaskStatus({ taskId, status: 'failed' }));
-    // Wait a bit then remove failed task from UI or keep it? 
-    // For now, let's keep it for a while then remove
-    // yield delay(5000); 
-    // yield put(removeTask(taskId));
   }
 }
 

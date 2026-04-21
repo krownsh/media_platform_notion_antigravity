@@ -74,7 +74,7 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative mx-auto w-full sm:max-w-[420px] h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+            className="notion-card rounded-lg group relative mx-auto w-full max-w-[420px] h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {/* Platform Header (40px) */}
@@ -133,8 +133,8 @@ const PostCard = ({
             {/* --- Content Area (Total Remaining: 330px) --- */}
             <div className="flex-1 flex flex-col bg-white overflow-hidden">
 
-                {/* 1. Main Content Container: STRICT FIXED 245px */}
-                <div className="h-[245px] flex-shrink-0 px-4 py-4 overflow-hidden">
+                {/* 1. Main Content Container: STRICT FIXED 250px */}
+                <div className="h-[250px] flex-shrink-0 px-4 py-4 overflow-hidden">
                     <div className="font-bold text-[rgba(0,0,0,0.95)] text-sm mb-1.5 leading-tight">{post.author}</div>
                     <div
                         className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
@@ -144,31 +144,31 @@ const PostCard = ({
                     </div>
                 </div>
 
-                {/* 2. Footer Container: STRICT FIXED 85px (Pinned to absolute bottom) */}
-                <div className="mt-auto h-[85px] flex-shrink-0 px-4 py-2.5 flex flex-col justify-between bg-white border-t notion-whisper-border">
-                    {/* Tags Area (Fixed 24px) */}
-                    <div className="h-6 overflow-hidden flex items-center gap-2 flex-shrink-0">
+                {/* 2. Footer Container: MINIMAL FIXED 70px */}
+                <div className="mt-auto h-[70px] flex-shrink-0 px-4 py-2 flex flex-col gap-1.5 bg-white border-t notion-whisper-border">
+                    {/* Tags Area (Fixed 20px) */}
+                    <div className="h-5 overflow-hidden flex items-center gap-1.5 flex-shrink-0">
                         {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
-                            <span key={i} className="px-2 py-0.5 rounded-full bg-black/5 text-[12px] font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none">#{tag}</span>
+                            <span key={i} className="px-1.5 py-0.5 rounded-full bg-black/5 text-[11px] font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none">#{tag}</span>
                         ))}
                     </div>
 
-                    {/* AI Info / Summary Area (Fixed 34px) */}
-                    <div className="h-[34px] overflow-hidden flex-shrink-0">
+                    {/* AI Info / Summary Area (Dynamic) */}
+                    <div className={`${showSummary && analysis?.summary ? 'h-[28px]' : 'h-0'} overflow-hidden flex-shrink-0`}>
                         {showSummary && analysis?.summary && (
-                            <div className="bg-[#0075de]/5 rounded-md p-1.5 h-full flex flex-col justify-center border border-[#0075de]/10">
-                                <div className="text-[13px] text-[#615d59] leading-tight line-clamp-1 font-medium italic">
-                                    <Sparkles size={10} className="inline mr-1 text-[#0075de]" />
+                            <div className="bg-[#0075de]/3 rounded-md p-1 h-full flex flex-col justify-center border border-[#0075de]/5">
+                                <div className="text-[11px] text-[#615d59] leading-tight line-clamp-1 font-medium italic">
+                                    <Sparkles size={8} className="inline mr-1 text-[#0075de]" />
                                     {(typeof analysis.summary === 'string' ? analysis.summary : (analysis.summary.core_insight || "點擊查看")).replace(/##\s*|\*\*/g, '')}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Final Bottom Row (Fixed 20px) - PINNED TO THE VERY BOTTOM */}
-                    <div className="h-5 flex items-center justify-between mt-auto flex-shrink-0">
-                        <span className="text-[#0075de] text-[11px] font-bold uppercase tracking-tight leading-none">{analysis?.primary_category || ''}</span>
-                        <div className="text-[12px] text-[#615d59] opacity-70 font-bold leading-none">{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
+                    {/* Final Bottom Row (Fixed 18px) */}
+                    <div className="h-[18px] flex items-center justify-between flex-shrink-0">
+                        <span className="text-[#0075de] text-[10px] font-bold uppercase tracking-tight leading-none">{analysis?.primary_category || ''}</span>
+                        <div className="text-[11px] text-[#615d59] opacity-70 font-bold leading-none">{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>
                 </div>
             </div>

@@ -100,12 +100,17 @@ app.post('/api/process', async (req, res) => {
 
                 // Save Analysis
                 try {
+                    const aiSummaryObj = result.data.analysis.summary;
+                    const summaryText = typeof aiSummaryObj === 'object' ?
+                        (aiSummaryObj.summary || JSON.stringify(aiSummaryObj)) :
+                        aiSummaryObj;
+
                     await supabase.from('post_analysis').delete().eq('post_id', postId);
                     await supabase.from('post_analysis').insert({
                         post_id: postId,
                         user_id: finalUserId,
                         primary_category: result.data.analysis.primary_category,
-                        summary: result.data.analysis.summary,
+                        summary: summaryText,
                         tags: result.data.analysis.tags || [],
                         topics: result.data.analysis.topics || [],
                         sentiment: result.data.analysis.sentiment || null

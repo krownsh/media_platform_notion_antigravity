@@ -57,7 +57,7 @@ class Orchestrator {
             platform: data.platform,
             original_url: originalUrl,
             author_name: data.author || data.author_name || null,
-            author_id: data.author_id || data.authorHandle || null,
+            author_id: data.authorHandle || data.author_id || null, // Check authorHandle first
             author_avatar_url: data.avatar || data.author_avatar_url || null,
             content: data.content,
             posted_at: postedAt || null,
@@ -68,17 +68,28 @@ class Orchestrator {
         // Remove undefined keys (Supabase will reject them for NOT NULL columns)
         Object.keys(upsertPayload).forEach(k => upsertPayload[k] === undefined && delete upsertPayload[k]);
         try {
+            // Priority: 1. data.id (if editing), 2. original_url (if unique)
             const conflictKey = (data.id && data.id.length > 20) ? 'id' : 'original_url';
             let { data: savedData, error } = await supabase.from('posts').upsert(upsertPayload, { onConflict: conflictKey }).select();
 
-            // Retry without custom conflict key if the DB lacks the expected unique constraint
+            // Retry without custom conflict key if the DB lacks the expected unique constraint on original_url
             if (error && conflictKey === 'original_url' && /unique|exclusion|on conflict/i.test(error.message)) {
-                console.warn('[Orchestrator] original_url upsert failed, retrying with primary key:', error.message);
-                ({ data: savedData, error } = await supabase.from('posts').upsert(upsertPayload).select());
+                console.warn('[Orchestrator] original_url upsert failed, attempting manual find-or-create...');
+
+                // Manual check to avoid duplicates if unique index is missing
+                const { data: existing } = await supabase.from('posts').select('id').eq('original_url', originalUrl).limit(1);
+
+                if (existing && existing.length > 0) {
+                    // Update existing
+                    ({ data: savedData, error } = await supabase.from('posts').update(upsertPayload).eq('id', existing[0].id).select());
+                } else {
+                    // Insert new
+                    ({ data: savedData, error } = await supabase.from('posts').insert(upsertPayload).select());
+                }
             }
 
             if (error) {
-                console.warn('[Orchestrator] Failed to upsert post:', error.message);
+                console.warn('[Orchestrator] Failed to persist post:', error.message);
                 return null;
             }
             return savedData ? savedData[0] : null;

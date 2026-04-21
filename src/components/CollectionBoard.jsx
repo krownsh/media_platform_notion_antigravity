@@ -23,6 +23,13 @@ const CollectionBoard = ({ onRemix }) => {
     const [selectedCollectionId, setSelectedCollectionId] = useState(null);
     const [newCollectionName, setNewCollectionName] = useState('');
     const [isCreating, setIsCreating] = useState(false);
+    const [isMobileScreen, setIsMobileScreen] = useState(window.innerWidth < 1024); // 使用 1024 (lg) 作為判斷點，更符合平板與手機的操作習慣
+
+    useEffect(() => {
+        const handleResize = () => setIsMobileScreen(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const headerRef = useRef(null);
     const sentinelRef = useRef(null);
@@ -66,7 +73,7 @@ const CollectionBoard = ({ onRemix }) => {
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8,
+                distance: isMobileScreen ? 9999 : 8, // 手機版設極大值防止觸發
             },
         }),
         useSensor(KeyboardSensor, {
@@ -245,7 +252,7 @@ const CollectionBoard = ({ onRemix }) => {
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-3 sm:gap-4 md:gap-5">
+                            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3 sm:gap-4 md:gap-5 px-1">
                                 {/* --- Task Queue Skeletons --- */}
                                 {tasks.map((task) => (
                                     <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[640px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">

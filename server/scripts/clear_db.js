@@ -26,7 +26,7 @@ async function clearDatabase() {
         // Actually, we can just use .not('id', 'is', null) which is safer for any non-null PK.
 
         const { error } = await supabase
-            .from('posts')
+            .from('collection_posts')
             .delete()
             .not('id', 'is', null);
 

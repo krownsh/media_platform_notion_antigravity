@@ -22,8 +22,8 @@ export async function batchClassify({ ruleOnly = false, limit = 100 } = {}) {
 
     // 1. 查詢缺少 primary_category 的 post_analysis 記錄（含 post 的 content）
     const { data: records, error } = await supabase
-        .from('post_analysis')
-        .select('id, post_id, summary, posts(content, full_json)')
+        .from('collection_post_analysis')
+        .select('id, post_id, summary, collection_posts(content, full_json)')
         .is('primary_category', null)
         .limit(limit);
 
@@ -60,7 +60,7 @@ export async function batchClassify({ ruleOnly = false, limit = 100 } = {}) {
 
                 // 3. 更新 primary_category
                 const { error: updateError } = await supabase
-                    .from('post_analysis')
+                    .from('collection_post_analysis')
                     .update({ primary_category: category })
                     .eq('id', record.id);
 
@@ -93,13 +93,13 @@ export async function batchClassify({ ruleOnly = false, limit = 100 } = {}) {
  */
 function extractContent(record) {
     // 優先使用 post content
-    if (record.posts?.content) return record.posts.content;
+    if (record.collection_posts?.content) return record.collection_posts.content;
     // 備援：從 full_json 中取 main_text
-    if (record.posts?.full_json) {
+    if (record.collection_posts?.full_json) {
         try {
-            const json = typeof record.posts.full_json === 'string'
-                ? JSON.parse(record.posts.full_json)
-                : record.posts.full_json;
+            const json = typeof record.collection_posts.full_json === 'string'
+                ? JSON.parse(record.collection_posts.full_json)
+                : record.collection_posts.full_json;
             const mainPost = Array.isArray(json) ? json[0] : json;
             return mainPost?.main_text || '';
         } catch {

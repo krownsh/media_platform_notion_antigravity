@@ -14,7 +14,7 @@ import { supabase } from '../supabaseClient.js';
  */
 export async function getCategoryStats(userId) {
     const { data, error } = await supabase
-        .from('post_analysis')
+        .from('collection_post_analysis')
         .select('primary_category, count:id')
         .eq('user_id', userId)
         .not('primary_category', 'is', null);
@@ -45,7 +45,7 @@ export async function getDailyTrend(userId, days = 30) {
     since.setDate(since.getDate() - days);
 
     const { data, error } = await supabase
-        .from('posts')
+        .from('collection_posts')
         .select('created_at')
         .eq('user_id', userId)
         .gte('created_at', since.toISOString())
@@ -82,7 +82,7 @@ export async function getDailyTrend(userId, days = 30) {
  */
 export async function getDomainLeaderboard(userId, limit = 10) {
     const { data, error } = await supabase
-        .from('posts')
+        .from('collection_posts')
         .select('source_domains')
         .eq('user_id', userId)
         .not('source_domains', 'eq', '[]');
@@ -115,7 +115,7 @@ export async function getDomainLeaderboard(userId, limit = 10) {
  */
 export async function getAuthorStats(userId, minCount = 2) {
     const { data, error } = await supabase
-        .from('posts')
+        .from('collection_posts')
         .select('author_name, author_id, platform')
         .eq('user_id', userId)
         .not('author_name', 'is', null);
@@ -147,7 +147,7 @@ export async function getAuthorStats(userId, minCount = 2) {
  */
 export async function getTagCloud(userId, limit = 20) {
     const { data, error } = await supabase
-        .from('post_analysis')
+        .from('collection_post_analysis')
         .select('tags')
         .eq('user_id', userId)
         .not('tags', 'is', null);
@@ -179,8 +179,8 @@ export async function getTagCloud(userId, limit = 20) {
  */
 export async function getOverview(userId) {
     const [totalPosts, totalAnalyzed, categories, topDomains] = await Promise.all([
-        supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-        supabase.from('post_analysis').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('primary_category', 'is', null),
+        supabase.from('collection_posts').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('collection_post_analysis').select('id', { count: 'exact', head: true }).eq('user_id', userId).not('primary_category', 'is', null),
         getCategoryStats(userId),
         getDomainLeaderboard(userId, 3),
     ]);

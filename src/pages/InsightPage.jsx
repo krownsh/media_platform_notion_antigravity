@@ -78,7 +78,7 @@ const InsightPage = () => {
                 fetchStats('/api/stats/authors', userId, { minCount: 2 }),
                 fetchStats('/api/stats/trend', userId, { days: 30 }),
                 fetchStats('/api/stats/tags', userId, { limit: 20 }),
-                supabase.from('category_configs').select('*').order('created_at', { ascending: true })
+                supabase.from('collection_category_configs').select('*').order('created_at', { ascending: true })
             ]);
             setOverview(ov);
             setCategories((cat.categories || []).map(c => ({
@@ -106,7 +106,7 @@ const InsightPage = () => {
     const handleSaveConfig = async (id) => {
         try {
             const { error: updateError } = await supabase
-                .from('category_configs')
+                .from('collection_category_configs')
                 .update({
                     label: editData.label,
                     description: editData.description,
@@ -387,7 +387,7 @@ const InsightPage = () => {
                         onClick={async () => {
                             const newSlug = prompt('請輸入分類 Slug (例如: ai, tool):');
                             if (!newSlug) return;
-                            const { error } = await supabase.from('category_configs').insert({
+                            const { error } = await supabase.from('collection_category_configs').insert({
                                 slug: newSlug,
                                 label: '新分類',
                                 description: '點擊編輯定義...'
@@ -484,7 +484,7 @@ const InsightPage = () => {
                                                     <button
                                                         onClick={async () => {
                                                             if (confirm('確定要刪除此分類定義？此動作將影響後續 AI 分類。')) {
-                                                                const { error } = await supabase.from('category_configs').delete().eq('id', config.id);
+                                                                const { error } = await supabase.from('collection_category_configs').delete().eq('id', config.id);
                                                                 if (error) alert(error.message);
                                                                 else loadStats();
                                                             }

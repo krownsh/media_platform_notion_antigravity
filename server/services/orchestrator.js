@@ -70,21 +70,21 @@ class Orchestrator {
         try {
             // Priority: 1. data.id (if editing), 2. original_url (if unique)
             const conflictKey = (data.id && data.id.length > 20) ? 'id' : 'original_url';
-            let { data: savedData, error } = await supabase.from('posts').upsert(upsertPayload, { onConflict: conflictKey }).select();
+            let { data: savedData, error } = await supabase.from('collection_posts').upsert(upsertPayload, { onConflict: conflictKey }).select();
 
             // Retry without custom conflict key if the DB lacks the expected unique constraint on original_url
             if (error && conflictKey === 'original_url' && /unique|exclusion|on conflict/i.test(error.message)) {
                 console.warn('[Orchestrator] original_url upsert failed, attempting manual find-or-create...');
 
                 // Manual check to avoid duplicates if unique index is missing
-                const { data: existing } = await supabase.from('posts').select('id').eq('original_url', originalUrl).limit(1);
+                const { data: existing } = await supabase.from('collection_posts').select('id').eq('original_url', originalUrl).limit(1);
 
                 if (existing && existing.length > 0) {
                     // Update existing
-                    ({ data: savedData, error } = await supabase.from('posts').update(upsertPayload).eq('id', existing[0].id).select());
+                    ({ data: savedData, error } = await supabase.from('collection_posts').update(upsertPayload).eq('id', existing[0].id).select());
                 } else {
                     // Insert new
-                    ({ data: savedData, error } = await supabase.from('posts').insert(upsertPayload).select());
+                    ({ data: savedData, error } = await supabase.from('collection_posts').insert(upsertPayload).select());
                 }
             }
 
@@ -119,9 +119,9 @@ class Orchestrator {
             const filename = `${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
             const filePath = `threads_images/${filename}`;
 
-            // Upload to 'post_images' bucket (assuming it exists)
+            // Upload to 'collection_post_images' bucket (assuming it exists)
             const { error } = await supabase.storage
-                .from('post_images')
+                .from('collection_post_images')
                 .upload(filePath, buffer, {
                     contentType: contentType,
                     upsert: false
@@ -135,7 +135,7 @@ class Orchestrator {
 
             // Get Public URL
             const { data: publicUrlData } = supabase.storage
-                .from('post_images')
+                .from('collection_post_images')
                 .getPublicUrl(filePath);
 
             return publicUrlData.publicUrl;

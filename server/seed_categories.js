@@ -31,7 +31,7 @@ async function seed() {
     console.log('--- Seeding Category Strategy ---');
     for (const config of defaultConfigs) {
         const { error } = await supabase
-            .from('category_configs')
+            .from('collection_category_configs')
             .upsert(config, { onConflict: 'slug' });
 
         if (error) {

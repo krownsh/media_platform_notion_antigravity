@@ -24,7 +24,7 @@ class CategoryProcessor {
         if (!this.configs || (now - this.lastFetch > this.CACHE_TTL)) {
             console.log('[CategoryProcessor] Refreshing category configurations from DB...');
             const { data, error } = await supabase
-                .from('category_configs')
+                .from('collection_category_configs')
                 .select('*')
                 .eq('is_active', true);
 

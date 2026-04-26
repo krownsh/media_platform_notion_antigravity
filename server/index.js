@@ -105,8 +105,8 @@ app.post('/api/process', async (req, res) => {
                         (aiSummaryObj.summary || JSON.stringify(aiSummaryObj)) :
                         aiSummaryObj;
 
-                    await supabase.from('post_analysis').delete().eq('post_id', postId);
-                    await supabase.from('post_analysis').insert({
+                    await supabase.from('collection_post_analysis').delete().eq('post_id', postId);
+                    await supabase.from('collection_post_analysis').insert({
                         post_id: postId,
                         user_id: finalUserId,
                         primary_category: result.data.analysis.primary_category,
@@ -128,8 +128,8 @@ app.post('/api/process', async (req, res) => {
                             url: imgUrl,
                             order: idx
                         }));
-                        await supabase.from('post_media').delete().eq('post_id', postId);
-                        await supabase.from('post_media').insert(mediaRecords);
+                        await supabase.from('collection_post_media').delete().eq('post_id', postId);
+                        await supabase.from('collection_post_media').insert(mediaRecords);
                         console.log(`[Server] ${mediaRecords.length} media items persisted`);
                     } catch (e) { console.error('[Server] Failed to persist media:', e.message); }
                 }
@@ -145,8 +145,8 @@ app.post('/api/process', async (req, res) => {
                             commented_at: c.postedAt ? new Date(c.postedAt) : new Date(),
                             raw_data: c
                         }));
-                        await supabase.from('post_comments').delete().eq('post_id', postId);
-                        await supabase.from('post_comments').insert(commentRecords);
+                        await supabase.from('collection_post_comments').delete().eq('post_id', postId);
+                        await supabase.from('collection_post_comments').insert(commentRecords);
                         console.log(`[Server] ${commentRecords.length} comments persisted`);
                     } catch (e) { console.error('[Server] Failed to persist comments:', e.message); }
                 }
@@ -343,13 +343,13 @@ app.get('/api/posts', async (req, res) => {
     try {
         // Fetch posts
         const { data: posts, error: postsError } = await supabase
-            .from('posts')
+            .from('collection_posts')
             .select(`
                 *,
-                post_media (*),
-                post_comments (*),
-                post_analysis (*),
-                user_annotations (*)
+                collection_post_media (*),
+                collection_post_comments (*),
+                collection_post_analysis (*),
+                collection_user_annotations (*)
             `)
             .order('created_at', { ascending: false });
 
@@ -357,7 +357,7 @@ app.get('/api/posts', async (req, res) => {
 
         // Fetch collections
         const { data: collections, error: collectionsError } = await supabase
-            .from('collections')
+            .from('collection_collections')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -377,14 +377,14 @@ app.get('/api/posts', async (req, res) => {
             createdAt: post.created_at,
             fullJson: post.full_json,
             collectionId: post.collection_id,
-            images: post.post_media?.filter(m => m.type === 'image').map(m => m.url) || [],
-            comments: post.post_comments?.map(c => ({
+            images: post.collection_post_media?.filter(m => m.type === 'image').map(m => m.url) || [],
+            comments: post.collection_post_comments?.map(c => ({
                 user: c.author_name,
                 text: c.content,
                 postedAt: c.commented_at
             })) || [],
-            annotations: post.user_annotations || [],
-            analysis: post.post_analysis?.[0] || null
+            annotations: post.collection_user_annotations || [],
+            analysis: post.collection_post_analysis?.[0] || null
         }));
 
         res.json({ posts: formattedPosts, collections: collections || [] });
@@ -418,7 +418,7 @@ app.get('/api/posts/:postId/annotations', async (req, res) => {
 
     try {
         const { data, error } = await supabase
-            .from('user_annotations')
+            .from('collection_user_annotations')
             .select('*')
             .eq('post_id', postId)
             .eq('type', 'note')
@@ -451,7 +451,7 @@ app.post('/api/posts/:postId/annotations', async (req, res) => {
 
     try {
         const { data, error } = await supabase
-            .from('user_annotations')
+            .from('collection_user_annotations')
             .insert({
                 post_id: postId,
                 user_id: userId,
@@ -484,7 +484,7 @@ app.post('/api/image-workflow/step1', async (req, res) => {
         let logId = null;
         if (isSupabaseConfigured()) {
             const { data, error } = await supabase
-                .from('image_workflow_logs')
+                .from('collection_image_workflow_logs')
                 .insert({
                     post_id: postId,
                     user_id: userId,
@@ -516,7 +516,7 @@ app.post('/api/image-workflow/step2', async (req, res) => {
         // Update DB
         if (logId && isSupabaseConfigured()) {
             await supabase
-                .from('image_workflow_logs')
+                .from('collection_image_workflow_logs')
                 .update({
                     step_2_prompt: prompt,
                     step_2_output: output
@@ -544,7 +544,7 @@ app.post('/api/image-workflow/step3', async (req, res) => {
         // Update DB
         if (logId && isSupabaseConfigured()) {
             await supabase
-                .from('image_workflow_logs')
+                .from('collection_image_workflow_logs')
                 .update({
                     step_3_prompt: prompt,
                     step_3_output: imageUrl
@@ -610,7 +610,7 @@ app.get('/api/posts/:postId/image-workflows', async (req, res) => {
 
     try {
         const { data, error } = await supabase
-            .from('image_workflow_logs')
+            .from('collection_image_workflow_logs')
             .select('*')
             .eq('post_id', postId)
             .order('created_at', { ascending: false });

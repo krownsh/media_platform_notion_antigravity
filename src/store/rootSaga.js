@@ -182,7 +182,7 @@ function* handleDeletePost(action) {
   if (isUuid) {
     try {
       const { error } = yield call(() =>
-        supabase.from('posts').delete().eq('id', postId)
+        supabase.from('collection_posts').delete().eq('id', postId)
       );
       if (error) {
         console.error('[Saga] Background DB delete failed (silent):', error);
@@ -204,7 +204,7 @@ function* handleCreateCollection(action) {
     if (!user) throw new Error('User not authenticated');
 
     const { data, error } = yield call(() =>
-      supabase.from('collections').insert({
+      supabase.from('collection_collections').insert({
         name,
         user_id: user.id
       }).select().single()
@@ -227,7 +227,7 @@ function* handleDeleteCollection(action) {
 
     // First, update all posts in this collection to have collection_id = null
     const { error: updateError } = yield call(() =>
-      supabase.from('posts')
+      supabase.from('collection_posts')
         .update({ collection_id: null })
         .eq('collection_id', collectionId)
     );
@@ -236,7 +236,7 @@ function* handleDeleteCollection(action) {
 
     // Then delete the collection
     const { error: deleteError } = yield call(() =>
-      supabase.from('collections').delete().eq('id', collectionId)
+      supabase.from('collection_collections').delete().eq('id', collectionId)
     );
 
     if (deleteError) throw deleteError;
@@ -256,7 +256,7 @@ function* handleMovePostToCollection(action) {
     const { postId, collectionId } = action.payload;
 
     const { error } = yield call(() =>
-      supabase.from('posts')
+      supabase.from('collection_posts')
         .update({ collection_id: collectionId })
         .eq('id', postId)
     );
@@ -277,7 +277,7 @@ function* handleUpdateCollectionName(action) {
     const { collectionId, name } = action.payload;
 
     const { error } = yield call(() =>
-      supabase.from('collections')
+      supabase.from('collection_collections')
         .update({ name })
         .eq('id', collectionId)
     );

@@ -259,10 +259,10 @@ Output format: Just give me the Subject Description paragraph in English.`);
     if (!post) return <div className="p-8 text-center">Post not found</div>;
 
     return (
-        <div className="min-h-screen bg-background text-foreground p-6 pb-32">
+        <div className="min-h-screen bg-background text-[rgba(0,0,0,0.95)] p-6 pb-32">
             {/* Header */}
             <div className="max-w-5xl mx-auto mb-8 flex items-center gap-4">
-                <button onClick={() => navigate(-1)} className="p-2 hover:bg-accent/10 rounded-full transition-colors">
+                <button onClick={() => navigate(-1)} className="p-2 hover:bg-[rgba(0,117,222,0.1)] rounded-full transition-colors">
                     <ArrowLeft size={24} />
                 </button>
                 <h1 className="text-2xl font-bold">AI Image Workflow</h1>
@@ -271,10 +271,10 @@ Output format: Just give me the Subject Description paragraph in English.`);
             <div className="max-w-5xl mx-auto space-y-12">
 
                 {/* Step 1 */}
-                <section className={`glass-card p-6 rounded-3xl border ${currentStep === 1 ? 'border-accent ring-2 ring-accent/20' : 'border-white/10'}`}>
+                <section className={`notion-card p-6 rounded-lg border ${currentStep === 1 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'}`}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <span className="bg-accent text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                            <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
                             拆解與提取 (Extract Logic)
                         </h2>
                         {step1Output && <CheckCircle className="text-green-500" size={24} />}
@@ -282,32 +282,32 @@ Output format: Just give me the Subject Description paragraph in English.`);
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <div className="aspect-video bg-black/5 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center">
+                            <div className="aspect-video bg-black/5 rounded-lg overflow-hidden border notion-whisper-border flex items-center justify-center">
                                 {post.images && post.images[0] ? (
                                     <img src={post.images[0]} alt="Source" className="w-full h-full object-contain" />
                                 ) : (
-                                    <span className="text-muted-foreground">No Image</span>
+                                    <span className="text-[#615d59]">No Image</span>
                                 )}
                             </div>
-                            <label className="block text-sm font-medium text-muted-foreground">Prompt 1 (Editable)</label>
+                            <label className="block text-sm font-medium text-[#615d59]">Prompt 1 (Editable)</label>
                             <textarea
                                 value={step1Prompt}
                                 onChange={(e) => setStep1Prompt(e.target.value)}
-                                className="w-full h-48 bg-white/50 border border-white/20 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                                className="w-full h-48 bg-transparent border notion-whisper-border rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
                             />
                         </div>
                         <div className="space-y-4">
-                            <label className="block text-sm font-medium text-muted-foreground">Analysis Result</label>
+                            <label className="block text-sm font-medium text-[#615d59]">Analysis Result</label>
                             <textarea
                                 value={step1Output}
                                 onChange={(e) => setStep1Output(e.target.value)}
                                 placeholder="Result will appear here..."
-                                className="w-full h-[340px] bg-black/5 border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none resize-none"
+                                className="w-full h-[340px] bg-black/5 border notion-whisper-border rounded-lg p-4 text-sm font-mono focus:outline-none resize-none"
                             />
                             <button
                                 onClick={handleStep1}
                                 disabled={loading}
-                                className="w-full bg-accent hover:bg-accent/90 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                                className="w-full bg-[#0075de] hover:bg-[#0075de]/90 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all"
                             >
                                 {loading && currentStep === 1 ? <Loader2 className="animate-spin" /> : <Play size={18} />}
                                 Run Step 1
@@ -317,10 +317,10 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 2 */}
-                <section className={`glass-card p-6 rounded-3xl border ${currentStep === 2 ? 'border-accent ring-2 ring-accent/20' : 'border-white/10'} ${currentStep < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
+                <section className={`notion-card p-6 rounded-lg border ${currentStep === 2 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <span className="bg-accent text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                            <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
                             改寫與視覺轉譯 (Rewrite & Translate)
                         </h2>
                         {step2Output && <CheckCircle className="text-green-500" size={24} />}
@@ -328,7 +328,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-4">
-                            <label className="block text-sm font-medium text-muted-foreground">Prompt 2 (Instructions)</label>
+                            <label className="block text-sm font-medium text-[#615d59]">Prompt 2 (Instructions)</label>
                             <RichMentionEditor
                                 value={step2Prompt}
                                 onChange={setStep2Prompt}
@@ -344,13 +344,13 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 <h3 className="text-lg font-semibold">Visual Translation (Step 2 Output)</h3>
                                 {loading && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent"></div>}
                             </div>
-                            <div className="bg-muted/30 p-4 rounded-xl border border-white/10 min-h-[100px] text-sm whitespace-pre-wrap">
+                            <div className="bg-muted/30 p-4 rounded-lg border notion-whisper-border min-h-[100px] text-sm whitespace-pre-wrap">
                                 {step2Output || "Result will appear here..."}
                             </div>
                             <button
                                 onClick={handleStep2}
                                 disabled={loading || !step1Output}
-                                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 <Play size={18} fill="currentColor" />
                                 Run Step 2
@@ -360,10 +360,10 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 3 */}
-                <section className={`glass-card p-6 rounded-3xl border ${currentStep === 3 ? 'border-accent ring-2 ring-accent/20' : 'border-white/10'} ${currentStep < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
+                <section className={`notion-card p-6 rounded-lg border ${currentStep === 3 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <span className="bg-accent text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+                            <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
                             組合與生成 (Combine & Generate)
                         </h2>
                         {step3Output && <CheckCircle className="text-green-500" size={24} />}
@@ -372,7 +372,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                     <div className="space-y-6">
                         {/* Advanced Template Editor */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium text-muted-foreground">Prompt Template (Advanced)</label>
+                            <label className="block text-sm font-medium text-[#615d59]">Prompt Template (Advanced)</label>
                             <RichMentionEditor
                                 value={step3Prompt}
                                 onChange={setStep3Prompt}
@@ -383,41 +383,41 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 ]}
                                 placeholder="Type @ to insert variables..."
                                 minHeight="100px"
-                                className="border-gray-300 shadow-sm"
+                                className="border-gray-300 shadow-soft-card"
                             />
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-[#615d59]">
                                 Type @ to insert variables. They will be replaced by the values below.
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-muted-foreground">Style Keywords</label>
+                                <label className="block text-sm font-medium text-[#615d59]">Style Keywords</label>
                                 <input
                                     type="text"
                                     value={styleKeywords}
                                     onChange={(e) => setStyleKeywords(e.target.value)}
-                                    className="w-full bg-white/50 border border-white/20 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                                    className="w-full bg-transparent border notion-whisper-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-muted-foreground">Quality Modifiers</label>
+                                <label className="block text-sm font-medium text-[#615d59]">Quality Modifiers</label>
                                 <input
                                     type="text"
                                     value={qualityModifiers}
                                     onChange={(e) => setQualityModifiers(e.target.value)}
-                                    className="w-full bg-white/50 border border-white/20 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
+                                    className="w-full bg-transparent border notion-whisper-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-4">
-                            <label className="block text-sm font-medium text-muted-foreground">Generated Image</label>
-                            <div className="relative min-h-[300px] bg-black/5 border border-white/10 rounded-xl overflow-hidden flex items-center justify-center">
+                            <label className="block text-sm font-medium text-[#615d59]">Generated Image</label>
+                            <div className="relative min-h-[300px] bg-black/5 border notion-whisper-border rounded-lg overflow-hidden flex items-center justify-center">
                                 {step3Output && step3Output.startsWith('http') ? (
                                     <img src={step3Output} alt="Generated" className="w-full h-full object-contain" />
                                 ) : (
-                                    <div className="text-muted-foreground p-4 text-center">
+                                    <div className="text-[#615d59] p-4 text-center">
                                         {step3Output || "Image will appear here..."}
                                     </div>
                                 )}
@@ -430,7 +430,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                             <button
                                 onClick={handleStep3}
                                 disabled={loading}
-                                className="w-full bg-accent hover:bg-accent/90 text-white py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all"
+                                className="w-full bg-[#0075de] hover:bg-[#0075de]/90 text-white py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-all"
                             >
                                 {loading && currentStep === 3 ? <Loader2 className="animate-spin" /> : <Play size={18} />}
                                 Generate Image with Nano Banana Pro
@@ -440,17 +440,17 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 4: Publish */}
-                <section className={`glass-card p-6 rounded-3xl border ${currentStep === 4 ? 'border-accent ring-2 ring-accent/20' : 'border-white/10'} ${currentStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
+                <section className={`notion-card p-6 rounded-lg border ${currentStep === 4 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
-                            <span className="bg-accent text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
+                            <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
                             發佈 (Publish)
                         </h2>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Instagram Section */}
-                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-muted rounded-lg text-pink-500">
                                     <Instagram size={20} />
@@ -459,11 +459,11 @@ Output format: Just give me the Subject Description paragraph in English.`);
                             </div>
 
                             <div className="flex-1 space-y-3 mb-4">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Caption</label>
+                                <label className="text-xs font-medium text-[#615d59] uppercase tracking-wider">Caption</label>
                                 <textarea
                                     value={captions.instagram}
                                     onChange={(e) => setCaptions(prev => ({ ...prev, instagram: e.target.value }))}
-                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    className="w-full h-40 bg-transparent border border-[rgba(0,0,0,0.1)] rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-[#615d59]/50"
                                     placeholder="Write a caption for Instagram..."
                                 />
                             </div>
@@ -472,7 +472,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 <button
                                     onClick={() => handlePublishSingle('instagram')}
                                     disabled={loading || !step3Output}
-                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-lg text-sm font-bold shadow-deep shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading && publishStatuses.instagram.includes('Publishing') ? 'Publishing...' : 'Publish Post'}
                                 </button>
@@ -486,20 +486,20 @@ Output format: Just give me the Subject Description paragraph in English.`);
                         </div>
 
                         {/* Threads Section */}
-                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="p-2 bg-muted rounded-lg text-foreground">
+                                <div className="p-2 bg-muted rounded-lg text-[rgba(0,0,0,0.95)]">
                                     <AtSign size={20} />
                                 </div>
                                 <span className="font-bold text-lg">Threads</span>
                             </div>
 
                             <div className="flex-1 space-y-3 mb-4">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Thread Text</label>
+                                <label className="text-xs font-medium text-[#615d59] uppercase tracking-wider">Thread Text</label>
                                 <textarea
                                     value={captions.threads}
                                     onChange={(e) => setCaptions(prev => ({ ...prev, threads: e.target.value }))}
-                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    className="w-full h-40 bg-transparent border border-[rgba(0,0,0,0.1)] rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-[#615d59]/50"
                                     placeholder="Start a thread..."
                                 />
                             </div>
@@ -508,7 +508,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 <button
                                     onClick={() => handlePublishSingle('threads')}
                                     disabled={loading || !step3Output}
-                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-lg text-sm font-bold shadow-deep shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading && publishStatuses.threads.includes('Publishing') ? 'Posting...' : 'Post Thread'}
                                 </button>
@@ -522,7 +522,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                         </div>
 
                         {/* Twitter Section */}
-                        <div className="flex flex-col h-full p-5 rounded-2xl border border-border hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-muted rounded-lg text-blue-500">
                                     <Twitter size={20} />
@@ -531,11 +531,11 @@ Output format: Just give me the Subject Description paragraph in English.`);
                             </div>
 
                             <div className="flex-1 space-y-3 mb-4">
-                                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Tweet</label>
+                                <label className="text-xs font-medium text-[#615d59] uppercase tracking-wider">Tweet</label>
                                 <textarea
                                     value={captions.twitter}
                                     onChange={(e) => setCaptions(prev => ({ ...prev, twitter: e.target.value }))}
-                                    className="w-full h-40 bg-transparent border border-border rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-muted-foreground/50"
+                                    className="w-full h-40 bg-transparent border border-[rgba(0,0,0,0.1)] rounded-lg p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all placeholder:text-[#615d59]/50"
                                     placeholder="What's happening?"
                                 />
                             </div>
@@ -544,7 +544,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 <button
                                     onClick={() => handlePublishSingle('twitter')}
                                     disabled={loading || !step3Output}
-                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full bg-[#7d9b88] hover:opacity-90 text-white py-3 rounded-lg text-sm font-bold shadow-deep shadow-[#7d9b88]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading && publishStatuses.twitter.includes('Publishing') ? 'Tweeting...' : 'Tweet'}
                                 </button>

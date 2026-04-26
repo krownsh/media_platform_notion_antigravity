@@ -1,12 +1,19 @@
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '.env') });
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
 import { supabase } from './supabaseClient.js';
-
-dotenv.config({ path: './server/.env' });
+import * as statsService from './services/statsService.js';
+import { batchClassify } from './services/batchProcessor.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -22,46 +29,126 @@ app.get('/', (req, res) => {
 
 // Process URL Endpoint
 app.post('/api/process', async (req, res) => {
-    const { url } = req.body;
+    const { url, userId } = req.body;
 
     if (!url) {
         return res.status(400).json({ error: 'URL is required' });
     }
 
     try {
-        const result = await orchestrator.processUrl(url);
+        const result = await orchestrator.processUrl(url, userId);
 
         // Run AI Analysis based on platform
         if (result.data) {
             const platform = result.data.platform;
             const isSocial = platform === 'threads' || platform === 'twitter';
-            const isGeneric = platform === 'generic' || platform === 'unknown';
+            const isGeneric = platform === 'generic' || platform === 'unknown' || platform === 'github' || platform === 'notion' || platform === 'youtube';
 
+            // 1) 取得主要分類 (CategoryClassification)
+            const { categoryProcessor } = await import('./services/categoryProcessor.js');
+            const contentText = result.data.content || '';
+            const primaryCategory = await categoryProcessor.classify(contentText);
+
+            // 預設建立 analysis 物件
+            result.data.analysis = {
+                primary_category: primaryCategory
+            };
+
+            // 2) 擷取 AI Summary
             if (isSocial && result.data.full_json) {
                 console.log(`[Server] Running AI analysis for ${platform} post...`);
                 try {
                     const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                    result.data.analysis = {
-                        summary: aiResult.summary,
-                        raw: aiResult.raw
-                    };
-                    console.log('[Server] Social AI analysis completed');
+                    if (aiResult) {
+                        result.data.analysis.summary = aiResult.summary;
+                        result.data.analysis.raw = aiResult.raw;
+                        result.data.analysis.tags = aiResult.structured?.tags || [];
+                        result.data.analysis.topics = aiResult.structured?.topics || [];
+                        console.log('[Server] Social AI analysis completed');
+                    } else {
+                        throw new Error('AI analysis returned no results');
+                    }
                 } catch (aiError) {
                     console.warn('[Server] Social AI analysis failed:', aiError.message);
-                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                    result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
                 }
             } else if (isGeneric && result.data.content) {
                 console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
                 try {
                     const aiResult = await aiService.analyzeGenericPost(result.data);
-                    result.data.analysis = {
-                        summary: aiResult.summary,
-                        raw: aiResult.raw
-                    };
-                    console.log('[Server] Generic AI analysis completed');
+                    if (aiResult) {
+                        result.data.analysis.summary = aiResult.summary;
+                        result.data.analysis.raw = aiResult.raw;
+                        result.data.analysis.tags = aiResult.structured?.tags || [];
+                        result.data.analysis.topics = aiResult.structured?.topics || [];
+                        console.log('[Server] Generic AI analysis completed');
+                    } else {
+                        throw new Error('Generic AI analysis returned no results');
+                    }
                 } catch (aiError) {
                     console.warn('[Server] Generic AI analysis failed:', aiError.message);
-                    result.data.analysis = { summary: '## AI 分析暫時無法使用\n\n' + aiError.message };
+                    result.data.analysis.summary = '## AI 分析暫時無法使用\n\n' + aiError.message;
+                }
+            }
+
+            // 3) 將分析結果與媒體存回資料庫 (Server-side Persistence)
+            const postId = result.data.dbId;
+            const finalUserId = userId || process.env.SUPABASE_SYSTEM_USER_ID;
+
+            if (postId && finalUserId) {
+                console.log(`[Server] Persisting supplementary data for post ${postId}...`);
+
+                // Save Analysis
+                try {
+                    const aiSummaryObj = result.data.analysis.summary;
+                    const summaryText = typeof aiSummaryObj === 'object' ?
+                        (aiSummaryObj.summary || JSON.stringify(aiSummaryObj)) :
+                        aiSummaryObj;
+
+                    await supabase.from('post_analysis').delete().eq('post_id', postId);
+                    await supabase.from('post_analysis').insert({
+                        post_id: postId,
+                        user_id: finalUserId,
+                        primary_category: result.data.analysis.primary_category,
+                        summary: summaryText,
+                        tags: result.data.analysis.tags || [],
+                        topics: result.data.analysis.topics || [],
+                        sentiment: result.data.analysis.sentiment || null
+                    });
+                    console.log('[Server] AI analysis persisted');
+                } catch (e) { console.error('[Server] Failed to persist analysis:', e.message); }
+
+                // Save Media (Clean then Insert to avoid primary key/unique issues without complex upsert logic)
+                if (result.data.images && result.data.images.length > 0) {
+                    try {
+                        const mediaRecords = result.data.images.map((imgUrl, idx) => ({
+                            post_id: postId,
+                            user_id: finalUserId,
+                            type: 'image',
+                            url: imgUrl,
+                            order: idx
+                        }));
+                        await supabase.from('post_media').delete().eq('post_id', postId);
+                        await supabase.from('post_media').insert(mediaRecords);
+                        console.log(`[Server] ${mediaRecords.length} media items persisted`);
+                    } catch (e) { console.error('[Server] Failed to persist media:', e.message); }
+                }
+
+                // Save Comments
+                if (result.data.comments && result.data.comments.length > 0) {
+                    try {
+                        const commentRecords = result.data.comments.map(c => ({
+                            post_id: postId,
+                            user_id: finalUserId,
+                            author_name: c.user || c.author,
+                            content: c.text,
+                            commented_at: c.postedAt ? new Date(c.postedAt) : new Date(),
+                            raw_data: c
+                        }));
+                        await supabase.from('post_comments').delete().eq('post_id', postId);
+                        await supabase.from('post_comments').insert(commentRecords);
+                        console.log(`[Server] ${commentRecords.length} comments persisted`);
+                    } catch (e) { console.error('[Server] Failed to persist comments:', e.message); }
                 }
             }
         }
@@ -532,6 +619,99 @@ app.get('/api/posts/:postId/image-workflows', async (req, res) => {
         res.json({ logs: data });
     } catch (error) {
         console.error('Error fetching workflow logs:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ========== Intelligence Aggregator Stats API ==========
+
+// GET /api/stats/overview - 快速總覽
+app.get('/api/stats/overview', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getOverview(userId);
+        res.json(data);
+    } catch (error) {
+        console.error('[Stats] overview error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/categories - 類別分佈
+app.get('/api/stats/categories', async (req, res) => {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getCategoryStats(userId);
+        res.json({ categories: data });
+    } catch (error) {
+        console.error('[Stats] categories error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/domains - 熱門 Domain 排行
+app.get('/api/stats/domains', async (req, res) => {
+    const { userId, limit } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getDomainLeaderboard(userId, parseInt(limit) || 10);
+        res.json({ domains: data });
+    } catch (error) {
+        console.error('[Stats] domains error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/authors - Rising Voices 作者統計
+app.get('/api/stats/authors', async (req, res) => {
+    const { userId, minCount } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getAuthorStats(userId, parseInt(minCount) || 2);
+        res.json({ authors: data });
+    } catch (error) {
+        console.error('[Stats] authors error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/trend - 每日跨勢
+app.get('/api/stats/trend', async (req, res) => {
+    const { userId, days } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getDailyTrend(userId, parseInt(days) || 30);
+        res.json({ trend: data });
+    } catch (error) {
+        console.error('[Stats] trend error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/stats/tags - Tag Cloud
+app.get('/api/stats/tags', async (req, res) => {
+    const { userId, limit } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    try {
+        const data = await statsService.getTagCloud(userId, parseInt(limit) || 20);
+        res.json({ tags: data });
+    } catch (error) {
+        console.error('[Stats] tags error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/batch-classify - 手動觸發批量分類
+app.post('/api/batch-classify', async (req, res) => {
+    const { ruleOnly = false, limit = 100 } = req.body;
+    try {
+        console.log('[BatchClassify] Triggered manually...');
+        const result = await batchClassify({ ruleOnly, limit });
+        res.json(result);
+    } catch (error) {
+        console.error('[BatchClassify] error:', error);
         res.status(500).json({ error: error.message });
     }
 });

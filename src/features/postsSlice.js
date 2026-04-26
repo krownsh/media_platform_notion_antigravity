@@ -109,8 +109,13 @@ const postsSlice = createSlice({
             state.error = action.payload;
         },
         // Delete post actions
-        deletePost(state) {
-            state.loading = true;
+        deletePost(state, action) {
+            // Optimistic delete: immediately remove from UI
+            const postId = action.payload;
+            state.items = state.items.filter(item => item.id !== postId && item.dbId !== postId);
+            if (state.currentPost && (state.currentPost.id === postId || state.currentPost.dbId === postId)) {
+                state.currentPost = null;
+            }
         },
         deletePostSuccess(state, action) {
             // action.payload: postId

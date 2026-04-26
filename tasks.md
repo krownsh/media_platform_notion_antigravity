@@ -92,4 +92,50 @@
 - [x] **增強 UX：實作擷取失敗的 SnackBar 反饋**
     - [x] **解決方案**：在前端 `Layout.jsx` 中整合全域通知組件 `Notification.jsx`，並在 Saga 的 `catch` 動作中觸發顯示錯誤訊息。
     - [x] **思考**：爬蟲行為具備高度不確定性，提供明確的視覺反饋能顯著提升使用者信心。
+
+## Phase 8: Field Theory 功能內化 (分類、聚合與查詢)
+- [x] **分類機制 (Classification)**
+    - [x] 檢視與完善 `categoryRules.js` 與 `categoryProcessor.js`，對齊 `ft classify` 的正則與邏輯判斷。
+    - [x] 結合現有的 `aiService.js`，當正則無法涵蓋時自動透過 LLM 精準歸類目標標籤。
+- [x] **聚合與統計 (Aggregation)**
+    - [x] 擴充 `statsService.js`，實作如同 `ft categories`、`ft domains` 與 `ft stats` 的貼文數據統計。
+- [x] **資料視覺與全局查詢 (Visualization & Search)**
+    - [x] 完善剛建立的 `InsightPage.jsx` 儀表板 (對應 `ft viz`)，綁定 `StatCard` 與 `BarChart` 呈現數據。
+    - [x] 深入實作全域的全文檢索功能 (對應 `ft search`)，與依分類條件過慮。
+
+## Phase 9: 靜態資源本地化 & 儲存優化
+- [ ] **將外部圖片轉存至內部 Storage / 資料庫**
+    - [ ] 在爬蟲抓取時，自動將大頭貼 (Avatar) 與貼文圖檔 (Post Images) 下載並轉存到自有的資料庫或 Supabase Storage中。
+    - [ ] 更新貼文資料儲存邏輯，以內部儲存的網址取代原平台的 CDN 網址，徹底解決 CDN 過期導致的 403 破圖問題。
+
+## Phase 10: 介面優化與響應式設計
+- [x] **響應式 Sidebar 調整**
+    - [x] 在小螢幕時將 Sidebar 改為置頂導覽列 (Sticky Header)。
+    - [x] 實作下拉式選單以顯示導覽選項。
+    - [x] 調整小螢幕時的整體版面配置 (Main Content 寬度與 Padding)。
+- [x] **各頁面內容響應式優化**
+    - [x] 優化 InsightPage 在手機端的圖表與數據顯示。
+    - [x] 優化 ViewAllPage 的卡片網格佈局。
+    - [x] 檢查 Modal 與通知彈窗在手機端的比例。
+
+- [x] **修復 AI 摘要 undefined 錯誤**
+    - [x] **問題診斷**：在 PostDetailView 中存取  nalysis.summary 時，若 AI 服務因配置或網路問題未回傳正確物件，前端會發生運行時崩潰。
+    - [x] **解決方案**：
+        - 更新 server/services/aiService.js 確保在所有失敗路徑下皆回傳預設 Mock 物件。
+        - 更新 server/index.js 增加對 AI 執行結果的防禦性檢查。
+        - 更新前端各組件 (PostDetailView, SidebarSearch, ViewAllPage) 增加屬性安全存取與類型檢查。
 ```
+
+## Phase 11: 介面細節優化與尺寸調整
+- [ ] **調整 PostCard 尺寸與字體**
+    - [ ] 增加卡片最大寬度 (加寬)。
+    - [ ] 加大卡片內文、標籤、作者資訊等字體大小。
+- [ ] **優化網格佈局以適應新尺寸**
+    - [ ] 調整 `CollectionBoard` 與 `ViewAllPage` 的網格最小寬度。
+    - [ ] 更新骨架卡片尺寸與主卡片保持一致。
+
+## Phase 12: 系統架構重構與身份驗證優化
+- [ ] **API 身份驗證與資料歸屬優化 (Attribution Refinement)**
+    - [x] 重構 `/api/process` 與 `orchestrator.js` 以支援傳遞 `userId` 並處理後端自動存檔。 (已實作)
+    - [x] 遷移前端 Saga 的資料寫入邏輯至後端，消除雙重寫入隱患。 (已實作)
+    - [x] 實作 `SUPABASE_SYSTEM_USER_ID` Fallback 機制，確保 API 直接呼叫（如 Postman）仍能正確歸屬。 (已實作)

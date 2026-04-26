@@ -21,8 +21,9 @@ const PostCard = ({
     isMergeTarget = false,
     mergeProgress = 0,
     mergeReady = false,
+    showSummary = false,
 }) => {
-    const { platform, title, screenshot, analysis } = post;
+    const { platform, title, screenshot, analysis, category } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -33,7 +34,6 @@ const PostCard = ({
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
         if (!imageUrl) return null;
-        // Only proxy Instagram/Threads images
         if (imageUrl.includes('instagram.') || imageUrl.includes('fbcdn.net')) {
 <<<<<<< HEAD
             return `${import.meta.env.VITE_API_BASE_URL}/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
@@ -46,66 +46,18 @@ const PostCard = ({
 
     const getPlatformStyle = (p) => {
         const platformName = p?.toLowerCase();
-        if (platformName === 'threads') {
-            return {
-                icon: <ThreadsIcon size={14} className="text-foreground" />,
-                label: 'Threads',
-            };
-        }
-        if (platformName === 'instagram') {
-            return {
-                icon: <Instagram size={14} className="text-pink-500" />,
-                label: 'Instagram',
-            };
-        }
-        if (platformName === 'twitter' || platformName === 'x') {
-            return {
-                icon: <Twitter size={14} className="text-blue-400" />,
-                label: 'Twitter',
-            };
-        }
-        if (platformName === 'facebook') {
-            return {
-                icon: <Facebook size={14} className="text-blue-600" />,
-                label: 'Facebook',
-            };
-        }
-        if (platformName === 'youtube') {
-            return {
-                icon: <Youtube size={14} className="text-red-600" />,
-                label: 'YouTube',
-            };
-        }
-        if (platformName === 'notion') {
-            return {
-                icon: <FileText size={14} className="text-foreground" />,
-                label: 'Notion',
-            };
-        }
-        // Default to Generic
-        return {
-            icon: <Globe size={14} className="text-muted-foreground" />,
-            label: 'Web Link',
-        };
+        if (platformName === 'threads') return { icon: <ThreadsIcon size={14} className="text-[rgba(0,0,0,0.95)]" />, label: 'Threads' };
+        if (platformName === 'instagram') return { icon: <Instagram size={14} className="text-pink-500" />, label: 'Instagram' };
+        if (platformName === 'twitter' || platformName === 'x') return { icon: <Twitter size={14} className="text-blue-400" />, label: 'Twitter' };
+        if (platformName === 'facebook') return { icon: <Facebook size={14} className="text-blue-600" />, label: 'Facebook' };
+        if (platformName === 'youtube') return { icon: <Youtube size={14} className="text-red-600" />, label: 'YouTube' };
+        if (platformName === 'notion') return { icon: <FileText size={14} className="text-[rgba(0,0,0,0.95)]" />, label: 'Notion' };
+        return { icon: <Globe size={14} className="text-[#615d59]" />, label: 'Web Link' };
     };
 
     const platformStyle = getPlatformStyle(platform);
     const images = post.images && post.images.length > 0 ? post.images : (screenshot ? [screenshot] : []);
     const hasMultipleImages = images.length > 1;
-
-    const nextImage = (e) => {
-        e.stopPropagation();
-        if (currentImageIndex < images.length - 1) {
-            setCurrentImageIndex(prev => prev + 1);
-        }
-    };
-
-    const prevImage = (e) => {
-        e.stopPropagation();
-        if (currentImageIndex > 0) {
-            setCurrentImageIndex(prev => prev - 1);
-        }
-    };
 
     const handleMoveToCollection = (e, collectionId) => {
         e.stopPropagation();
@@ -126,298 +78,123 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="glass-card rounded-3xl group relative w-full max-w-[400px] h-[560px] flex-shrink-0 flex flex-col cursor-pointer bg-white/60 border border-white/40 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500"
+            className="notion-card rounded-lg group relative mx-auto w-full max-w-[420px] h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
-            {isMergeTarget && (
-                <div className="absolute inset-0 pointer-events-none rounded-3xl z-50">
-                    <div className="absolute inset-0 rounded-3xl bg-accent/10" />
-                    <div
-                        className="absolute inset-2 rounded-2xl border-2 border-accent/60"
-                        style={{ opacity: mergeReady ? 1 : mergeProgress * 0.9 }}
-                    />
-                </div>
-            )}
-            {/* Platform Header Strip */}
-            <div className="relative z-40 w-full h-10 px-4 flex items-center justify-between flex-shrink-0 bg-white/30 backdrop-blur-sm border-b border-white/20 rounded-t-3xl">
+            {/* Platform Header (40px) */}
+            <div className="flex-shrink-0 w-full h-10 px-4 flex items-center justify-between bg-white border-b notion-whisper-border">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none">
-                        {platformStyle.label}
-                    </span>
-                    <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[10px] text-muted-foreground/80 font-medium leading-none">
-                        {post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}
-                    </span>
+                    <span className="text-sm sm:text-[11px] font-bold uppercase tracking-wider text-[#615d59] leading-none">{platformStyle.label}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
+                    <span className="text-sm sm:text-[11px] text-[#615d59]/80 font-medium leading-none">{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
                 </div>
-
-                {/* Menu */}
-                <div className="relative z-50">
-                    <button
-                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground transition-colors"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setShowMenu(!showMenu);
-                            setShowMoveMenu(false);
-                        }}
-                    >
-                        <MoreHorizontal size={16} />
-                    </button>
-
-                    <AnimatePresence>
-                        {showMenu && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                transition={{ duration: 0.2, ease: [0.25, 0.8, 0.3, 1] }}
-                                className="absolute right-0 top-full mt-2 w-48 bg-white border border-white/50 rounded-2xl shadow-xl z-50 backdrop-blur-xl"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                {/* Move To Submenu Trigger */}
-                                <div className="relative">
-                                    <button
-                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 flex items-center justify-between transition-colors"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowMoveMenu(!showMoveMenu);
-                                        }}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <FolderInput size={14} className="text-muted-foreground" />
-                                            移動至...
-                                        </div>
-                                        <ChevronRight size={12} className="text-muted-foreground" />
-                                    </button>
-
-                                    {/* Submenu */}
-                                    {showMoveMenu && (
-                                        <div className="absolute right-full top-0 mr-2 w-40 bg-white border border-white/50 rounded-2xl shadow-xl overflow-hidden z-50 backdrop-blur-xl">
-                                            {post.collectionId && (
-                                                <button
-                                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-b border-border/20"
-                                                    onClick={(e) => handleMoveToCollection(e, null)}
-                                                >
-                                                    <FolderMinus size={12} /> 從資料夾移除
-                                                </button>
-                                            )}
-                                            {collections.length > 0 ? (
-                                                collections.map(collection => (
-                                                    <button
-                                                        key={collection.id}
-                                                        className="w-full px-4 py-3 text-left text-xs text-foreground hover:bg-secondary/20 truncate"
-                                                        onClick={(e) => handleMoveToCollection(e, collection.id)}
-                                                    >
-                                                        {collection.name}
-                                                    </button>
-                                                ))
-                                            ) : (
-                                                <div className="px-4 py-3 text-xs text-muted-foreground italic">無資料夾</div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <button
-                                    className="w-full px-4 py-3 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors border-t border-border/20"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowMenu(false);
-                                        onDelete && onDelete();
-                                    }}
-                                    title="Delete Post"
-                                >
-                                    <Trash2 size={14} />
-                                    刪除貼文
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                <button
+                    className="p-1.5 rounded-full hover:bg-black/5 text-[#615d59]"
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                >
+                    <MoreHorizontal size={16} />
+                </button>
             </div>
 
-            {/* Author Info */}
-            <div className="px-4 py-2 border-b border-white/20 flex-shrink-0 relative z-20 flex items-center gap-2.5 bg-white/20">
+            {/* Author Info (50px) */}
+            <div className="flex-shrink-0 px-4 py-2 border-b notion-whisper-border h-[50px] flex items-center gap-2.5 bg-white">
                 {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border border-white/30 shadow-sm" />
+                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border" />
                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-secondary to-primary flex items-center justify-center text-xs font-bold text-foreground border border-white/30 shadow-sm">
-                        {post.author?.[0] || 'U'}
-                    </div>
+                    <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-xs font-bold">{post.author?.[0] || 'U'}</div>
                 )}
-                <div className="flex flex-col justify-center min-w-0">
-                    <span className="text-sm font-semibold text-foreground leading-none truncate max-w-[180px]">
-                        {post.author || 'Unknown'}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/80 leading-none mt-1 font-medium truncate">
-                        @{post.authorHandle || 'unknown'}
-                    </span>
+                <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate leading-tight">{post.author || 'Unknown'}</div>
+                    <div className="text-[12px] text-[#615d59]/80 truncate mt-0.5">@{post.authorHandle || 'unknown'}</div>
                 </div>
             </div>
 
-            {/* Image Carousel Section - Reduced Height */}
-            <div className="relative w-full h-44 bg-muted/20 overflow-hidden group/image flex-shrink-0">
+            {/* Image (180px) */}
+            <div className="flex-shrink-0 w-full h-[180px] bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border">
                 {images.length > 0 ? (
-                    <div className="relative w-full h-full">
-                        {/* Image Slider */}
-                        <motion.div
-                            className="flex w-full h-full"
-                            animate={{ x: `-${currentImageIndex * 100}%` }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        >
-                            {images.map((img, idx) => (
-                                <div key={idx} className="w-full h-full flex-shrink-0">
-                                    <img
-                                        src={proxyImage(img)}
-                                        alt={`${title} - ${idx + 1}`}
-                                        className="w-full h-full object-cover"
-                                        draggable={false}
-                                    />
-                                </div>
-                            ))}
-                        </motion.div>
-
-                        {/* Controls */}
-                        {hasMultipleImages && (
-                            <>
-                                {currentImageIndex > 0 && (
-                                    <button
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onClick={prevImage}
-                                        className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
-                                    >
-                                        <ChevronLeft size={16} />
-                                    </button>
-                                )}
-                                {currentImageIndex < images.length - 1 && (
-                                    <button
-                                        onPointerDown={(e) => e.stopPropagation()}
-                                        onClick={nextImage}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/80 text-foreground hover:bg-white backdrop-blur-sm transition-all z-10 opacity-0 group-hover/image:opacity-100 shadow-sm"
-                                    >
-                                        <ChevronRight size={16} />
-                                    </button>
-                                )}
-
-                                {/* Dots Indicator */}
-                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10 px-2 py-1 rounded-full bg-black/10 backdrop-blur-md">
-                                    {images.map((_, idx) => (
-                                        <div
-                                            key={idx}
-                                            className={`w-1 h-1 rounded-full transition-all duration-300 shadow-sm ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50'}`}
-                                        />
-                                    ))}
-                                </div>
-
-                                {/* Image Counter Badge */}
-                                <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 backdrop-blur-md text-[9px] font-medium text-white border border-white/10">
-                                    {currentImageIndex + 1} / {images.length}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                    <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover" alt="Post content" />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-secondary/10">
-                        <span className="text-muted-foreground text-sm">無圖片</span>
+                    <span className="text-[#615d59] text-sm">無圖片</span>
+                )}
+                {hasMultipleImages && (
+                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 text-[9px] text-white">
+                        {currentImageIndex + 1} / {images.length}
                     </div>
                 )}
             </div>
 
-            {/* Action Bar - Reduced Height */}
-            <div className="px-4 flex items-center justify-end border-b border-white/20 h-10 flex-shrink-0 bg-white/10">
+            {/* Action Bar (40px) */}
+            <div className="flex-shrink-0 px-4 h-10 flex items-center justify-end border-b notion-whisper-border bg-white">
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onRemix && onRemix(post);
-                        }}
-                        className="p-1.5 rounded-full hover:bg-accent/10 text-accent hover:text-accent-foreground transition-colors duration-300"
-                        title="AI 改寫"
-                    >
-                        <Sparkles size={16} />
-                    </button>
-                    <a
-                        href={post.originalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="p-1.5 rounded-full hover:bg-secondary/20 text-muted-foreground hover:text-foreground transition-colors duration-300"
-                        title="開啟原始貼文"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <ExternalLink size={16} />
+                    <Sparkles size={16} className="text-[#0075de] cursor-pointer" onClick={(e) => { e.stopPropagation(); onRemix && onRemix(post); }} />
+                    <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                        <ExternalLink size={16} className="text-[#615d59]" />
                     </a>
                 </div>
             </div>
 
-            {/* Content Section - Flexible with Padding */}
-            <div className="px-4 py-3 flex-1 flex flex-col overflow-hidden bg-white/30 rounded-b-3xl">
-                {/* Caption - Flexible Height */}
-                <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap line-clamp-3 mb-2 font-medium flex-grow">
-                    <span className="font-bold text-foreground mr-2">{post.author}</span>
-                    {post.content || title}
+            {/* --- Content Area (Total Remaining: 330px) --- */}
+            <div className="flex-1 flex flex-col bg-white overflow-hidden">
+
+                {/* 1. Main Content Container: STRICT FIXED 250px */}
+                <div className="h-[250px] flex-shrink-0 px-4 py-4 overflow-hidden">
+                    <div className="font-bold text-[rgba(0,0,0,0.95)] text-sm mb-1.5 leading-tight">{post.author}</div>
+                    <div
+                        className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 9, WebkitBoxOrient: 'vertical' }}
+                    >
+                        {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
+                    </div>
                 </div>
 
-                {/* Tags - Fixed Height */}
-                <div className="flex flex-wrap gap-1.5 h-[24px] mb-2 flex-shrink-0 overflow-hidden">
-                    {analysis?.tags && analysis.tags.length > 0 && analysis.tags.slice(0, 4).map((tag, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded-full bg-secondary/20 text-[9px] font-medium text-foreground/70 border border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer whitespace-nowrap">
-                            #{tag}
-                        </span>
-                    ))}
-                </div>
+                {/* 2. Footer Container: MINIMAL FIXED 70px */}
+                <div className="mt-auto h-[70px] flex-shrink-0 px-4 py-2 flex flex-col gap-1.5 bg-white border-t notion-whisper-border">
+                    {/* Tags Area (Fixed 20px) */}
+                    <div className="h-5 overflow-hidden flex items-center gap-1.5 flex-shrink-0">
+                        {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
+                            <span key={i} className="px-1.5 py-0.5 rounded-full bg-black/5 text-[11px] font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none">#{tag}</span>
+                        ))}
+                    </div>
 
-                {/* AI Summary - Fixed Height */}
-                <div className="bg-accent/5 border border-accent/10 rounded-xl p-2.5 mb-2 flex-shrink-0 h-[64px] overflow-hidden relative group/summary">
-                    {analysis?.summary ? (
-                        <>
-                            <div className="flex items-center gap-1 mb-0.5">
-                                <Sparkles size={10} className="text-accent" />
-                                <span className="text-[9px] font-bold text-accent uppercase tracking-wider">AI 摘要</span>
+                    {/* AI Info / Summary Area (Dynamic) */}
+                    <div className={`${showSummary && analysis?.summary ? 'h-[28px]' : 'h-0'} overflow-hidden flex-shrink-0`}>
+                        {showSummary && analysis?.summary && (
+                            <div className="bg-[#0075de]/3 rounded-md p-1 h-full flex flex-col justify-center border border-[#0075de]/5">
+                                <div className="text-[11px] text-[#615d59] leading-tight line-clamp-1 font-medium italic">
+                                    <Sparkles size={8} className="inline mr-1 text-[#0075de]" />
+                                    {(typeof analysis.summary === 'string' ? analysis.summary : (analysis.summary.core_insight || "點擊查看")).replace(/##\s*|\*\*/g, '')}
+                                </div>
                             </div>
-                            <div className="text-xs text-muted-foreground leading-snug line-clamp-2 group-hover/summary:text-foreground transition-colors">
-                                {(() => {
-                                    let summary = analysis.summary;
+                        )}
+                    </div>
 
-                                    // 1. Try to parse JSON string if it looks like JSON
-                                    if (typeof summary === 'string' && (summary.trim().startsWith('{') || summary.includes('```json'))) {
-                                        try {
-                                            const cleanJson = summary.replace(/```json\s*|\s*```/g, '').trim();
-                                            const parsed = JSON.parse(cleanJson);
-                                            if (parsed && typeof parsed === 'object') {
-                                                summary = parsed;
-                                            }
-                                        } catch (e) {
-                                            // Ignore parse error
-                                        }
-                                    }
-
-                                    // 2. Handle Object (Parsed or original)
-                                    if (typeof summary === 'object' && summary !== null) {
-                                        return summary.core_insight || "點擊查看詳情";
-                                    }
-
-                                    // 3. Handle String (Strip Markdown)
-                                    if (typeof summary === 'string') {
-                                        // Remove ## headings, bold markers (**), code blocks (```)
-                                        return summary.replace(/##\s*|\*\*/g, '').replace(/`/g, '').trim();
-                                    }
-
-                                    return summary || "無摘要";
-                                })()}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-xs text-muted-foreground/50 italic">
-                            無 AI 摘要
-                        </div>
-                    )}
-                </div>
-
-                {/* Footer Info - Fixed at Bottom */}
-                <div className="mt-auto pt-2 border-t border-white/20 flex items-center justify-between text-[9px] text-muted-foreground uppercase tracking-widest opacity-60 flex-shrink-0">
-                    <span>已儲存 • {post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</span>
+                    {/* Final Bottom Row (Fixed 18px) */}
+                    <div className="h-[18px] flex items-center justify-between flex-shrink-0">
+                        <span className="text-[#0075de] text-[10px] font-bold uppercase tracking-tight leading-none">{analysis?.primary_category || ''}</span>
+                        <div className="text-[11px] text-[#615d59] opacity-70 font-bold leading-none">{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
+                    </div>
                 </div>
             </div>
+
+            {/* --- Hidden Menu Overlay --- */}
+            <AnimatePresence>
+                {showMenu && (
+                    <motion.div
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-50 bg-white/95 flex flex-col p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="font-bold">更多選項</span>
+                            <MoreHorizontal className="cursor-pointer" onClick={() => setShowMenu(false)} />
+                        </div>
+                        <button className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-destructive" onClick={() => { onDelete && onDelete(); setShowMenu(false); }}>
+                            <Trash2 size={16} /> 刪除此貼文
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };

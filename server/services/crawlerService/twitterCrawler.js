@@ -31,13 +31,11 @@ export async function scrapeTwitterPost(url) {
             throw new Error('Tweet is unavailable');
         }
 
-        const legacy = result.legacy;
-        const core = result.core;
-        const userCore = core.user_results.result.core;
-        const userLegacy = core.user_results.result.legacy;
+        const legacy = result.legacy || {};
+        const core = result.core || {};
 
         // Extract content
-        let content = legacy.full_text;
+        let content = legacy.full_text || "";
 
         // Replace t.co URLs with expanded URLs
         if (legacy.entities && legacy.entities.urls) {
@@ -49,12 +47,15 @@ export async function scrapeTwitterPost(url) {
         }
 
         // Extract author info
-        // Try to get from core.user_results.result.legacy first as it seems more reliable in some responses
-        // Fallback to core.user_results.result.core if needed
-        const author = userLegacy.name || (userCore && userCore.name);
-        const authorHandle = userLegacy.screen_name || (userCore && userCore.screen_name);
-        const avatar = userLegacy.profile_image_url_https || userLegacy.profile_image_url;
-        const postedAt = legacy.created_at; // "Wed Nov 12 10:45:54 +0000 2025"
+        // Twitter GraphQL structure can be complex. Try multiple paths for reliability.
+        const userResult = core?.user_results?.result;
+        const userLegacy = userResult?.legacy || {};
+        const userCore = userResult?.core || {};
+
+        const author = userLegacy.name || userCore.name || 'Unknown User';
+        const authorHandle = userLegacy.screen_name || userCore.screen_name || 'unknown';
+        const avatar = userLegacy.profile_image_url_https || userLegacy.profile_image_url || '';
+        const postedAt = legacy.created_at;
 
         // Extract images/media
         let images = [];
@@ -64,16 +65,13 @@ export async function scrapeTwitterPost(url) {
             images = legacy.entities.media.map(m => m.media_url_https);
         }
 
-        // Check for card images (if any) - as seen in the doc example for link previews
-        // The doc example shows a card with binding_values
+        // Check for card images (if any)
         if (result.card && result.card.legacy && result.card.legacy.binding_values) {
             const bindings = result.card.legacy.binding_values;
-            // Try to find large image
             const photoLarge = bindings.find(b => b.key === 'photo_image_full_size_large');
             if (photoLarge && photoLarge.value && photoLarge.value.image_value) {
                 images.push(photoLarge.value.image_value.url);
             } else {
-                // Try other keys if needed, e.g., thumbnail_image_original
                 const thumbnailOriginal = bindings.find(b => b.key === 'thumbnail_image_original');
                 if (thumbnailOriginal && thumbnailOriginal.value && thumbnailOriginal.value.image_value) {
                     images.push(thumbnailOriginal.value.image_value.url);
@@ -100,9 +98,18 @@ export async function scrapeTwitterPost(url) {
                 postedAt: postedAt,
                 images: images,
                 extracted_links: [...new Set(extractedLinks)],
-                replies: [] // API response in doc doesn't include replies
+                replies: []
             }
         ];
+
+        // Extract source domains
+        const sourceDomains = [...new Set(
+            extractedLinks
+                .map(link => {
+                    try { return new URL(link).hostname.replace('www.', ''); } catch { return null; }
+                })
+                .filter(Boolean)
+        )];
 
         const finalData = {
             platform: 'twitter',
@@ -119,12 +126,13 @@ export async function scrapeTwitterPost(url) {
             content: content,
 
             images: images,
-            videos: [], // TODO: Add video support if needed
-            comments: [], // Comments require login to fetch, so we leave them empty for guest access
+            videos: [],
+            comments: [],
 
             full_json: fullJsonData,
+            source_domains: sourceDomains,
 
-            raw: data // Store raw response for debugging
+            raw: data
         };
 
         console.log('[TwitterCrawler] Scrape successful');

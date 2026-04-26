@@ -28,26 +28,27 @@ class Orchestrator {
         if (url.includes('threads.net') || url.includes('threads.com')) return 'threads';
         if (url.includes('notion.so') || url.includes('notion.site')) return 'notion';
         if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
+        if (url.includes('github.com')) return 'github';
         return 'generic';
     }
 
     // Helper: upsert post with full_json (if present)
-    async upsertPost(data) {
-        if (!data) return;
+    async upsertPost(data, userIdParam = null) {
+        if (!data) return null;
         const fallbackUserId = process.env.SUPABASE_SYSTEM_USER_ID || null;
         const originalUrl = data.original_url || data.originalUrl || data.originalURL || data.url;
         const postedAt = data.posted_at || data.postedAt || null;
         const fullJson = data.full_json || data.fullJson;
-        const userId = data.user_id || data.owner_id || fallbackUserId;
+        const userId = userIdParam || data.user_id || data.owner_id || fallbackUserId;
 
         if (!originalUrl) {
             console.warn('[Orchestrator] Missing original_url, skipping upsert');
-            return;
+            return null;
         }
 
         if (!userId) {
             console.warn('[Orchestrator] Missing user_id (and no SUPABASE_SYSTEM_USER_ID set), skipping DB persist to avoid FK errors');
-            return;
+            return null;
         }
 
         const upsertPayload = {
@@ -56,26 +57,45 @@ class Orchestrator {
             platform: data.platform,
             original_url: originalUrl,
             author_name: data.author || data.author_name || null,
+            author_id: data.authorHandle || data.author_id || null, // Check authorHandle first
+            author_avatar_url: data.avatar || data.author_avatar_url || null,
             content: data.content,
             posted_at: postedAt || null,
             is_archived: data.is_archived ?? false,
             full_json: fullJson || null,
+            source_domains: data.source_domains || [],
         };
         // Remove undefined keys (Supabase will reject them for NOT NULL columns)
         Object.keys(upsertPayload).forEach(k => upsertPayload[k] === undefined && delete upsertPayload[k]);
         try {
-            const conflictKey = data.id ? 'id' : 'original_url';
-            let { error } = await supabase.from('posts').upsert(upsertPayload, { onConflict: conflictKey }).select();
+            // Priority: 1. data.id (if editing), 2. original_url (if unique)
+            const conflictKey = (data.id && data.id.length > 20) ? 'id' : 'original_url';
+            let { data: savedData, error } = await supabase.from('posts').upsert(upsertPayload, { onConflict: conflictKey }).select();
 
-            // Retry without custom conflict key if the DB lacks the expected unique constraint
+            // Retry without custom conflict key if the DB lacks the expected unique constraint on original_url
             if (error && conflictKey === 'original_url' && /unique|exclusion|on conflict/i.test(error.message)) {
-                console.warn('[Orchestrator] original_url upsert failed, retrying with primary key:', error.message);
-                ({ error } = await supabase.from('posts').upsert(upsertPayload).select());
+                console.warn('[Orchestrator] original_url upsert failed, attempting manual find-or-create...');
+
+                // Manual check to avoid duplicates if unique index is missing
+                const { data: existing } = await supabase.from('posts').select('id').eq('original_url', originalUrl).limit(1);
+
+                if (existing && existing.length > 0) {
+                    // Update existing
+                    ({ data: savedData, error } = await supabase.from('posts').update(upsertPayload).eq('id', existing[0].id).select());
+                } else {
+                    // Insert new
+                    ({ data: savedData, error } = await supabase.from('posts').insert(upsertPayload).select());
+                }
             }
 
-            if (error) console.warn('[Orchestrator] Failed to upsert post full_json:', error.message);
+            if (error) {
+                console.warn('[Orchestrator] Failed to persist post:', error.message);
+                return null;
+            }
+            return savedData ? savedData[0] : null;
         } catch (e) {
             console.warn('[Orchestrator] Exception during upsert:', e.message);
+            return null;
         }
     }
 
@@ -125,7 +145,7 @@ class Orchestrator {
         }
     }
 
-    async processUrl(url) {
+    async processUrl(url, userId = null) {
         return limit(async () => {
             const platform = this.identifyPlatform(url);
 
@@ -143,20 +163,15 @@ class Orchestrator {
                     let data = await scrapeThreadsPost(url);
 
                     // Upload Images to Bucket
-                    // Upload Images to Bucket in Parallel
                     if (data.images && data.images.length > 0) {
-                        console.log(`[Orchestrator] Processing ${data.images.length} images...`);
                         data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
-
-                        // Update images in full_json
                         if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
                             data.full_json[0].images = data.images;
                         }
                     }
 
-                    // Process images in replies (comments) in Parallel
+                    // Process images in replies
                     if (data.full_json && Array.isArray(data.full_json) && data.full_json[0] && data.full_json[0].replies) {
-                        console.log('[Orchestrator] Processing reply images...');
                         await Promise.all(data.full_json[0].replies.map(async (reply) => {
                             if (reply.images && reply.images.length > 0) {
                                 reply.images = await Promise.all(reply.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
@@ -164,7 +179,9 @@ class Orchestrator {
                         }));
                     }
 
-                    await this.upsertPost(data);
+                    const saved = await this.upsertPost(data, userId);
+                    if (saved) data.dbId = saved.id;
+
                     return { source: 'crawler', data };
                 } catch (error) {
                     throw new Error(`Threads Crawler failed: ${error.message}`);
@@ -177,19 +194,16 @@ class Orchestrator {
                 try {
                     let data = await scrapeTwitterPost(url);
 
-                    // Upload Images to Bucket
-                    // Upload Images to Bucket in Parallel
                     if (data.images && data.images.length > 0) {
-                        console.log(`[Orchestrator] Processing ${data.images.length} images...`);
                         data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
-
-                        // Update images in full_json
                         if (data.full_json && Array.isArray(data.full_json) && data.full_json[0]) {
                             data.full_json[0].images = data.images;
                         }
                     }
 
-                    await this.upsertPost(data);
+                    const saved = await this.upsertPost(data, userId);
+                    if (saved) data.dbId = saved.id;
+
                     return { source: 'crawler', data };
                 } catch (error) {
                     throw new Error(`Twitter Crawler failed: ${error.message}`);
@@ -201,7 +215,8 @@ class Orchestrator {
 
             if (data) {
                 console.log('[Orchestrator] Data fetched via API.');
-                await this.upsertPost(data);
+                const saved = await this.upsertPost(data, userId);
+                if (saved) data.dbId = saved.id;
                 return { source: 'api', data };
             }
 
@@ -211,7 +226,8 @@ class Orchestrator {
 
             if (data.success) {
                 console.log('[Orchestrator] Data fetched via Crawler.');
-                await this.upsertPost(data);
+                const saved = await this.upsertPost(data, userId);
+                if (saved) data.dbId = saved.id;
                 return { source: 'crawler', data };
             } else {
                 throw new Error(`Failed to fetch post: ${data.error}`);

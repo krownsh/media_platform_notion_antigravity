@@ -270,6 +270,13 @@ ALTER TABLE public.posts
 -- 建立 GIN 索引（若未來需要根據 JSON 內欄位搜尋）
 CREATE INDEX IF NOT EXISTS idx_posts_full_json ON public.posts USING gin (full_json);
 
+-- -----------------------------------------------------------------
+-- 10. 新增 primary_category 欄位到 post_analysis 表
+-- 對齊 fieldtheory-cli 的 category 分類架構
+-- -----------------------------------------------------------------
+ALTER TABLE public.post_analysis
+    ADD COLUMN primary_category VARCHAR(50);
+
 -- RLS for user_annotations
 ALTER TABLE public.user_annotations ENABLE ROW LEVEL SECURITY;
 

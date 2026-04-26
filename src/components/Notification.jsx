@@ -18,13 +18,13 @@ const NotificationItem = ({ notification }) => {
     const icons = {
         error: <AlertCircle className="text-destructive" size={20} />,
         success: <CheckCircle className="text-emerald-500" size={20} />,
-        info: <Info className="text-accent" size={20} />,
+        info: <Info className="text-[#0075de]" size={20} />,
     };
 
     const bgColors = {
         error: 'bg-destructive/10 border-destructive/20',
         success: 'bg-emerald-500/10 border-emerald-500/20',
-        info: 'bg-accent/10 border-accent/20',
+        info: 'bg-[rgba(0,117,222,0.1)] border-accent/20',
     };
 
     return (
@@ -33,19 +33,19 @@ const NotificationItem = ({ notification }) => {
             animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
             className={`
-        flex items-center gap-4 px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl min-w-[320px] max-w-md
+        flex items-center gap-4 px-6 py-4 rounded-lg border backdrop-blur-xl shadow-2xl min-w-[320px] max-w-md
         ${bgColors[type] || bgColors.info}
       `}
         >
             <div className="flex-shrink-0">
                 {icons[type] || icons.info}
             </div>
-            <div className="flex-1 text-sm font-medium text-foreground/90">
+            <div className="flex-1 text-sm font-medium text-[rgba(0,0,0,0.95)]/90">
                 {message}
             </div>
             <button
                 onClick={() => dispatch(removeNotification(id))}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="text-[#615d59] hover:text-[rgba(0,0,0,0.95)] transition-colors"
             >
                 <X size={18} />
             </button>

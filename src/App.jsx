@@ -9,6 +9,7 @@ import SignupPage from './pages/SignupPage';
 import RemixPanel from './components/RemixPanel';
 import PostDetailView from './components/PostDetailView';
 import ImageWorkflowPage from './pages/ImageWorkflowPage';
+import InsightPage from './pages/InsightPage';
 import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
 import { fetchPosts } from './features/postsSlice';
@@ -83,6 +84,11 @@ function App() {
           <Route path="/image-workflow/:postId" element={
             <ProtectedRoute>
               <ImageWorkflowPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/insight" element={
+            <ProtectedRoute>
+              <InsightPage />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<LoginPage />} />

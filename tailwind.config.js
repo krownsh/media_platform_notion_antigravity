@@ -7,66 +7,51 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        border: "rgba(0, 0, 0, 0.1)",
+        input: "#dddddd",
+        ring: "#097fe8",
+        background: "#ffffff",
+        foreground: "rgba(0, 0, 0, 0.95)",
+
+        notion: {
+          black: "rgba(0, 0, 0, 0.95)",
+          white: "#ffffff",
+          blue: {
+            DEFAULT: "#0075de",
+            hover: "#005bab",
+            focus: "#097fe8",
+            pillText: "#097fe8",
+            pillBg: "#f2f9ff"
+          },
+          navy: "#213183",
+          warmWhite: "#f6f5f4",
+          warmDark: "#31302e",
+          gray: {
+            500: "#615d59",
+            300: "#a39e98"
+          },
+          teal: "#2a9d99",
+          green: "#1aae39",
+          orange: "#dd5b00",
+          pink: "#ff64c8",
+          purple: "#391c57",
+          brown: "#523410",
+        }
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        full: "9999px",
+        xl: "16px",
+        lg: "12px",
+        md: "8px",
+        sm: "5px",
+        micro: "4px"
       },
-      transitionTimingFunction: {
-        'organic': 'cubic-bezier(0.25, 0.8, 0.3, 1)',
+      boxShadow: {
+        'soft-card': 'rgba(0, 0, 0, 0.04) 0px 4px 18px, rgba(0, 0, 0, 0.027) 0px 2.025px 7.84688px, rgba(0, 0, 0, 0.02) 0px 0.8px 2.925px, rgba(0, 0, 0, 0.01) 0px 0.175px 1.04062px',
+        'deep': 'rgba(0, 0, 0, 0.01) 0px 1px 3px, rgba(0, 0, 0, 0.02) 0px 3px 7px, rgba(0, 0, 0, 0.02) 0px 7px 15px, rgba(0, 0, 0, 0.04) 0px 14px 28px, rgba(0, 0, 0, 0.05) 0px 23px 52px'
       },
-      animation: {
-        'fade-in': 'fadeIn 0.8s cubic-bezier(0.25, 0.8, 0.3, 1) forwards',
-        'slide-up': 'slideUp 0.8s cubic-bezier(0.25, 0.8, 0.3, 1) forwards',
-        'shimmer': 'shimmer 2s infinite linear',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        shimmer: {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
-        }
+      fontFamily: {
+        sans: ['NotionInter', 'Inter', '-apple-system', 'system-ui', 'Segoe UI', 'Helvetica', 'Arial', 'sans-serif'],
       }
     },
   },

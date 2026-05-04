@@ -12,7 +12,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
     });
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-transparent backdrop-blur-md p-4">
             <div className="bg-transparent border notion-whisper-border w-full max-w-6xl h-[85vh] rounded-lg flex flex-col shadow-2xl overflow-hidden relative backdrop-blur-xl">
 
                 {/* Header */}

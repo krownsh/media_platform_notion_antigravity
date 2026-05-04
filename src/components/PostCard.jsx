@@ -183,11 +183,46 @@ const PostCard = ({
                     >
                         <div className="flex justify-between items-center mb-4">
                             <span className="font-bold">更多選項</span>
-                            <MoreHorizontal className="cursor-pointer" onClick={() => setShowMenu(false)} />
+                            <MoreHorizontal className="cursor-pointer" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} />
                         </div>
-                        <button className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-destructive" onClick={() => { onDelete && onDelete(); setShowMenu(false); }}>
-                            <Trash2 size={16} /> 刪除此貼文
-                        </button>
+                        
+                        {!showMoveMenu ? (
+                            <>
+                                <button 
+                                    className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)]" 
+                                    onClick={(e) => { e.stopPropagation(); setShowMoveMenu(true); }}
+                                >
+                                    <FolderInput size={16} /> 移至資料夾
+                                </button>
+                                <button className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-destructive" onClick={() => { onDelete && onDelete(); setShowMenu(false); }}>
+                                    <Trash2 size={16} /> 刪除此貼文
+                                </button>
+                            </>
+                        ) : (
+                            <div className="flex flex-col flex-1 min-h-0">
+                                <div className="flex items-center gap-2 mb-2 pb-2 border-b notion-whisper-border">
+                                    <ChevronLeft size={16} className="cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowMoveMenu(false); }} />
+                                    <span className="font-bold text-sm">選擇資料夾</span>
+                                </div>
+                                <div className="overflow-y-auto flex-1 flex flex-col gap-1 custom-scrollbar">
+                                    <button 
+                                        className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left"
+                                        onClick={(e) => handleMoveToCollection(e, null)}
+                                    >
+                                        <FolderMinus size={16} /> 取消分類
+                                    </button>
+                                    {collections.map(c => (
+                                        <button 
+                                            key={c.id}
+                                            className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left"
+                                            onClick={(e) => handleMoveToCollection(e, c.id)}
+                                        >
+                                            <FolderInput size={16} /> {c.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

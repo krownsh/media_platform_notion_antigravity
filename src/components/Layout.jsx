@@ -10,6 +10,7 @@ import TaskCenter from './TaskCenter';
 import { toggleTaskCenter } from '../features/uiSlice';
 import { useDispatch } from 'react-redux';
 import { Activity } from 'lucide-react';
+import { createCollection } from '../features/postsSlice';
 
 const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <div
@@ -185,6 +186,19 @@ const Layout = ({ children }) => {
                                                 </div>
                                             );
                                         })}
+                                        <div className="mt-2 pt-2 border-t border-[rgba(0,0,0,0.1)]/10">
+                                            <button 
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#0075de] hover:bg-[#0075de]/5 rounded-sm transition-colors"
+                                                onClick={() => {
+                                                    const name = window.prompt("請輸入新資料夾名稱：");
+                                                    if (name && name.trim()) {
+                                                        dispatch(createCollection({ name: name.trim() }));
+                                                    }
+                                                }}
+                                            >
+                                                <Plus size={14} /> 新增資料夾
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </nav>
@@ -323,6 +337,19 @@ const Layout = ({ children }) => {
                                             尚無收藏夾
                                         </div>
                                     )}
+                                    <div className="px-3 py-1.5 mt-1 border-t border-[rgba(0,0,0,0.1)]/10">
+                                        <button 
+                                            className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-[#0075de] hover:bg-[#0075de]/5 rounded-sm transition-colors cursor-pointer"
+                                            onClick={() => {
+                                                const name = window.prompt("請輸入新資料夾名稱：");
+                                                if (name && name.trim()) {
+                                                    dispatch(createCollection({ name: name.trim() }));
+                                                }
+                                            }}
+                                        >
+                                            <Plus size={14} /> 新增資料夾
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
                         )}

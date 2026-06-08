@@ -110,9 +110,9 @@ const Layout = ({ children }) => {
     }
 
     return (
-        <div className="flex flex-col md:flex-row h-screen overflow-hidden text-[rgba(0,0,0,0.95)] bg-background">
+        <div className="flex flex-col md:flex-row h-[100dvh] overflow-hidden text-[rgba(0,0,0,0.95)] bg-background overflow-x-hidden">
             {/* Mobile Header (Sticky at top) */}
-            <header className="md:hidden flex items-center justify-between px-6 py-4 bg-white border-b border-[rgba(0,0,0,0.1)] z-[60] sticky top-0">
+            <header className="md:hidden flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-[rgba(0,0,0,0.1)] z-[60] sticky top-0">
                 <div className="cursor-pointer" onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}>
                     <h1 className="text-lg font-bold tracking-tight text-[rgba(0,0,0,0.95)]/80 font-serif">社群筆記</h1>
                 </div>
@@ -132,7 +132,7 @@ const Layout = ({ children }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.2 }}
-                        className="md:hidden fixed inset-x-0 top-[65px] bg-white z-50 border-b border-[rgba(0,0,0,0.1)] shadow-deep overflow-y-auto max-h-[calc(100vh-65px)]"
+                        className="md:hidden fixed inset-x-0 top-[60px] bg-white z-50 border-b border-[rgba(0,0,0,0.1)] shadow-deep overflow-y-auto max-h-[calc(100dvh-60px)] pb-[env(safe-area-inset-bottom)]"
                     >
                         <div className="p-4 space-y-4">
                             <SidebarSearch
@@ -396,15 +396,15 @@ const Layout = ({ children }) => {
             </aside>
 
             {/* Main Content */}
-            <main ref={mainRef} className="flex-1 overflow-y-auto relative bg-background">
-                <div className="w-full p-4 sm:p-6 md:p-8">
+            <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background pb-[env(safe-area-inset-bottom)]">
+                <div className="w-full p-3 sm:p-4 md:p-8">
                     {children}
                 </div>
 
                 {/* Floating Task Center Toggle */}
                 <button
                     onClick={() => dispatch(toggleTaskCenter())}
-                    className="fixed bottom-8 right-8 w-12 h-12 bg-white text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-full shadow-deep flex items-center justify-center z-[60] hover:bg-black/5 transition-colors group"
+                    className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-11 h-11 sm:w-12 sm:h-12 bg-white text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-full shadow-deep flex items-center justify-center z-[60] hover:bg-black/5 transition-colors group"
                 >
                     <Activity size={20} className={tasks.length > 0 ? 'animate-pulse text-[#dd5b00]' : 'text-[#615d59]'} />
 
@@ -423,7 +423,7 @@ const Layout = ({ children }) => {
                     </AnimatePresence>
 
                     {/* Tooltip */}
-                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-deep">
+                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-deep hidden sm:block">
                         {tasks.length > 0 ? `${tasks.length} 個任務處理中` : '任務中心'}
                     </div>
                 </button>

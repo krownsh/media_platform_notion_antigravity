@@ -64,7 +64,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
     }
 
     return (
-        <div className="relative px-6 py-4 mb-2" ref={searchRef}>
+        <div className="relative px-4 sm:px-6 py-4 mb-2" ref={searchRef}>
             <div className="relative group">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[#0075de] transition-colors duration-300" size={18} />
                 <input
@@ -98,7 +98,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.98 }}
                         transition={{ duration: 0.3, ease: [0.25, 0.8, 0.3, 1] }}
-                        className="absolute left-6 md:right-[-240px] right-6 top-full mt-4 bg-transparent border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl"
+                        className="absolute left-0 right-0 sm:left-6 sm:right-6 md:right-[-240px] top-full mt-4 bg-transparent border notion-whisper-border rounded-lg shadow-deep overflow-hidden z-50 max-h-[70vh] sm:max-h-[400px] overflow-y-auto custom-scrollbar backdrop-blur-2xl max-w-[calc(100vw-1rem)]"
                     >
                         {results.length > 0 ? (
                             <div className="py-2">
@@ -106,7 +106,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                                     <div
                                         key={post.id}
                                         onClick={() => handleSelect(post)}
-                                        className="px-5 py-4 hover:bg-black/5 cursor-pointer border-b border-[rgba(0,0,0,0.1)]/30 last:border-0 transition-colors duration-200"
+                                        className="px-4 sm:px-5 py-3 sm:py-4 hover:bg-black/5 cursor-pointer border-b border-[rgba(0,0,0,0.1)]/30 last:border-0 transition-colors duration-200"
                                     >
                                         <div className="flex items-start gap-3">
                                             <div className="flex-1 min-w-0">

@@ -175,7 +175,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {/* --- Top Section: Folders --- */}
                 <div
                     ref={headerRef}
-                    className={`hidden md:block border-b notion-whisper-border sticky top-0 z-[60] -mx-4 md:-mx-8 transition-all duration-300 px-6 ${isStuck ? 'pt-1 pb-1 shadow-soft-card bg-white/90 backdrop-blur-md' : 'pt-2 pb-2 bg-white'}`}
+                    className={`hidden md:block border-b notion-whisper-border sticky top-0 z-[60] -mx-4 md:-mx-8 transition-all duration-300 px-4 sm:px-6 ${isStuck ? 'pt-1 pb-1 shadow-soft-card bg-white/90 backdrop-blur-md' : 'pt-2 pb-2 bg-white'}`}
                 >
                     <div className="w-full">
                         <div className={`flex items-center justify-between transition-all duration-300 ${isStuck ? 'mb-1' : 'mb-2'}`}>
@@ -185,7 +185,7 @@ const CollectionBoard = ({ onRemix }) => {
                             </h2>
                             <button
                                 onClick={() => setIsCreating(true)}
-                                className="text-sm text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)] px-3 py-1.5 rounded-sm flex items-center gap-1 transition-colors"
+                                className="text-sm text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)] px-3 py-2 min-h-11 rounded-sm flex items-center gap-1 transition-colors"
                             >
                                 <Plus size={16} /> 新增資料夾
                             </button>
@@ -252,10 +252,10 @@ const CollectionBoard = ({ onRemix }) => {
                         </div>
                     ) : (
                         <SortableContext items={uncategorizedPosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3 sm:gap-4 md:gap-5 px-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3 sm:gap-4 md:gap-5 px-1">
                                 {/* --- Task Queue Skeletons --- */}
                                 {tasks.map((task) => (
-                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[640px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
+                                    <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[520px] sm:h-[640px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
                                         {/* Shimmer Effect Overlay */}
                                         {task.status !== 'failed' && (
                                             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />

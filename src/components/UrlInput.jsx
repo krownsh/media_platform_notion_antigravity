@@ -44,7 +44,7 @@ const UrlInput = () => {
                 <div className="absolute -inset-4 bg-[rgba(0,117,222,0.1)] rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition duration-700"></div>
 
                 <form onSubmit={handleSubmit} className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-transparent backdrop-blur-xl border notion-whisper-border rounded-[2rem] sm:rounded-full p-2 sm:p-2 gap-2 shadow-deep hover:shadow-deep transition-all duration-300">
-                    <div className="flex-1 flex items-center">
+                    <div className="flex-1 flex items-center min-w-0">
                         <div className="hidden sm:block pl-5 text-[#615d59]">
                             <Link2 size={20} />
                         </div>
@@ -53,14 +53,14 @@ const UrlInput = () => {
                             value={url}
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder={isQueueFull ? "佇列已滿..." : "貼上網址..."}
-                            className="flex-1 bg-transparent border-none outline-none text-[rgba(0,0,0,0.95)] placeholder-muted-foreground px-4 sm:px-4 py-3 sm:py-3 text-base sm:text-lg"
+                            className="flex-1 min-w-0 bg-transparent border-none outline-none text-[rgba(0,0,0,0.95)] placeholder-muted-foreground px-4 sm:px-4 py-3 sm:py-3 text-[16px] sm:text-lg"
                             disabled={isQueueFull}
                         />
                     </div>
                     <button
                         type="submit"
                         disabled={isQueueFull || !url}
-                        className="bg-[#0075de] hover:bg-[#0075de]/90 text-white px-8 py-3.5 sm:py-3 rounded-[1.5rem] sm:rounded-full font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-soft-card hover:shadow-deep hover:-translate-y-0.5"
+                        className="w-full sm:w-auto bg-[#0075de] hover:bg-[#0075de]/90 text-white px-8 py-3.5 sm:py-3 rounded-[1.5rem] sm:rounded-full font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-soft-card hover:shadow-deep hover:-translate-y-0.5"
                     >
                         <span>新增</span>
                         <ArrowRight size={18} className="hidden sm:block" />

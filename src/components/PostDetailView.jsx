@@ -178,12 +178,12 @@ const PostDetailView = ({ onRemix }) => {
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col md:h-[calc(100vh-40px)] md:max-h-[calc(100vh-40px)] md:overflow-hidden"
+            className="flex flex-col min-h-[100dvh] md:h-[calc(100vh-40px)] md:max-h-[calc(100vh-40px)] md:overflow-hidden overflow-x-hidden"
         >
             {/* --- Top Header / Navigation --- */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-4 px-2 flex-shrink-0 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 sm:py-4 px-2 flex-shrink-0 gap-3 sm:gap-4">
                 <div
-                    className="flex items-center gap-1.5 sm:gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group"
+                    className="flex items-center gap-1.5 sm:gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group min-h-11 px-2 py-1.5 rounded-lg hover:bg-black/5"
                     onClick={() => navigate(-1)}
                 >
                     <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
@@ -233,7 +233,7 @@ const PostDetailView = ({ onRemix }) => {
                                 <p className="text-xs text-neutral-500">@{post.authorHandle || 'unknown'}</p>
                             </div>
                         </div>
-                        <button className="text-neutral-400 hover:text-neutral-900 transition-colors">
+                        <button className="min-h-11 min-w-11 p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-black/5 transition-colors flex items-center justify-center">
                             <MoreHorizontal size={20} />
                         </button>
                     </div>
@@ -266,19 +266,19 @@ const PostDetailView = ({ onRemix }) => {
                                             <>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); if (currentImageIndex > 0) setCurrentImageIndex(i => i - 1) }}
-                                                    className="absolute left-4 p-2 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute left-2 sm:left-4 min-h-11 min-w-11 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                                     disabled={currentImageIndex === 0}
                                                 >
                                                     <ChevronLeft size={20} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); if (currentImageIndex < images.length - 1) setCurrentImageIndex(i => i + 1) }}
-                                                    className="absolute right-4 p-2 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="absolute right-2 sm:right-4 min-h-11 min-w-11 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                                     disabled={currentImageIndex === images.length - 1}
                                                 >
                                                     <ChevronRight size={20} />
                                                 </button>
-                                                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 p-1 rounded-full bg-black/20">
+                                                <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 p-1 rounded-full bg-black/20">
                                                     {images.map((_, i) => (
                                                         <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === currentImageIndex ? 'bg-white' : 'bg-white/40'}`} />
                                                     ))}
@@ -291,8 +291,8 @@ const PostDetailView = ({ onRemix }) => {
                         )}
 
                         {/* Content below Image */}
-                        <div className="p-6 max-w-2xl mx-auto">
-                            <div className="flex items-center gap-4 mb-4">
+                        <div className="p-4 sm:p-6 max-w-2xl mx-auto">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-4">
                                 <div className="flex items-center gap-2">
                                     <Heart size={20} className="text-neutral-600 hover:text-red-500 cursor-pointer transition-colors" />
                                     <MessageSquare size={20} className="text-neutral-600 hover:text-blue-500 cursor-pointer transition-colors" />
@@ -345,7 +345,7 @@ const PostDetailView = ({ onRemix }) => {
                 </div>
 
                 {/* 2. Right Section: AI Summary */}
-                <div className="flex-1 w-full md:min-w-[320px] md:max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden">
+                <div className="flex-1 w-full lg:min-w-[320px] lg:max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden mt-0 lg:mt-0">
                     <div className="p-5 border-b border-neutral-100 flex items-center gap-2 bg-white">
                         <Sparkles size={16} className="text-[#0075de]" />
                         <span className="text-sm font-bold text-neutral-700 uppercase tracking-wider">AI 知識摘要</span>
@@ -396,7 +396,7 @@ const PostDetailView = ({ onRemix }) => {
                                                 {data.tags && (
                                                     <div className="flex flex-wrap gap-2 pt-2">
                                                         {data.tags.map((t, i) => (
-                                                            <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500 border border-neutral-200 hover:bg-neutral-200 transition-colors cursor-pointer">#{t}</span>
+                                                            <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500 border border-neutral-200 hover:bg-neutral-200 transition-colors cursor-pointer inline-flex items-center min-h-9">#{t}</span>
                                                         ))}
                                                     </div>
                                                 )}
@@ -432,9 +432,9 @@ const PostDetailView = ({ onRemix }) => {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed right-0 top-0 h-full w-full max-w-[450px] bg-amber-50 shadow-deep rounded-l-3xl z-[110] flex flex-col overflow-hidden"
+                            className="fixed right-0 top-0 h-full w-full max-w-none sm:max-w-[450px] bg-amber-50 shadow-deep rounded-none sm:rounded-l-3xl z-[110] flex flex-col overflow-hidden"
                         >
-                            <div className="p-6 border-b border-amber-200/50 flex items-center justify-between flex-shrink-0 bg-white/50 backdrop-blur-md">
+                            <div className="p-4 sm:p-6 border-b border-amber-200/50 flex items-center justify-between flex-shrink-0 bg-white/50 backdrop-blur-md gap-3">
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
                                         <Library size={20} />
@@ -453,7 +453,7 @@ const PostDetailView = ({ onRemix }) => {
                             </div>
 
                             {/* Note Content */}
-                            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
                                 {/* New Note Input */}
                                 <div className="bg-white rounded-2xl p-4 shadow-soft-card border border-amber-200">
                                     <textarea
@@ -514,14 +514,14 @@ const PostDetailView = ({ onRemix }) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+                        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-3 sm:p-4"
                         onClick={(e) => {
                             e.stopPropagation();
                             setZoomedImage(null);
                         }}
                     >
                         <button
-                            className="absolute top-4 right-4 p-2 rounded-full bg-transparent text-white hover:bg-transparent transition-colors"
+                            className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-transparent text-white hover:bg-transparent transition-colors"
                             onClick={() => setZoomedImage(null)}
                         >
                             <X size={24} />

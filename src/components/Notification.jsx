@@ -33,7 +33,7 @@ const NotificationItem = ({ notification }) => {
             animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
             className={`
-        flex items-center gap-4 px-6 py-4 rounded-lg border backdrop-blur-xl shadow-2xl min-w-[320px] max-w-md
+        flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 rounded-lg border backdrop-blur-xl shadow-2xl w-[calc(100vw-2rem)] sm:w-auto min-w-0 sm:min-w-[320px] max-w-md
         ${bgColors[type] || bgColors.info}
       `}
         >
@@ -57,7 +57,7 @@ const NotificationContainer = () => {
     const notifications = useSelector((state) => state.ui.notifications);
 
     return (
-        <div className="fixed bottom-8 right-8 z-[100] flex flex-col gap-4">
+        <div className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 z-[100] flex flex-col gap-3 sm:gap-4 max-w-[calc(100vw-2rem)]">
             <AnimatePresence mode="popLayout">
                 {notifications.map((n) => (
                     <NotificationItem key={n.id} notification={n} />

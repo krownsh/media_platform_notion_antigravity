@@ -74,19 +74,19 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative mx-auto w-full max-w-[420px] h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+            className="notion-card rounded-lg group relative mx-auto w-full max-w-[420px] h-[520px] sm:h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {/* Platform Header (40px) */}
-            <div className="flex-shrink-0 w-full h-10 px-4 flex items-center justify-between bg-white border-b notion-whisper-border">
+            <div className="flex-shrink-0 w-full h-10 px-3 sm:px-4 flex items-center justify-between bg-white border-b notion-whisper-border">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-sm sm:text-[11px] font-bold uppercase tracking-wider text-[#615d59] leading-none">{platformStyle.label}</span>
+                    <span className="text-[11px] sm:text-[11px] font-bold uppercase tracking-wider text-[#615d59] leading-none">{platformStyle.label}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                    <span className="text-sm sm:text-[11px] text-[#615d59]/80 font-medium leading-none">{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
+                    <span className="text-[11px] sm:text-[11px] text-[#615d59]/80 font-medium leading-none truncate max-w-[120px] sm:max-w-[160px]">{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
                 </div>
                 <button
-                    className="p-1.5 rounded-full hover:bg-black/5 text-[#615d59]"
+                    className="p-2 rounded-full hover:bg-black/5 text-[#615d59]"
                     onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
                 >
                     <MoreHorizontal size={16} />
@@ -94,7 +94,7 @@ const PostCard = ({
             </div>
 
             {/* Author Info (50px) */}
-            <div className="flex-shrink-0 px-4 py-2 border-b notion-whisper-border h-[50px] flex items-center gap-2.5 bg-white">
+            <div className="flex-shrink-0 px-3 sm:px-4 py-2 border-b notion-whisper-border h-[46px] sm:h-[50px] flex items-center gap-2.5 bg-white">
                 {post.avatar ? (
                     <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border" />
                 ) : (
@@ -107,7 +107,7 @@ const PostCard = ({
             </div>
 
             {/* Image (180px) */}
-            <div className="flex-shrink-0 w-full h-[180px] bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border">
+            <div className="flex-shrink-0 w-full h-[150px] sm:h-[180px] bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border">
                 {images.length > 0 ? (
                     <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover" alt="Post content" />
                 ) : (
@@ -121,10 +121,17 @@ const PostCard = ({
             </div>
 
             {/* Action Bar (40px) */}
-            <div className="flex-shrink-0 px-4 h-10 flex items-center justify-end border-b notion-whisper-border bg-white">
+            <div className="flex-shrink-0 px-3 sm:px-4 h-10 flex items-center justify-end border-b notion-whisper-border bg-white">
                 <div className="flex items-center gap-2">
-                    <Sparkles size={16} className="text-[#0075de] cursor-pointer" onClick={(e) => { e.stopPropagation(); onRemix && onRemix(post); }} />
-                    <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
+                    <button
+                        type="button"
+                        className="p-2 rounded-full hover:bg-black/5"
+                        onClick={(e) => { e.stopPropagation(); onRemix && onRemix(post); }}
+                        aria-label="AI 改寫"
+                    >
+                        <Sparkles size={16} className="text-[#0075de]" />
+                    </button>
+                    <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="touch-target-link inline-flex items-center justify-center rounded-full hover:bg-black/5">
                         <ExternalLink size={16} className="text-[#615d59]" />
                     </a>
                 </div>
@@ -134,20 +141,20 @@ const PostCard = ({
             <div className="flex-1 flex flex-col bg-white overflow-hidden">
 
                 {/* 1. Main Content Container: STRICT FIXED 250px */}
-                <div className="h-[250px] flex-shrink-0 px-4 py-4 overflow-hidden">
+                <div className="h-[200px] sm:h-[250px] flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 overflow-hidden">
                     <div className="font-bold text-[rgba(0,0,0,0.95)] text-sm mb-1.5 leading-tight">{post.author}</div>
                     <div
-                        className="text-base sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
-                        style={{ display: '-webkit-box', WebkitLineClamp: 9, WebkitBoxOrient: 'vertical' }}
+                        className="text-[15px] sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
+                        style={{ display: '-webkit-box', WebkitLineClamp: 8, WebkitBoxOrient: 'vertical' }}
                     >
                         {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
                     </div>
                 </div>
 
                 {/* 2. Footer Container: MINIMAL FIXED 70px */}
-                <div className="mt-auto h-[70px] flex-shrink-0 px-4 py-2 flex flex-col gap-1.5 bg-white border-t notion-whisper-border">
+                <div className="mt-auto min-h-[64px] sm:min-h-[70px] flex-shrink-0 px-3 sm:px-4 py-2 flex flex-col gap-1.5 bg-white border-t notion-whisper-border">
                     {/* Tags Area (Fixed 20px) */}
-                    <div className="h-5 overflow-hidden flex items-center gap-1.5 flex-shrink-0">
+                    <div className="min-h-5 overflow-hidden flex flex-wrap items-center gap-1.5 flex-shrink-0">
                         {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
                             <span key={i} className="px-1.5 py-0.5 rounded-full bg-black/5 text-[11px] font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none">#{tag}</span>
                         ))}
@@ -178,10 +185,10 @@ const PostCard = ({
                 {showMenu && (
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-white/95 flex flex-col p-4"
+                        className="absolute inset-0 z-50 bg-white/95 flex flex-col p-3 sm:p-4"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-4 gap-3">
                             <span className="font-bold">更多選項</span>
                             <MoreHorizontal className="cursor-pointer" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} />
                         </div>
@@ -189,12 +196,12 @@ const PostCard = ({
                         {!showMoveMenu ? (
                             <>
                                 <button 
-                                    className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)]" 
+                                    className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)] w-full text-left" 
                                     onClick={(e) => { e.stopPropagation(); setShowMoveMenu(true); }}
                                 >
                                     <FolderInput size={16} /> 移至資料夾
                                 </button>
-                                <button className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-destructive" onClick={() => { onDelete && onDelete(); setShowMenu(false); }}>
+                                <button className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-destructive w-full text-left" onClick={() => { onDelete && onDelete(); setShowMenu(false); }}>
                                     <Trash2 size={16} /> 刪除此貼文
                                 </button>
                             </>
@@ -206,7 +213,7 @@ const PostCard = ({
                                 </div>
                                 <div className="overflow-y-auto flex-1 flex flex-col gap-1 custom-scrollbar">
                                     <button 
-                                        className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left"
+                                        className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left w-full"
                                         onClick={(e) => handleMoveToCollection(e, null)}
                                     >
                                         <FolderMinus size={16} /> 取消分類
@@ -214,7 +221,7 @@ const PostCard = ({
                                     {collections.map(c => (
                                         <button 
                                             key={c.id}
-                                            className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left"
+                                            className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left w-full"
                                             onClick={(e) => handleMoveToCollection(e, c.id)}
                                         >
                                             <FolderInput size={16} /> {c.name}

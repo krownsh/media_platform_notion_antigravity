@@ -43,10 +43,10 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: idx * 0.05 }}
-                        className="flex items-center gap-3"
+                        className="flex items-center gap-2 sm:gap-3"
                     >
                         {/* Label */}
-                        <span className="text-xs text-[rgba(0,0,0,0.95)]/80 font-medium w-20 shrink-0 text-right truncate capitalize">
+                        <span className="text-[10px] sm:text-xs text-[rgba(0,0,0,0.95)]/80 font-medium w-14 sm:w-20 shrink-0 text-right truncate capitalize">
                             {item.label}
                         </span>
 
@@ -62,7 +62,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
 
                         {/* Value */}
                         {showValues && (
-                            <span className="text-xs font-bold text-[rgba(0,0,0,0.95)]/60 w-8 text-left shrink-0">
+                            <span className="text-[10px] sm:text-xs font-bold text-[rgba(0,0,0,0.95)]/60 w-6 sm:w-8 text-left shrink-0">
                                 {item.value}
                             </span>
                         )}

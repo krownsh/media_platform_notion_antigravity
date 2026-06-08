@@ -58,13 +58,13 @@ const TaskCenter = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-[101] flex flex-col border-l notion-whisper-border"
+                        className="fixed right-0 top-0 h-full w-full max-w-[100vw] sm:max-w-md bg-white shadow-2xl z-[101] flex flex-col border-l notion-whisper-border"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-transparent backdrop-blur-md sticky top-0 z-10">
+                        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-transparent backdrop-blur-md sticky top-0 z-10 gap-3">
                             <div>
-                                <h2 className="text-xl font-bold text-[rgba(0,0,0,0.95)]">任務中心</h2>
-                                <p className="text-sm text-[#615d59] mt-1">
+                                <h2 className="text-lg sm:text-xl font-bold text-[rgba(0,0,0,0.95)]">任務中心</h2>
+                                <p className="text-xs sm:text-sm text-[#615d59] mt-1">
                                     {activeTasksCount} 個進行中 · {failedTasksCount} 個失敗
                                 </p>
                             </div>
@@ -77,7 +77,7 @@ const TaskCenter = () => {
                         </div>
 
                         {/* Task List */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3">
                             {tasks.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-[#615d59] gap-4 opacity-60">
                                     <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center">
@@ -97,14 +97,14 @@ const TaskCenter = () => {
                                             : 'bg-white border-gray-100 shadow-soft-card hover:shadow-soft-card'
                                             }`}
                                     >
-                                        <div className="flex items-start gap-4">
+                                        <div className="flex items-start gap-3 sm:gap-4">
                                             <div className={`mt-1 p-2 rounded-lg ${task.status === 'failed' ? 'bg-destructive/10' : 'bg-[rgba(0,117,222,0.1)]'
                                                 }`}>
                                                 {getStatusIcon(task.status)}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
+                                                <div className="flex items-center justify-between gap-2 flex-wrap">
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${task.status === 'failed' ? 'text-destructive' : 'text-[#0075de]'
                                                         }`}>
                                                         {task.platform || 'URL'} 擷取
@@ -115,7 +115,7 @@ const TaskCenter = () => {
                                                 </div>
 
                                                 <div className="mt-1 flex items-center gap-1 group">
-                                                    <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate flex-1">
+                                                    <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] break-all sm:truncate flex-1">
                                                         {task.url}
                                                     </p>
                                                     <a
@@ -128,7 +128,7 @@ const TaskCenter = () => {
                                                     </a>
                                                 </div>
 
-                                                <div className="mt-2 flex items-center justify-between">
+                                                <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className={`text-xs ${task.status === 'failed' ? 'text-destructive font-semibold' : 'text-[#615d59]'
                                                             }`}>
@@ -140,7 +140,7 @@ const TaskCenter = () => {
                                                     </div>
 
                                                     {task.status === 'failed' && (
-                                                        <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-3 flex-wrap">
                                                             <button
                                                                 onClick={() => handleRetry(task)}
                                                                 className="text-xs text-[#0075de] hover:text-[#0075de]/80 flex items-center gap-1 transition-colors font-semibold"
@@ -166,7 +166,7 @@ const TaskCenter = () => {
                         </div>
 
                         {/* Footer (Optional info) */}
-                        <div className="p-6 bg-gray-50 border-t border-gray-100">
+                        <div className="p-4 sm:p-6 bg-gray-50 border-t border-gray-100">
                             <div className="text-[10px] text-[#615d59] text-center uppercase tracking-[0.2em] font-bold">
                                 Concurrency Strategy Active (Max 3)
                             </div>

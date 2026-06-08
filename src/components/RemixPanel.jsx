@@ -250,17 +250,17 @@ const RemixPanel = ({ post, onClose }) => {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.25, 0.8, 0.3, 1] }}
-                className="w-full max-w-[95vw] h-[90vh] bg-transparent border notion-whisper-border rounded-lg flex flex-col overflow-hidden shadow-2xl backdrop-blur-2xl"
+                className="w-full h-[100vh] lg:h-[90vh] max-w-[100vw] lg:max-w-[95vw] bg-transparent border notion-whisper-border rounded-none lg:rounded-lg flex flex-col overflow-hidden shadow-2xl backdrop-blur-2xl"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-[rgba(0,0,0,0.1)]/20 bg-transparent">
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[rgba(0,0,0,0.1)]/20 bg-transparent">
                     <div className="flex items-center gap-3">
-                        <div className="p-2.5 bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)]">
+                        <div className="p-2 bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)] flex-shrink-0">
                             <Wand2 size={20} />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-[rgba(0,0,0,0.95)]">內容改寫</h2>
-                            <p className="text-xs text-[#615d59] uppercase tracking-wider">內化與重構引擎</p>
+                        <div className="min-w-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-[rgba(0,0,0,0.95)] truncate">內容改寫</h2>
+                            <p className="text-[10px] sm:text-xs text-[#615d59] uppercase tracking-wider truncate">內化與重構引擎</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-[#615d59] hover:text-[rgba(0,0,0,0.95)] transition-colors p-2 hover:bg-black/5 rounded-full">
@@ -269,10 +269,10 @@ const RemixPanel = ({ post, onClose }) => {
                 </div>
 
                 {/* Body - Flex Layout (37% - 26% - 37%) */}
-                <div className="flex-1 flex overflow-hidden divide-x divide-border/20">
+                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-border/20">
 
                     {/* Column 1: Source Material (37%) */}
-                    <div className="w-[37%] flex flex-col bg-secondary/5 overflow-hidden">
+                    <div className="w-full lg:w-[37%] flex flex-col bg-secondary/5 overflow-hidden min-h-0">
                         <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/20 flex items-center justify-between shrink-0">
                             <h3 className="font-semibold text-[rgba(0,0,0,0.95)] flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-black/5 text-[rgba(0,0,0,0.95)] text-xs flex items-center justify-center border border-secondary/50">1</span>
@@ -354,7 +354,7 @@ const RemixPanel = ({ post, onClose }) => {
                     </div>
 
                     {/* Column 2: Configuration (26%) - Fixed Ratio Layout */}
-                    <div className="w-[26%] flex flex-col bg-transparent overflow-hidden">
+                    <div className="w-full lg:w-[26%] flex flex-col bg-transparent overflow-hidden">
                         <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/20 flex items-center justify-between shrink-0">
                             <h3 className="font-semibold text-[rgba(0,0,0,0.95)] flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full bg-[#0075de]/20 text-[#0075de] text-xs flex items-center justify-center border border-accent/30">2</span>
@@ -366,7 +366,7 @@ const RemixPanel = ({ post, onClose }) => {
                         <div className="flex-1 flex flex-col overflow-hidden">
 
                             {/* Top 10%: Model Selection */}
-                            <div className="h-[10%] px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0">
+                            <div className="lg:h-[10%] px-4 sm:px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0 py-3 lg:py-0">
                                 <div className="flex items-center gap-3">
                                     <label className="flex items-center gap-2 text-xs font-medium text-[#615d59] shrink-0">
                                         <Brain size={14} className="text-[#0075de]" />
@@ -393,7 +393,7 @@ const RemixPanel = ({ post, onClose }) => {
                             </div>
 
                             {/* Middle 25%: Parameters */}
-                            <div className="h-[25%] px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0 overflow-hidden">
+                            <div className="lg:h-[25%] px-4 sm:px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0 overflow-hidden py-3 lg:py-0">
                                 <div className="flex items-center gap-2 text-xs font-medium text-[#615d59] mb-3 shrink-0">
                                     <Sparkles size={14} className="text-[#0075de]" />
                                     參數
@@ -434,7 +434,7 @@ const RemixPanel = ({ post, onClose }) => {
                             </div>
 
                             {/* Bottom 65%: Prompt Preview */}
-                            <div className="h-[65%] p-5 overflow-hidden flex flex-col">
+                            <div className="lg:h-[65%] p-4 sm:p-5 overflow-hidden flex flex-col min-h-0">
                                 <div className="text-[10px] font-mono text-[#615d59] flex items-center gap-2 mb-2 shrink-0">
                                     <Zap size={10} /> 提示詞預覽
                                 </div>
@@ -458,7 +458,7 @@ const RemixPanel = ({ post, onClose }) => {
                     </div>
 
                     {/* Column 3: Output (37%) - Split into Top (Text) and Bottom (Images) */}
-                    <div className="w-[37%] flex flex-col bg-secondary/5 overflow-hidden">
+                    <div className="w-full lg:w-[37%] flex flex-col bg-secondary/5 overflow-hidden min-h-0">
 
                         {/* Section 3: Text Output (Flex 1) */}
                         <div className="flex-1 flex flex-col min-h-0 border-b border-[rgba(0,0,0,0.1)]/20">
@@ -499,7 +499,7 @@ const RemixPanel = ({ post, onClose }) => {
                         </div>
 
                         {/* Section 4: Image Generation (Fixed Height or Flex) */}
-                        <div className="h-[40%] flex flex-col min-h-0 bg-transparent">
+                        <div className="lg:h-[40%] flex flex-col min-h-0 bg-transparent">
                             <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/10 flex items-center justify-between shrink-0 bg-transparent">
                                 <div className="flex items-center gap-2">
                                     <div className="w-6 h-6 rounded-full bg-[rgba(0,117,222,0.1)] flex items-center justify-center text-[#0075de] text-xs font-bold">4</div>

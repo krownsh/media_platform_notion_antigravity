@@ -259,28 +259,28 @@ Output format: Just give me the Subject Description paragraph in English.`);
     if (!post) return <div className="p-8 text-center">Post not found</div>;
 
     return (
-        <div className="min-h-screen bg-background text-[rgba(0,0,0,0.95)] p-6 pb-32">
+        <div className="min-h-screen bg-background text-[rgba(0,0,0,0.95)] p-4 sm:p-6 pb-24 sm:pb-32 overflow-x-hidden">
             {/* Header */}
-            <div className="max-w-5xl mx-auto mb-8 flex items-center gap-4">
+            <div className="max-w-5xl mx-auto mb-6 sm:mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-[rgba(0,117,222,0.1)] rounded-full transition-colors">
                     <ArrowLeft size={24} />
                 </button>
-                <h1 className="text-2xl font-bold">AI Image Workflow</h1>
+                <h1 className="text-xl sm:text-2xl font-bold break-words">AI Image Workflow</h1>
             </div>
 
             <div className="max-w-5xl mx-auto space-y-12">
 
                 {/* Step 1 */}
-                <section className={`notion-card p-6 rounded-lg border ${currentStep === 1 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'}`}>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                <section className={`notion-card p-4 sm:p-6 rounded-lg border ${currentStep === 1 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'}`}>
+                    <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                             <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
                             拆解與提取 (Extract Logic)
                         </h2>
                         {step1Output && <CheckCircle className="text-green-500" size={24} />}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-4">
                             <div className="aspect-video bg-black/5 rounded-lg overflow-hidden border notion-whisper-border flex items-center justify-center">
                                 {post.images && post.images[0] ? (
@@ -293,7 +293,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                             <textarea
                                 value={step1Prompt}
                                 onChange={(e) => setStep1Prompt(e.target.value)}
-                                className="w-full h-48 bg-transparent border notion-whisper-border rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
+                                className="w-full h-40 sm:h-48 bg-transparent border notion-whisper-border rounded-lg p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 resize-none"
                             />
                         </div>
                         <div className="space-y-4">
@@ -302,7 +302,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                                 value={step1Output}
                                 onChange={(e) => setStep1Output(e.target.value)}
                                 placeholder="Result will appear here..."
-                                className="w-full h-[340px] bg-black/5 border notion-whisper-border rounded-lg p-4 text-sm font-mono focus:outline-none resize-none"
+                                className="w-full h-[260px] sm:h-[340px] bg-black/5 border notion-whisper-border rounded-lg p-4 text-sm font-mono focus:outline-none resize-none"
                             />
                             <button
                                 onClick={handleStep1}
@@ -317,16 +317,16 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 2 */}
-                <section className={`notion-card p-6 rounded-lg border ${currentStep === 2 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                <section className={`notion-card p-4 sm:p-6 rounded-lg border ${currentStep === 2 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 2 ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                             <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
                             改寫與視覺轉譯 (Rewrite & Translate)
                         </h2>
                         {step2Output && <CheckCircle className="text-green-500" size={24} />}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-4">
                             <label className="block text-sm font-medium text-[#615d59]">Prompt 2 (Instructions)</label>
                             <RichMentionEditor
@@ -360,9 +360,9 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 3 */}
-                <section className={`notion-card p-6 rounded-lg border ${currentStep === 3 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                <section className={`notion-card p-4 sm:p-6 rounded-lg border ${currentStep === 3 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex items-center justify-between mb-3 sm:mb-4 gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                             <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
                             組合與生成 (Combine & Generate)
                         </h2>
@@ -390,7 +390,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-[#615d59]">Style Keywords</label>
                                 <input
@@ -413,7 +413,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
 
                         <div className="space-y-4">
                             <label className="block text-sm font-medium text-[#615d59]">Generated Image</label>
-                            <div className="relative min-h-[300px] bg-black/5 border notion-whisper-border rounded-lg overflow-hidden flex items-center justify-center">
+                            <div className="relative min-h-[220px] sm:min-h-[300px] bg-black/5 border notion-whisper-border rounded-lg overflow-hidden flex items-center justify-center">
                                 {step3Output && step3Output.startsWith('http') ? (
                                     <img src={step3Output} alt="Generated" className="w-full h-full object-contain" />
                                 ) : (
@@ -440,17 +440,17 @@ Output format: Just give me the Subject Description paragraph in English.`);
                 </section>
 
                 {/* Step 4: Publish */}
-                <section className={`notion-card p-6 rounded-lg border ${currentStep === 4 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                <section className={`notion-card p-4 sm:p-6 rounded-lg border ${currentStep === 4 ? 'border-accent ring-2 ring-accent/20' : 'notion-whisper-border'} ${currentStep < 4 ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <div className="flex items-center justify-between mb-4 sm:mb-6 gap-3 flex-wrap">
+                        <h2 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                             <span className="bg-[#0075de] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
                             發佈 (Publish)
                         </h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                         {/* Instagram Section */}
-                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-4 sm:p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-muted rounded-lg text-pink-500">
                                     <Instagram size={20} />
@@ -486,7 +486,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                         </div>
 
                         {/* Threads Section */}
-                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-4 sm:p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-muted rounded-lg text-[rgba(0,0,0,0.95)]">
                                     <AtSign size={20} />
@@ -522,7 +522,7 @@ Output format: Just give me the Subject Description paragraph in English.`);
                         </div>
 
                         {/* Twitter Section */}
-                        <div className="flex flex-col h-full p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
+                        <div className="flex flex-col h-full p-4 sm:p-5 rounded-lg border border-[rgba(0,0,0,0.1)] hover:border-foreground/20 transition-all bg-card/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="p-2 bg-muted rounded-lg text-blue-500">
                                     <Twitter size={20} />

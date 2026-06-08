@@ -14,7 +14,7 @@ const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' 
         <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-5 flex flex-col gap-2 overflow-hidden"
+            className="relative bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-4 sm:p-5 flex flex-col gap-2 overflow-hidden"
         >
             {/* 背景裝飾光暈 */}
             <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-current opacity-5 blur-xl" style={{ color: 'currentColor' }} />

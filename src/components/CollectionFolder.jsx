@@ -45,7 +45,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
         <div
             ref={setNodeRef}
             onClick={onClick}
-            className="group relative flex flex-col items-center gap-2 w-[120px]"
+            className="group relative flex flex-col items-center gap-2 w-[96px] sm:w-[120px]"
         >
             {/* Folder Icon Container */}
             <div className={`
@@ -89,7 +89,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 {/* Menu Button */}
                 <button
                     onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                    className="absolute top-5 right-2 p-1.5 rounded-full text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-transparent opacity-0 group-hover:opacity-100 transition-all z-10"
+                    className="absolute top-4 sm:top-5 right-1.5 sm:right-2 min-h-11 min-w-11 p-2 rounded-full text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-transparent opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center justify-center"
                 >
                     <MoreVertical size={16} />
                 </button>
@@ -109,7 +109,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 </form>
             ) : (
                 <div className="flex flex-col items-center w-full">
-                    <span className="text-sm text-[rgba(0,0,0,0.95)]/80 font-medium truncate w-full text-center px-1 group-hover:text-[rgba(0,0,0,0.95)] transition-colors">
+                    <span className="text-xs sm:text-sm text-[rgba(0,0,0,0.95)]/80 font-medium truncate w-full text-center px-1 group-hover:text-[rgba(0,0,0,0.95)] transition-colors">
                         {collection.name}
                     </span>
                     <span className="text-[10px] text-[#615d59]">

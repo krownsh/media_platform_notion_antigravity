@@ -33,7 +33,7 @@ const LoginPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
+        <div className="min-h-[100dvh] flex items-start sm:items-center justify-center bg-background relative overflow-hidden px-4 py-8 sm:py-0">
             {/* Background Elements */}
             <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none"></div>
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-black/5 rounded-full blur-[120px] pointer-events-none" />
@@ -43,11 +43,11 @@ const LoginPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
-                className="w-full max-w-md p-6 relative z-10"
+                className="w-full max-w-md p-0 sm:p-6 relative z-10"
             >
-                <div className="bg-transparent backdrop-blur-xl border notion-whisper-border rounded-lg p-10 shadow-deep">
-                    <div className="text-center mb-10">
-                        <h1 className="text-3xl font-bold text-[rgba(0,0,0,0.95)] mb-3 tracking-tight">歡迎回來</h1>
+                <div className="bg-transparent backdrop-blur-xl border notion-whisper-border rounded-lg p-6 sm:p-10 shadow-deep">
+                    <div className="text-center mb-8 sm:mb-10">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] mb-3 tracking-tight">歡迎回來</h1>
                         <p className="text-[#615d59]">登入以繼續進入您的工作區</p>
                     </div>
 
@@ -107,7 +107,7 @@ const LoginPage = () => {
 
                     <div className="mt-8 text-center text-[#615d59] text-sm">
                         還沒有帳號？{' '}
-                        <Link to="/signup" className="text-[#0075de] hover:text-[#0075de]/80 font-medium transition-colors">
+                        <Link to="/signup" className="touch-target-link text-[#0075de] hover:text-[#0075de]/80 font-medium transition-colors">
                             建立帳號
                         </Link>
                     </div>

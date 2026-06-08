@@ -165,9 +165,9 @@ const InsightPage = () => {
             className="w-full max-w-5xl mx-auto px-4 pb-20"
         >
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pt-8">
-                <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pt-6 sm:pt-8">
+                <div className="min-w-0">
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] flex items-center gap-3 break-words">
                         <BarChart3 className="text-[#0075de]" size={28} />
                         情報趨勢看板
                     </h2>
@@ -175,11 +175,11 @@ const InsightPage = () => {
                         分析你收藏的內容分佈，發現知識盲區與資訊熱點
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <button
                         onClick={handleBatchClassify}
                         disabled={batchStatus === 'running'}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-transparent border notion-whisper-border text-sm font-medium text-[rgba(0,0,0,0.95)] hover:bg-[rgba(0,117,222,0.1)] hover:border-accent/30 transition-all shadow-soft-card disabled:opacity-50"
+                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-transparent border notion-whisper-border text-sm font-medium text-[rgba(0,0,0,0.95)] hover:bg-[rgba(0,117,222,0.1)] hover:border-accent/30 transition-all shadow-soft-card disabled:opacity-50 w-full sm:w-auto"
                     >
                         <Sparkles size={14} className="text-[#0075de]" />
                         {batchStatus === 'running' ? '分類中...' : batchStatus || '一鍵自動分類'}
@@ -187,7 +187,7 @@ const InsightPage = () => {
                     <button
                         onClick={loadStats}
                         disabled={loading}
-                        className="p-2 rounded-lg bg-transparent border notion-whisper-border text-[#615d59] hover:text-[#0075de] transition-colors shadow-soft-card"
+                        className="p-2 rounded-lg bg-transparent border notion-whisper-border text-[#615d59] hover:text-[#0075de] transition-colors shadow-soft-card self-start sm:self-auto"
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     </button>
@@ -203,7 +203,7 @@ const InsightPage = () => {
             )}
 
             {/* ── 總覽卡片 ── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard
                     label="總收藏貼文"
                     value={overview?.total_posts ?? '—'}
@@ -300,11 +300,11 @@ const InsightPage = () => {
                     {domains.length > 0 ? (
                         <div className="space-y-2">
                             {domains.map((d, idx) => (
-                                <div key={d.domain} className="flex items-center justify-between py-1.5 border-b border-[rgba(0,0,0,0.1)]/10 last:border-0">
-                                    <div className="flex items-center gap-3">
+                                <div key={d.domain} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-1.5 border-b border-[rgba(0,0,0,0.1)]/10 last:border-0">
+                                    <div className="flex items-center gap-3 min-w-0">
                                         <span className="text-xs text-[#615d59]/60 w-5 text-right">{idx + 1}</span>
                                         <a href={`https://${d.domain}`} target="_blank" rel="noopener noreferrer"
-                                            className="text-sm font-medium text-[rgba(0,0,0,0.95)] hover:text-[#0075de] transition-colors">
+                                            className="touch-target-link text-sm font-medium text-[rgba(0,0,0,0.95)] hover:text-[#0075de] transition-colors break-all sm:break-normal">
                                             {d.domain}
                                         </a>
                                     </div>
@@ -328,17 +328,17 @@ const InsightPage = () => {
                     {authors.length > 0 ? (
                         <div className="space-y-3">
                             {authors.slice(0, 8).map((a) => (
-                                <div key={a.authorHandle} className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
+                                <div key={a.authorHandle} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                    <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-400 to-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
                                             {(a.author?.[0] || '?').toUpperCase()}
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] leading-none">{a.author || 'Unknown'}</p>
-                                            <p className="text-xs text-[#615d59] mt-0.5">@{a.authorHandle} · {a.platform}</p>
+                                            <p className="text-xs text-[#615d59] mt-0.5 break-all sm:break-normal">@{a.authorHandle} · {a.platform}</p>
                                         </div>
                                     </div>
-                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full self-start sm:self-auto">
                                         {a.count} 篇
                                     </span>
                                 </div>
@@ -395,7 +395,7 @@ const InsightPage = () => {
                             if (error) alert(error.message);
                             else loadStats();
                         }}
-                        className="flex items-center gap-1 px-3 py-1 text-xs rounded-md bg-[#0075de] text-white hover:bg-[#0075de]/90 transition-colors shadow-sm"
+                        className="flex items-center gap-1 px-3 py-2 min-h-11 text-xs rounded-md bg-[#0075de] text-white hover:bg-[#0075de]/90 transition-colors shadow-sm"
                     >
                         <Plus size={14} />
                         新增分類
@@ -403,7 +403,7 @@ const InsightPage = () => {
                 </div>
 
                 <div className="p-0 overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full min-w-[760px] text-left border-collapse">
                         <thead>
                             <tr className="bg-black/[0.01] text-[10px] uppercase tracking-widest text-[#615d59]/60 border-b notion-whisper-border">
                                 <th className="px-6 py-3 font-bold w-32">Slug / 代碼</th>

@@ -71,38 +71,38 @@ const ViewAllPage = ({ onRemix }) => {
 
     return (
         <div className="w-full mx-auto px-2 sm:px-4 pb-20">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-10 pt-8 pl-2">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-8 sm:mb-10 pt-6 sm:pt-8 pl-2">
                 <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-[rgba(0,117,222,0.1)] rounded-lg">
                         <Layers className="text-[#0075de]" size={24} />
                     </div>
-                    <h1 className="text-2xl font-bold text-[rgba(0,0,0,0.95)]">{title}</h1>
-                    <span className="text-[#615d59] text-sm ml-2 font-medium">
+                    <h1 className="text-xl sm:text-2xl font-bold text-[rgba(0,0,0,0.95)] break-words">{title}</h1>
+                    <span className="text-[#615d59] text-sm ml-0 sm:ml-2 font-medium">
                         {displayedPosts.length} 篇貼文
                     </span>
                 </div>
 
                 {/* 檢索與過濾區塊 */}
-                <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                     {/* Search Bar */}
-                    <div className="relative group flex-1 md:w-64">
+                    <div className="relative group flex-1 sm:w-64 min-w-0">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[#0075de] transition-colors" size={16} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="全文搜尋 (作者/內容/總結)"
-                            className="w-full bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-4 py-2 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all"
+                            className="w-full bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-4 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all"
                         />
                     </div>
 
                     {/* Category Filter */}
-                    <div className="relative flex-shrink-0">
+                    <div className="relative flex-shrink-0 w-full sm:w-auto">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 pointer-events-none" size={14} />
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="appearance-none bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-10 py-2 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all font-medium cursor-pointer"
+                            className="appearance-none bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-10 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all font-medium cursor-pointer w-full sm:w-auto"
                         >
                             {CATEGORIES.map(c => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -113,9 +113,9 @@ const ViewAllPage = ({ onRemix }) => {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 sm:gap-6 md:gap-8 justify-center">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[640px] bg-transparent" />
+                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[520px] sm:h-[640px] bg-transparent" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (
@@ -123,7 +123,7 @@ const ViewAllPage = ({ onRemix }) => {
                     <p className="text-lg font-medium">未找到貼文</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(380px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
                     {displayedPosts.map((post) => (
                         <PostCard
                             key={post.id}

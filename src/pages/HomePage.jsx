@@ -8,7 +8,7 @@ const HomePage = ({ onRemix }) => {
 
     return (
         <div className="w-full mx-auto px-2 sm:px-4">
-            <div className="text-center mb-8 md:mb-16 pt-[40px] md:pt-[80px]">
+            <div className="text-center mb-6 sm:mb-8 md:mb-16 pt-8 sm:pt-10 md:pt-[80px]">
                 <p className="notion-text-body-large text-[#615d59] max-w-2xl mx-auto mb-2 px-2">
                     儲存、分析並改寫來自 Instagram、Twitter 和 Facebook 的內容。
                     將社群雜訊轉化為結構化知識。
@@ -21,11 +21,11 @@ const HomePage = ({ onRemix }) => {
             <UrlInput />
 
             <div className="mt-12">
-                <div className="flex items-center justify-between mb-8 px-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8 px-2">
                     <h3 className="notion-text-card-title text-[rgba(0,0,0,0.95)]">最近儲存</h3>
                     <button
                         onClick={() => navigate('/view-all')}
-                        className="notion-btn-ghost"
+                        className="notion-btn-ghost touch-target-link"
                     >
                         查看全部
                     </button>

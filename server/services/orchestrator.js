@@ -145,6 +145,32 @@ class Orchestrator {
         }
     }
 
+    async processGenericImages(data) {
+        if (!data) return;
+        
+        // Handle post images array
+        if (data.images && data.images.length > 0) {
+            data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
+            // Sync with full_json
+            if (data.full_json && typeof data.full_json === 'object') {
+                if (Array.isArray(data.full_json) && data.full_json[0]) {
+                    data.full_json[0].images = data.images;
+                } else if (!Array.isArray(data.full_json)) {
+                    data.full_json.images = data.images;
+                }
+            }
+        }
+        
+        // Handle avatar
+        if (data.avatar) {
+            data.avatar = await this.uploadImageToBucket(data.avatar);
+            if (data.full_json && !Array.isArray(data.full_json)) data.full_json.avatar = data.avatar;
+        } else if (data.author_avatar_url) {
+            data.author_avatar_url = await this.uploadImageToBucket(data.author_avatar_url);
+            if (data.full_json && !Array.isArray(data.full_json)) data.full_json.author_avatar_url = data.author_avatar_url;
+        }
+    }
+
     async processUrl(url, userId = null) {
         return limit(async () => {
             const platform = this.identifyPlatform(url);
@@ -215,6 +241,7 @@ class Orchestrator {
 
             if (data) {
                 console.log('[Orchestrator] Data fetched via API.');
+                await this.processGenericImages(data);
                 const saved = await this.upsertPost(data, userId);
                 if (saved) data.dbId = saved.id;
                 return { source: 'api', data };
@@ -226,6 +253,7 @@ class Orchestrator {
 
             if (data.success) {
                 console.log('[Orchestrator] Data fetched via Crawler.');
+                await this.processGenericImages(data);
                 const saved = await this.upsertPost(data, userId);
                 if (saved) data.dbId = saved.id;
                 return { source: 'crawler', data };

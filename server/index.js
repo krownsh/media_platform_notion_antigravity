@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { Readable } from 'stream';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -300,9 +301,13 @@ app.get('/api/proxy-image', async (req, res) => {
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
         res.setHeader('Access-Control-Allow-Origin', '*'); // Ensure CORS is allowed for the image itself
 
-        // Pipe the image data
-        const buffer = await response.arrayBuffer();
-        res.send(Buffer.from(buffer));
+        // Pipe the image data directly to avoid blocking the event loop with large memory buffers
+        if (response.body) {
+            Readable.fromWeb(response.body).pipe(res);
+        } else {
+            const buffer = await response.arrayBuffer();
+            res.send(Buffer.from(buffer));
+        }
     } catch (error) {
         console.error(`[Proxy] Error processing image: ${url}`, error.message);
         res.status(500).json({ error: 'Failed to load image' });

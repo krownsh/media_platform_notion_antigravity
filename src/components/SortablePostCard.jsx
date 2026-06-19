@@ -8,7 +8,8 @@ const SortablePostCard = ({
     onRemix,
     onClick,
     onDelete,
-    isOverlay = false
+    isOverlay = false,
+    isCompact = false
 }) => {
     console.log('Rendering SortablePostCard:', post.id);
     const {
@@ -35,6 +36,7 @@ const SortablePostCard = ({
                     onRemix={onRemix}
                     onClick={onClick}
                     onDelete={onDelete}
+                    isCompact={isCompact}
                 />
             </div>
         );
@@ -47,6 +49,7 @@ const SortablePostCard = ({
                 onRemix={onRemix}
                 onClick={onClick}
                 onDelete={onDelete}
+                isCompact={isCompact}
             />
         </div>
     );

@@ -166,6 +166,9 @@ class CrawlerService {
             // 3. Close BOTH page and context to free memory
             await page.close();
             await context.close();
+            
+            // 4. Close the entire browser to prevent zombie processes and memory leaks
+            await this.closeBrowser();
         }
     }
 }

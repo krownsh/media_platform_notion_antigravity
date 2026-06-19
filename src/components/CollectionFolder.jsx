@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
 import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { useDispatch } from 'react-redux';
@@ -6,11 +7,10 @@ import { deleteCollection, updateCollectionName } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 
 
-const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = [] }) => {
+const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = [], isMenuOpen = false, onMenuToggle }) => {
     const dispatch = useDispatch();
     const [isEditing, setIsEditing] = useState(false);
     const [newName, setNewName] = useState(collection.name);
-    const [showMenu, setShowMenu] = useState(false);
 
     const { setNodeRef, isOver } = useDroppable({
         id: collection.id,
@@ -41,28 +41,41 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
         return imageUrl;
     };
 
+    const buttonRef = React.useRef(null);
+    const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
+    const handleMenuClick = (e) => {
+        e.stopPropagation();
+        if (!isMenuOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Calculate position to align right edge of menu with right edge of button
+            setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 }); // 144 is approximately w-36
+        }
+        if (onMenuToggle) onMenuToggle();
+    };
+
     return (
         <div
             ref={setNodeRef}
             onClick={onClick}
-            className="group relative flex flex-col items-center gap-2 w-[96px] sm:w-[120px]"
+            className="group relative flex flex-col items-center w-[96px] gap-1.5"
         >
             {/* Folder Icon Container */}
             <div className={`
-                relative w-full aspect-[16/9] transition-all duration-300 ease-[cubic-bezier(0.25,0.8,0.3,1)]
+                relative w-full aspect-[16/9] transition-all duration-150 ease-out
                 ${isOver ? 'scale-110' : 'hover:scale-105'}
             `}>
                 {/* Folder Tab */}
                 <div className={`
-                    absolute top-0 left-0 w-2/5 h-3.5 rounded-t-lg border-t border-l border-r transition-colors duration-300
+                    absolute top-0 left-0 w-2/5 h-3.5 rounded-t-lg border-t border-l border-r transition-colors duration-150 ease-out
                     ${isOver ? 'bg-[#0075de]/30 border-accent' : 'bg-black/5 notion-whisper-border'}
                 `} />
 
                 {/* Folder Body */}
                 <div className={`
-                    absolute top-3 inset-x-0 bottom-0 rounded-b-2xl rounded-tr-2xl border transition-all duration-300
-                    ${isOver ? 'bg-[#0075de]/20 border-accent shadow-[0_0_20px_rgba(127,155,137,0.3)]' : 'bg-black/5 notion-whisper-border group-hover:bg-black/5 group-hover:notion-whisper-border'}
-                    flex items-center justify-center overflow-hidden backdrop-blur-sm
+                    absolute top-3 inset-x-0 bottom-0 rounded-b-2xl rounded-tr-2xl border transition-all duration-150 ease-out
+                    ${isOver ? 'bg-[#0075de]/20 border-accent shadow-[0_0_20px_rgba(127,155,137,0.3)]' : 'bg-[#f4f2f0] border-[#e6e2de] group-hover:bg-[#ebe8e4] group-hover:border-[#dcd8d3]'}
+                    flex items-center justify-center overflow-hidden
                 `}>
                     {/* Content Previews */}
                     {previewImages.length > 0 ? (
@@ -86,12 +99,13 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                     )}
                 </div>
 
-                {/* Menu Button */}
+                {/* Menu Button - Placed in the top right empty space */}
                 <button
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                    className="absolute top-4 sm:top-5 right-1.5 sm:right-2 min-h-11 min-w-11 p-2 rounded-full text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-transparent opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center justify-center"
+                    ref={buttonRef}
+                    onClick={handleMenuClick}
+                    className={`absolute -top-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/80 shadow-sm border border-[rgba(0,0,0,0.05)] text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-black/5 transition-all z-20 flex items-center justify-center backdrop-blur-sm ${isMenuOpen ? 'opacity-100 bg-white' : 'opacity-100'}`}
                 >
-                    <MoreVertical size={16} />
+                    <MoreVertical size={14} />
                 </button>
             </div>
 
@@ -109,7 +123,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 </form>
             ) : (
                 <div className="flex flex-col items-center w-full">
-                    <span className="text-xs sm:text-sm text-[rgba(0,0,0,0.95)]/80 font-medium truncate w-full text-center px-1 group-hover:text-[rgba(0,0,0,0.95)] transition-colors">
+                    <span className="text-[rgba(0,0,0,0.95)]/80 font-medium truncate w-full text-center px-1 group-hover:text-[rgba(0,0,0,0.95)] text-xs">
                         {collection.name}
                     </span>
                     <span className="text-[10px] text-[#615d59]">
@@ -118,19 +132,22 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 </div>
             )}
 
-            {/* Context Menu */}
-            {showMenu && (
+            {/* Context Menu using React Portal to escape z-index stacking context completely */}
+            {isMenuOpen && createPortal(
                 <>
                     <div
-                        className="fixed inset-0 z-40"
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                        className="fixed inset-0 z-[9999]"
+                        onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
                     />
-                    <div className="absolute top-8 right-[-10px] bg-transparent border notion-whisper-border rounded-lg shadow-deep z-50 w-36 py-1 overflow-hidden backdrop-blur-xl">
+                    <div 
+                        className="fixed bg-white/95 border notion-whisper-border rounded-lg shadow-deep z-[10000] w-36 py-1 overflow-hidden backdrop-blur-xl"
+                        style={{ top: menuPos.top, left: menuPos.left }}
+                    >
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setIsEditing(true);
-                                setShowMenu(false);
+                                if (onMenuToggle) onMenuToggle();
                             }}
                             className="w-full px-4 py-2.5 text-left text-xs text-[rgba(0,0,0,0.95)] hover:bg-black/5 flex items-center gap-2 transition-colors"
                         >
@@ -139,14 +156,15 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                         <button
                             onClick={(e) => {
                                 handleDelete(e);
-                                setShowMenu(false);
+                                if (onMenuToggle) onMenuToggle();
                             }}
                             className="w-full px-4 py-2.5 text-left text-xs text-destructive hover:bg-destructive/5 flex items-center gap-2 transition-colors"
                         >
                             <Trash2 size={14} /> 刪除
                         </button>
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </div>
     );

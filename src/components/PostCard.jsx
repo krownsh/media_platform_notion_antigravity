@@ -22,6 +22,7 @@ const PostCard = ({
     mergeProgress = 0,
     mergeReady = false,
     showSummary = false,
+    isCompact = false,
 }) => {
     const { platform, title, screenshot, analysis, category } = post;
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -74,16 +75,16 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className="notion-card rounded-lg group relative mx-auto w-full max-w-[420px] h-[520px] sm:h-[640px] flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden"
+            className={`notion-card rounded-lg group relative mx-auto w-full flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden ${isCompact ? 'max-w-[280px] sm:max-w-[320px] h-[400px] sm:h-[460px]' : 'max-w-[420px] h-[480px] sm:h-[520px]'}`}
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
-            {/* Platform Header (40px) */}
-            <div className="flex-shrink-0 w-full h-10 px-3 sm:px-4 flex items-center justify-between bg-white border-b notion-whisper-border">
+            {/* Platform Header */}
+            <div className={`flex-shrink-0 w-full px-3 sm:px-4 flex items-center justify-between bg-white border-b notion-whisper-border ${isCompact ? 'h-8' : 'h-10'}`}>
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className="text-[11px] sm:text-[11px] font-bold uppercase tracking-wider text-[#615d59] leading-none">{platformStyle.label}</span>
+                    <span className={`${isCompact ? 'text-[9px]' : 'text-[11px] sm:text-[11px]'} font-bold uppercase tracking-wider text-[#615d59] leading-none`}>{platformStyle.label}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                    <span className="text-[11px] sm:text-[11px] text-[#615d59]/80 font-medium leading-none truncate max-w-[120px] sm:max-w-[160px]">{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
+                    <span className={`${isCompact ? 'text-[9px] max-w-[80px]' : 'text-[11px] sm:text-[11px] max-w-[120px] sm:max-w-[160px]'} text-[#615d59]/80 font-medium leading-none truncate`}>{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
                 </div>
                 <button
                     className="p-2 rounded-full hover:bg-black/5 text-[#615d59]"
@@ -93,21 +94,21 @@ const PostCard = ({
                 </button>
             </div>
 
-            {/* Author Info (50px) */}
-            <div className="flex-shrink-0 px-3 sm:px-4 py-2 border-b notion-whisper-border h-[46px] sm:h-[50px] flex items-center gap-2.5 bg-white">
+            {/* Author Info */}
+            <div className={`flex-shrink-0 px-3 sm:px-4 py-2 border-b notion-whisper-border flex items-center gap-2.5 bg-white ${isCompact ? 'h-[40px]' : 'h-[46px] sm:h-[50px]'}`}>
                 {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className="w-8 h-8 rounded-full object-cover border" />
+                    <img src={proxyImage(post.avatar)} alt={post.author} className={`${isCompact ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover border`} />
                 ) : (
-                    <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-xs font-bold">{post.author?.[0] || 'U'}</div>
+                    <div className={`${isCompact ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'} rounded-full bg-black/5 flex items-center justify-center font-bold`}>{post.author?.[0] || 'U'}</div>
                 )}
                 <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate leading-tight">{post.author || 'Unknown'}</div>
-                    <div className="text-[12px] text-[#615d59]/80 truncate mt-0.5">@{post.authorHandle || 'unknown'}</div>
+                    <div className={`${isCompact ? 'text-xs' : 'text-sm'} font-semibold truncate leading-tight`}>{post.author || 'Unknown'}</div>
+                    <div className={`${isCompact ? 'text-[10px]' : 'text-[12px]'} text-[#615d59]/80 truncate mt-0.5`}>@{post.authorHandle || 'unknown'}</div>
                 </div>
             </div>
 
-            {/* Image (180px) */}
-            <div className="flex-shrink-0 w-full h-[150px] sm:h-[180px] bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border">
+            {/* Image */}
+            <div className={`flex-shrink-0 w-full bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border ${isCompact ? 'h-[120px] sm:h-[130px]' : 'h-[140px] sm:h-[160px]'}`}>
                 {images.length > 0 ? (
                     <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover" alt="Post content" />
                 ) : (
@@ -120,8 +121,8 @@ const PostCard = ({
                 )}
             </div>
 
-            {/* Action Bar (40px) */}
-            <div className="flex-shrink-0 px-3 sm:px-4 h-10 flex items-center justify-end border-b notion-whisper-border bg-white">
+            {/* Action Bar */}
+            <div className={`flex-shrink-0 px-3 sm:px-4 flex items-center justify-end border-b notion-whisper-border bg-white ${isCompact ? 'h-8' : 'h-10'}`}>
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
@@ -137,34 +138,34 @@ const PostCard = ({
                 </div>
             </div>
 
-            {/* --- Content Area (Total Remaining: 330px) --- */}
+            {/* --- Content Area --- */}
             <div className="flex-1 flex flex-col bg-white overflow-hidden">
 
-                {/* 1. Main Content Container: STRICT FIXED 250px */}
-                <div className="h-[200px] sm:h-[250px] flex-shrink-0 px-3 sm:px-4 py-3 sm:py-4 overflow-hidden">
-                    <div className="font-bold text-[rgba(0,0,0,0.95)] text-sm mb-1.5 leading-tight">{post.author}</div>
+                {/* 1. Main Content Container */}
+                <div className={`flex-shrink-0 px-3 sm:px-4 overflow-hidden ${isCompact ? 'h-[140px] sm:h-[160px] py-2' : 'h-[140px] sm:h-[160px] py-3 sm:py-4'}`}>
+                    <div className={`font-bold text-[rgba(0,0,0,0.95)] mb-1.5 leading-tight ${isCompact ? 'text-xs' : 'text-sm'}`}>{post.author}</div>
                     <div
-                        className="text-[15px] sm:text-[14px] text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium"
-                        style={{ display: '-webkit-box', WebkitLineClamp: 8, WebkitBoxOrient: 'vertical' }}
+                        className={`text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium ${isCompact ? 'text-[12px] sm:text-[12px]' : 'text-[15px] sm:text-[14px]'}`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: isCompact ? 5 : 5, WebkitBoxOrient: 'vertical' }}
                     >
                         {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
                     </div>
                 </div>
 
-                {/* 2. Footer Container: MINIMAL FIXED 70px */}
-                <div className="mt-auto min-h-[64px] sm:min-h-[70px] flex-shrink-0 px-3 sm:px-4 py-2 flex flex-col gap-1.5 bg-white border-t notion-whisper-border">
-                    {/* Tags Area (Fixed 20px) */}
-                    <div className="min-h-5 overflow-hidden flex flex-wrap items-center gap-1.5 flex-shrink-0">
+                {/* 2. Footer Container */}
+                <div className={`mt-auto flex-shrink-0 px-3 sm:px-4 flex flex-col bg-white border-t notion-whisper-border ${isCompact ? 'min-h-[50px] py-1.5 gap-1' : 'min-h-[64px] sm:min-h-[70px] py-2 gap-1.5'}`}>
+                    {/* Tags Area */}
+                    <div className="min-h-5 overflow-hidden flex flex-wrap items-center gap-1 flex-shrink-0">
                         {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded-full bg-black/5 text-[11px] font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none">#{tag}</span>
+                            <span key={i} className={`px-1.5 py-0.5 rounded-full bg-black/5 font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>#{tag}</span>
                         ))}
                     </div>
 
-                    {/* AI Info / Summary Area (Dynamic) */}
-                    <div className={`${showSummary && analysis?.summary ? 'h-[28px]' : 'h-0'} overflow-hidden flex-shrink-0`}>
+                    {/* AI Info / Summary Area */}
+                    <div className={`${showSummary && analysis?.summary ? (isCompact ? 'h-[24px]' : 'h-[28px]') : 'h-0'} overflow-hidden flex-shrink-0`}>
                         {showSummary && analysis?.summary && (
                             <div className="bg-[#0075de]/3 rounded-md p-1 h-full flex flex-col justify-center border border-[#0075de]/5">
-                                <div className="text-[11px] text-[#615d59] leading-tight line-clamp-1 font-medium italic">
+                                <div className={`${isCompact ? 'text-[9px]' : 'text-[11px]'} text-[#615d59] leading-tight line-clamp-1 font-medium italic`}>
                                     <Sparkles size={8} className="inline mr-1 text-[#0075de]" />
                                     {(typeof analysis.summary === 'string' ? analysis.summary : (analysis.summary.core_insight || "點擊查看")).replace(/##\s*|\*\*/g, '')}
                                 </div>
@@ -172,10 +173,10 @@ const PostCard = ({
                         )}
                     </div>
 
-                    {/* Final Bottom Row (Fixed 18px) */}
-                    <div className="h-[18px] flex items-center justify-between flex-shrink-0">
-                        <span className="text-[#0075de] text-[10px] font-bold uppercase tracking-tight leading-none">{analysis?.primary_category || ''}</span>
-                        <div className="text-[11px] text-[#615d59] opacity-70 font-bold leading-none">{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
+                    {/* Final Bottom Row */}
+                    <div className={`${isCompact ? 'h-[14px]' : 'h-[18px]'} flex items-center justify-between flex-shrink-0`}>
+                        <span className={`text-[#0075de] font-bold uppercase tracking-tight leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysis?.primary_category || ''}</span>
+                        <div className={`text-[#615d59] opacity-70 font-bold leading-none ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>
                 </div>
             </div>

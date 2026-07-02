@@ -23,10 +23,53 @@ const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost"
 app.use(cors());
 app.use(express.json());
 
-// Health Check
+function getBearerToken(req) {
+    const auth = req.header('authorization') || '';
+    const match = auth.match(/^Bearer\s+(.+)$/i);
+    return match ? match[1] : null;
+}
+
+async function requireApiAuth(req, res, next) {
+    const configuredApiKey = process.env.MEDIA_API_KEY;
+    const providedApiKey = req.header('x-api-key');
+
+    if (configuredApiKey && providedApiKey && providedApiKey === configuredApiKey) {
+        return next();
+    }
+
+    const token = getBearerToken(req);
+    if (token) {
+        try {
+            const { data, error } = await supabase.auth.getUser(token);
+            if (!error && data?.user) {
+                req.authUser = data.user;
+                return next();
+            }
+        } catch (error) {
+            console.warn('[Auth] Supabase token validation failed:', error.message);
+        }
+    }
+
+    return res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Health Check: explicit endpoint for monitors. Do not use '/' as API success signal.
+app.get('/healthz', (req, res) => {
+    res.json({
+        ok: true,
+        service: 'media-collection-api',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Root placeholder kept for human smoke checks only.
 app.get('/', (req, res) => {
     res.send('Social Media Platform Backend is running');
 });
+
+// Protect data-bearing read APIs before route registration.
+app.use('/api/posts', requireApiAuth);
+app.use('/api/stats', requireApiAuth);
 
 // Process URL Endpoint
 app.post('/api/process', async (req, res) => {
@@ -181,8 +224,12 @@ app.post('/api/process', async (req, res) => {
                     }
                 }
             };
-            res.json(fallbackData);
-        } catch (innerError) {
+            return res.status(202).json({
+                source: 'fallback',
+                status: 'degraded',
+                data: fallbackData.data
+            });
+        } catch {
             res.status(500).json({ error: error.message });
         }
     }
@@ -719,6 +766,19 @@ app.post('/api/batch-classify', async (req, res) => {
         console.error('[BatchClassify] error:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
+app.use('/api', (req, res) => {
+    console.warn('[API] Route not found:', req.method, req.originalUrl);
+    res.status(404).json({
+        error: 'API route not found',
+        method: req.method,
+        path: req.originalUrl,
+        hint: req.originalUrl === '/api/post'
+            ? 'Use POST /api/process to process a URL, or GET /api/posts to list posts.'
+            : undefined
+    });
 });
 
 app.listen(PORT, () => {

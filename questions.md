@@ -194,3 +194,235 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 ### 3. 優化建議
 *   **後端主動寫入**：應修改 `/api/process` 接受 `userId` 參數（或從 JWT Token 中解析），讓後端在處理完貼文後直接完成資料庫歸屬。
 *   **前端簡化**：前端只需顯示後端存檔後的結果，不需再負責複雜的多表寫入邏輯。
+
+---
+
+## 🧠 收藏資料如何轉成可執行成果
+**時間**：2026-07-18
+
+### 使用者提問
+
+1. Threads crawler 與通用 Puppeteer crawler 是否相同？
+2. Puppeteer 快取在 Windows C 槽是否需要遷移？Mac 是否安全？
+3. 最近 100 筆收藏明顯偏向安裝工具、複製流程、做 POC 與技能產品化，系統接下來具體要怎麼做？
+
+### 1. Threads 與通用 crawler 的關係
+
+- 底層相同：兩者都使用 `puppeteer` 啟動 Chrome／Chromium 類瀏覽器。
+- 實作不同：Threads 使用 `threadsCrawler.js` 的平台專用 selector、貼文結構、留言與媒體解析；一般網站使用 `browser.js`，主要讀取 meta、article/main/innerText。
+- 兩者會各自呼叫 `puppeteer.launch()`，不是共用同一個 browser instance 或 parser。
+- X 目前是 Guest Token＋網站內部 GraphQL，不走 Puppeteer。
+
+### 2. 快取位置
+
+- Puppeteer 目前未設定 `PUPPETEER_CACHE_DIR`，套件預設為 `homedir()/.cache/puppeteer`。
+- Windows 已確認落在 C 槽，後續應遷移至 G 槽。
+- Mac 實際環境尚未檢查，不能假設安全；應明確設成 `/volumes/DevSSD`，避免寫入 Home／系統碟。
+- 目前先不搬動或刪除既有快取，避免打斷 crawler；遷移需另行驗證 Windows、Mac 與部署主機。
+
+### 3. 首要方案：AI 行動候選收件匣
+
+不讓 AI 直接安裝工具、改專案或對外發布。每筆收藏先形成一張可審核的 Action Candidate：
+
+1. 判斷是否值得處理：relevance、novelty、actionability、effort、confidence。
+2. 路由到 `archive`、`learn`、`implement`、`plan`、`strategy`、`content/remix`。
+3. 根據路由產生具體成果：
+   - `learn`：概念、先備知識、練習、驗證題、下一步。
+   - `implement`：repo、環境、安裝步驟、最小 POC、驗收條件、風險。
+   - `plan`：任務拆解、依賴、優先級、成本、完成定義。
+   - `strategy`：適用條件、決策規則、KPI、實驗設計。
+   - `content/remix`：受眾、觀點、素材、平台格式、草稿。
+4. 相似收藏先去重與聚類，避免每看到一篇 Skill 就新增一張重複任務。
+5. 使用者批准後才進入真正執行；未批准只保留建議與證據。
+
+### 建議的第一版 MVP
+
+- 不改 `/api/process` 契約。
+- 不直接自動執行。
+- 先對既有 100 筆資料 dry-run，建立主題群組與 Action Candidates。
+- UI 先做「待處理／已接受／略過／稍後」四種狀態。
+- 第一批優先路由：Agent Skills、AI 開發工具、自動化工作流、程式 POC、設計／內容製作；投資資料獨立分流。
+- 驗證標準不是摘要好不好看，而是候選行動是否值得做、能否直接開始、是否大量重複。
+
+---
+
+## 🕷️ 共用 BrowserManager、語意整理與 Claude-Obsidian 同步
+**時間**：2026-07-18
+
+### 使用者提問
+
+1. Threads 與其他平台是否應共用 browser instance 或 profile，避免維護多套？
+2. 除了判斷價值與下一步，也要避免重複內容，並把相近內容整理在一起。
+3. 資料已存進 Supabase 後，如何同步到本地 Claude-Obsidian？
+
+### 1. Browser 共用決策
+
+- 應共用一套 `BrowserManager` 與長生命週期 browser process。
+- 每個 crawl job 使用獨立 `BrowserContext`／Page，避免 Cookie、LocalStorage、request interception 與 selector 狀態互相污染。
+- 不應讓所有平台共用同一個 persistent profile。
+- 只有必須登入的平台才配置「平台＋帳號」專屬 profile，例如 `threads/account-a`、`facebook/account-a`；profile 由 BrowserManager 管理，不由各 crawler 自行 launch。
+- Threads、Instagram、Facebook、Generic 等只保留 platform adapter／parser；啟動參數、browser binary、proxy、timeout、重試、log、profile lock 與關閉機制全部集中管理。
+- X 現行 Guest GraphQL 可先保留為非瀏覽器 adapter；若日後改成 DOM crawler，也接入同一 BrowserManager。
+
+### 2. 三層去重與整理
+
+1. **Exact duplicate**：canonical URL、platform post id、content hash 完全相同時，只更新來源或擷取時間，不建立新知識頁。
+2. **Semantic duplicate**：不同貼文在講同一工具／repo／方法時，掛到同一 Topic Cluster，保留多個來源，不重複產生任務。
+3. **Related content**：主題相近但有新資訊時，合併到同一 Dossier，AI 只寫入「新增觀點／差異／反例」，不重新摘要全部內容。
+
+建議知識結構：
+
+- Source Post：不可變的原始貼文與擷取證據。
+- Knowledge Item：從來源抽出的工具、方法、概念或策略。
+- Topic Cluster／Dossier：同一主題的累積知識頁。
+- Action Candidate：從 Dossier 產生的 learn／implement／plan／strategy／content 行動。
+
+每次新資料進來都先回答：是否完全重複、屬於哪個 cluster、相較既有內容新增了什麼、是否值得建立或更新行動候選。
+
+### 3. Supabase 與 Claude-Obsidian 的邊界
+
+- Supabase 是 ingestion 與同步狀態的 source of truth。
+- Claude-Obsidian 是可閱讀、可人工編輯的衍生知識工作區，不直接承擔原始 crawler 資料庫責任。
+- `/api/process` 不直接寫本機 Vault；它只完成擷取入庫與建立後續處理事件。
+- 由獨立 Local Sync Agent 在 Mac 上輪詢／訂閱待同步資料，轉成 Markdown 後原子寫入 Claude-Obsidian Vault。
+- 遠端 n8n 負責流程編排；本機 Agent 負責實際 filesystem 寫入。若 n8n 本身就跑在同一台 Mac，可由 n8n 執行本機 exporter，但仍需保留 sync cursor、checksum 與衝突規則。
+
+### 4. 建議同步格式
+
+- 一個 Topic Cluster 對應一個穩定 Markdown 檔，而不是一篇社群貼文一個檔。
+- Markdown frontmatter 保存 `cluster_id`、`source_ids`、`sync_version`、`last_synced_at`、`action_status`。
+- 本機人工內容放在受保護區塊；AI 更新只覆寫 managed section，避免洗掉 Claude-Obsidian 中的人工筆記。
+- DB 與本地都保存 checksum；兩邊同時被修改時標記 conflict，不靜默覆寫。
+- 圖片可先保留 Supabase Storage URL；需要離線使用時再由 Local Sync Agent 下載到 Vault attachments。
+
+### 5. 建議實作順序
+
+1. 先定義 Knowledge Item／Cluster／Action Candidate 的 JSON 契約，不改現有 `/api/process`。
+2. 對既有 100 筆資料 dry-run 聚類，人工檢查哪些被錯誤合併或拆太細。
+3. 確認 Claude-Obsidian Vault 目錄、檔名規則與人工編輯保護區。
+4. 實作 read-only exporter，先輸出 preview 目錄，不直接寫正式 Vault。
+5. 驗證後再加入 Local Sync Agent、同步游標、checksum 與衝突處理。
+6. 最後才把新資料的自動聚類與同步接到 n8n。
+
+---
+
+## 🍎 Mac n8n 與 Claude-Obsidian Vault 選型
+**時間**：2026-07-18
+
+### 已確認環境
+
+- n8n 跑在 Mac 本機，透過對外通道接收手機分享連結。
+- n8n 收到連結後呼叫本專案 `/api/process`。
+- 新 Vault 預定放在 Mac 外接開發碟；macOS 標準掛載路徑應先確認為 `/Volumes/DevSSD/claude-obsidian`。
+
+### GitHub 選型結論
+
+選用 `AgriciDaniel/claude-obsidian`：
+
+- 約 9.6k stars、1.1k forks、212 commits。
+- 它是完整可 clone 的 Claude Code＋Obsidian 自組織知識 Vault，不只是 Obsidian 聊天外掛。
+- 支援 source ingest、entity／concept 抽取、cross-reference、更新而非重複建立、hot cache、PARA／LYT／Zettelkasten／Generic 模式與 multi-writer lock。
+- `Claudian` 雖然 stars 更高，但定位是把 Claude／Codex 聊天代理嵌入 Obsidian，不是本次需要的完整知識庫骨架。
+
+### 安裝腳本檢查
+
+`bin/setup-vault.sh` 主要在指定 Vault 內建立 `.obsidian`、`.raw`、`wiki`、`_templates`，並覆寫 Vault 內的 Obsidian graph／app／appearance 設定。若已存在 Excalidraw manifest 而缺少 `main.js`，會從 GitHub release 下載約 8MB 檔案。沒有發現刪除 Home 或在 Vault 外建立大型快取的指令。
+
+### 預定 Mac 操作
+
+```bash
+git clone https://github.com/AgriciDaniel/claude-obsidian.git /Volumes/DevSSD/claude-obsidian
+cd /Volumes/DevSSD/claude-obsidian
+bash bin/setup-vault.sh /Volumes/DevSSD/claude-obsidian
+```
+
+clone 後必須先檢查 repo 的 `AGENTS.md`、requirements、Git remote 與工作樹，再進行個人化；不直接把 Supabase service-role key 放進 Vault 或 n8n 前端可見設定。
+
+### 目前阻擋
+
+目前 Codex 執行環境是 Windows，只能寫入 G 槽，無法存取 Mac 的 `/Volumes/DevSSD`，因此尚未實際 clone。需在能控制該 Mac filesystem 的 Codex／Terminal 工作階段執行上述操作。
+
+---
+
+## 🧭 完整工作流規劃：手機收藏到可執行知識
+**時間**：2026-07-19
+
+### 使用者提問
+
+在前往 Mac 實作前，需要先完整理解並確認整套工作流，而不是直接 clone Vault 或開始接線。
+
+### 核心解答
+
+整套系統分成七個互相隔離的責任：
+
+1. 手機只負責分享 URL。
+2. n8n 負責接收、立即回覆、呼叫 API 與流程編排。
+3. `/api/process` 負責 crawler、正規化與原始資料入庫。
+4. Knowledge Job 負責抽取、去重、語意聚類與更新 Dossier。
+5. Actionizer 負責把知識轉成可審核的 learn／implement／plan／strategy／content 候選。
+6. Local Vault Bridge 負責安全地把同步 package 寫成 Markdown。
+7. Claude-Obsidian 負責閱讀、人工筆記、思考與批准後的實作工作。
+
+完整 API、資料表草案、n8n 節點、錯誤降級、Vault 映射與分階段驗收，集中記錄於：
+
+`docs/knowledge_action_vault_master_plan.md`
+
+---
+
+## 🚀 收藏必須找到應用出口，並由 Agent/Codex 主動執行
+**時間**：2026-07-24
+
+### 使用者重新確認的目標
+
+1. 收藏的 Skill、套件、GitHub 專案、Prompt 與工作流，大概率是之後要實際應用的東西。
+2. 系統不能只摘要、分類或等待使用者有空整理；必須主動匹配既有／過往專案，找出具體應用位置。
+3. Agent 應代替使用者完成安全、隔離、可逆的研究、POC 與測試；需要正式修改、production、付費或對外行為時才要求批准。
+4. Project Auditor 必須定時掃描整個「允許的專案」，主動發現需求、缺口、技術債、測試不足與可重用資產，不只依賴既有 `tasks.md`。
+5. 收藏同時也是自媒體素材；內容不一定要走深入研究或 POC，可以直接改寫、轉譯為即時貼文。
+6. 所有來源、應用案件、測試結果、內容作品與人工筆記都要形成可搜尋目錄，避免再次遺忘。
+
+### 核心流程
+
+```text
+收藏
+→ Route Agent 多路判斷
+   ├─ quick_rewrite
+   ├─ translate_localize
+   ├─ research_content
+   └─ apply_poc
+
+apply_poc
+→ Project Map／Project Needs
+→ Application Case
+→ Codex Research／POC／Test
+→ adopt／pilot／defer／reject
+→ Integration Proposal
+→ 批准後 agent-dev 整合
+→ 可再轉成實作型內容
+```
+
+### Codex 的新定位
+
+- Codex 是 Local Agent Runner，不只是人工開啟後聊天。
+- 邏輯 job 包含 project audit、opportunity match、research、POC、integration、content transform 與 Vault projection。
+- Backend／Supabase 管理 Agent Job、lease、權限、進度與 artifacts。
+- Codex 在能存取實際 repo／POC Lab／Vault 的 Windows 或 Mac 執行。
+- 第一版應由單一可觀測 Orchestrator 依 job type 執行，不急著拆成多個互相對話的 Agent。
+- 排程方式仍未確認：互動式 session、Task Scheduler／launchd 啟動 CLI，或常駐 thin runner。
+
+### 防止收藏再次沉沒
+
+每筆收藏必須進入：
+
+- 已整合。
+- POC 成功、等待批准。
+- 明確延後，附 blocker 與 retry trigger。
+- 實測淘汰，附失敗證據。
+- 已轉成內容。
+- 同時整合與內容化。
+
+沒有下一步、重查條件或明確結論的收藏，不算完成。
+
+### 下一次討論入口
+
+直接規劃 MVP 分期與驗收標準，並確認第一批可被 Project Auditor 掃描的 allowlisted 專案；不需要重新梳理產品目標。

@@ -139,3 +139,93 @@
     - [x] 重構 `/api/process` 與 `orchestrator.js` 以支援傳遞 `userId` 並處理後端自動存檔。 (已實作)
     - [x] 遷移前端 Saga 的資料寫入邏輯至後端，消除雙重寫入隱患。 (已實作)
     - [x] 實作 `SUPABASE_SYSTEM_USER_ID` Fallback 機制，確保 API 直接呼叫（如 Postman）仍能正確歸屬。 (已實作)
+
+## Phase 13: Crawler-only 擷取與 `/api/process` 契約保護
+- [x] **停用貼文讀取的官方 API 優先策略**
+    - [x] Orchestrator 不再呼叫 `socialApiService.fetchPost()`。
+    - [x] 保留 `/api/process` 的 URL、request body 與 `{ source, data }` response 契約，避免破壞 n8n。
+    - [x] Threads 使用 Puppeteer／Chromium；X 保留 Guest Token＋網站內部 GraphQL 爬蟲；其他網址使用通用 Puppeteer／Chromium。
+- [ ] **補齊平台專用爬蟲與解析器**
+    - [ ] Instagram 專用 Chromium parser（登入牆、展開內文、輪播、留言、Reels）。
+    - [ ] Facebook 專用 Chromium parser（登入狀態、Mobile/Desktop fallback、貼文與留言）。
+    - [ ] YouTube 專用 Chromium parser（描述、字幕、章節、留言；不使用官方 Data API）。
+    - [ ] Notion／GitHub／一般文章建立平台 parser，避免全部依賴 `innerText` 與 5000 字截斷。
+    - [ ] 決定 X 是否從 Guest GraphQL 改為全 Chromium DOM 擷取；現況雖非官方 API，但不是 Chromium。
+    - [ ] 移除或封存已不再用於「讀取貼文」的 `socialApiService.js`，保留發佈 API 與擷取流程的職責隔離。
+- [ ] **爬蟲可靠性與資料品質**
+    - [ ] 將 Puppeteer browser cache 從 `C:\Users\...\.cache\puppeteer` 遷移至 `G:\` 的專案快取區，設定 `PUPPETEER_CACHE_DIR` 並加入 `.gitignore`；遷移前先確認與清理既有 C 槽快取。
+    - [ ] 補 Cookie／登入 session 管理、代理、重試退避、selector 版本化與失敗截圖。
+    - [ ] 統一輸出 `UnifiedPostObject`，驗證 platform、original_url、author、content、images、comments、full_json。
+    - [ ] 修正 X Article 只抓到文章 URL、沒有正文的情況。
+    - [ ] 為每個平台建立 fixture 與 parser regression test。
+    - [ ] 增加 `/api/process` n8n contract integration test，覆蓋成功、降級、重複 URL 與核心平台失敗。
+
+## Phase 14: 收藏資料的 AI 行動化管線（待確認後實作）
+- [ ] **保留不可變 Raw Layer**：原始爬蟲結果先完整入庫，AI 失敗不得污染或阻擋原始資料。
+- [ ] **拆分同步與非同步責任**：評估讓 `/api/process` 快速完成擷取入庫，AI enrichment 改由 queue／n8n 非同步處理，避免 n8n timeout。
+- [ ] **建立 Action Router**：把收藏判斷為 `archive`、`learn`、`implement`、`plan`、`strategy`、`content/remix`，並保留信心分數與判斷理由。
+- [ ] **learn**：整理概念、先備知識、實作練習、驗證題與下一步學習順序。
+- [ ] **implement**：提取 repo／工具／安裝方式、環境需求、最小 POC、驗收條件與風險。
+- [ ] **plan**：轉成可執行任務、依賴關係、優先級、預估成本與完成定義。
+- [ ] **strategy**：提取可複製流程、適用條件、反例、決策規則、KPI 與實驗設計。
+- [ ] **content/remix**：提取可再利用觀點、素材、受眾、平台格式與發布草稿。
+- [ ] **去重與聚類**：合併重複工具／相同 GitHub repo／相同方法，形成持續更新的 Topic Dossier。
+- [ ] **人工確認閘門**：AI 可以提出建議與草稿，但安裝套件、改程式、建立專案、發文或付費操作前必須再確認。
+- [ ] **改善分類資料品質**：統一繁簡標籤、修正 `summary` 內分類與 `primary_category` 欄位不一致、處理純 URL 收藏。
+- [ ] **根據最近 100 筆建立初始個人路由權重**：優先處理 Agent Skills、AI 開發工具、自動化、程式實作、設計／內容工作流；投資類獨立分流。
+
+## Phase 15: 已確認的既有缺口
+- [ ] 將 Node.js 20 升級至 Node.js 22 以上；Supabase JS 已於 2026-06-30 結束 Node 20 支援，升級前需驗證 Puppeteer、Vite、n8n 呼叫與部署環境。
+- [ ] 補上 `aiService.getAvailableModels()` 與 `aiService.generateImageFromPrompt()`，或移除對應無效路由。
+- [ ] 移除 `ImageWorkflowPage` 的 `user-id-placeholder`，改用已驗證使用者 ID。
+- [ ] 修正 `/api/process` 未驗證 caller／信任 body `userId` 的資料歸屬風險，同時提供 n8n 專用 API key 驗證。
+- [ ] `/api/posts` 使用 service-role 查詢時必須依 `req.authUser.id` 過濾，避免跨使用者讀取。
+- [ ] 補齊 image workflow 使用的資料表 schema 與 RLS。
+
+## Phase 16: 統一 BrowserManager 與登入 Profile 管理
+- [ ] 建立單一長生命週期 BrowserManager，集中 Chrome binary、launch args、timeout、proxy、重試、log 與 graceful shutdown。
+- [ ] 每個 crawl job 建立獨立 BrowserContext／Page，不共享任務狀態。
+- [ ] 將 Threads 與通用 crawler 改成 platform adapter／parser，不再各自呼叫 `puppeteer.launch()`。
+- [ ] 僅對需要登入的平台建立「平台＋帳號」專屬 persistent profile，加入 profile lock 與並行保護。
+- [ ] 定義 browser crash 後 context 清理、重啟、任務重試與 zombie process 偵測。
+- [ ] 保留 X Guest GraphQL adapter；待 DOM crawler 穩定後再決定是否接入 BrowserManager。
+
+## Phase 17: 語意去重、知識聚類與 Claude-Obsidian 同步
+- [ ] 建立 canonical URL、platform post id、content hash 的 exact duplicate 判斷。
+- [ ] 建立 semantic duplicate／related content 判斷，將相同工具、repo、方法歸入同一 Topic Cluster。
+- [ ] AI 只產生相對既有 cluster 的新增觀點、差異與反例，避免重複摘要與重複任務。
+- [ ] 定義 Source Post、Knowledge Item、Topic Cluster／Dossier、Action Candidate 四層資料契約。
+- [ ] 用既有 100 筆資料 dry-run 聚類，人工驗證誤合併與過度拆分。
+- [ ] 確認 Claude-Obsidian Vault 在 Mac 的完整路徑、目錄分類、檔名規則與 frontmatter 契約。
+- [ ] 建立 read-only Markdown exporter，先輸出 preview，不直接寫正式 Vault。
+- [ ] 建立 Mac Local Sync Agent，使用 sync cursor、版本、checksum、原子寫入與衝突狀態同步 Supabase → Vault。
+- [ ] 保護人工筆記區塊，AI 同步只能更新 managed section，不得覆蓋本機人工編修。
+- [ ] 確認 n8n 執行位置；遠端 n8n 只排程，本機 Agent 負責 filesystem，若同機才允許 n8n 直接呼叫 exporter。
+- [ ] 圖片預設引用 Supabase Storage；離線附件下載列為第二階段。
+
+## Phase 18: Mac Claude-Obsidian Vault 建置
+- [x] GitHub 選型：採用 `AgriciDaniel/claude-obsidian`，不採用僅提供聊天介面的 Claudian。
+- [x] 唯讀檢查 `bin/setup-vault.sh` 的主要寫入與下載行為。
+- [ ] 在 Mac 確認外接碟實際掛載路徑為 `/Volumes/DevSSD`。
+- [ ] clone 至 `/Volumes/DevSSD/claude-obsidian`，執行 `bash bin/setup-vault.sh`。
+- [ ] clone 後先讀取 repo local `AGENTS.md`／`CLAUDE.md`，確認依賴、模式與寫入規則。
+- [ ] 在 Obsidian 將該資料夾開啟為 Vault，確認 graph、CSS、community plugins 與基本 wiki scaffold。
+- [ ] 選定方法論模式；本專案初步建議 PARA 作為行動管理、Topic Dossier 以 Resources／MOC 表達。
+- [ ] 建立 Supabase → preview → Vault 的 Local Sync Agent，不把 service-role key 寫入 Vault。
+- [ ] n8n 新增 process 後續節點：取得 postId → 觸發 Actionizer／Cluster → 寫入 sync outbox。
+- [ ] 完成一筆手機分享端到端驗證：手機 → tunnel → n8n → `/api/process` → Supabase → Vault preview。
+
+## Phase 19: 知識行動管線 Master Plan 執行里程碑
+- [x] 完成手機、n8n、`/api/process`、Supabase、AI、Local Bridge、Claude-Obsidian 的完整責任切分。
+- [x] 完成 exact／semantic／related 三層去重聚類設計。
+- [x] 完成 Action Candidate 分數、類型、狀態與人工批准閘門設計。
+- [x] 完成 Knowledge Job、Cluster、Action、Sync Outbox／State 的資料模型草案。
+- [x] 完成新 API、n8n 節點、錯誤降級、安全邊界與驗收情境草案。
+- [ ] Phase 0：補 `/api/process` n8n contract fixtures 與 correlation id。
+- [ ] Phase 1：既有 100 筆 dry-run，產出 cluster／delta／Action Candidate 評估報告。
+- [ ] Phase 2：確認 schema 後建立 Knowledge Pipeline migration 與 job worker。
+- [ ] Phase 3：Mac clone／初始化 Claude-Obsidian，選定 PARA mode。
+- [ ] Phase 4：建立獨立 Mac Local Vault Bridge 與 preview sync。
+- [ ] Phase 5：n8n 串接 knowledge job、poll、bridge、通知。
+- [ ] Phase 6：10 筆試跑後回填 100 筆，再開啟正式自動同步。
+- [ ] Phase 7：知識流程穩定後，獨立重構 BrowserManager。

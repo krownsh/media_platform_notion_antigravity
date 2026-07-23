@@ -1,11 +1,10 @@
-import { socialApiService } from './socialApiService.js';
 import { crawlerService } from './crawlerService/browser.js';
 import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
 import { scrapeTwitterPost } from './crawlerService/twitterCrawler.js';
 import { supabase } from '../supabaseClient.js';
 import pLimit from 'p-limit';
 
-// Global concurrency limiter (max 3 concurrent crawl/API tasks)
+// Global concurrency limiter (max 3 concurrent crawler tasks)
 const limit = pLimit(3);
 
 /**
@@ -14,10 +13,10 @@ const limit = pLimit(3);
  *
  * Logic:
  * 1. Identify Platform.
- * 2. Try API (SocialApiService).
- * 3. If API fails or returns partial data, use Crawler (CrawlerService).
+ * 2. Use the platform-specific crawler when available.
+ * 3. Otherwise use the generic Chromium crawler.
  * 4. Store full_json into posts table (if present).
- * 5. Return normalized data.
+ * 5. Return normalized data without changing the /api/process contract.
  */
 class Orchestrator {
     // Identify platform based on URL
@@ -236,20 +235,10 @@ class Orchestrator {
                 }
             }
 
-            // 1. Try API First (For other platforms)
-            let data = await socialApiService.fetchPost(platform, url);
-
-            if (data) {
-                console.log('[Orchestrator] Data fetched via API.');
-                await this.processGenericImages(data);
-                const saved = await this.upsertPost(data, userId);
-                if (saved) data.dbId = saved.id;
-                return { source: 'api', data };
-            }
-
-            // 2. Fallback to Crawler
-            console.log('[Orchestrator] API failed or not configured. Switching to Crawler...');
-            data = await crawlerService.crawlPost(url, platform);
+            // All remaining platforms use the generic Chromium crawler.
+            // Keep the response contract unchanged because /api/process is also called by n8n.
+            console.log(`[Orchestrator] Using generic crawler for ${platform}...`);
+            const data = await crawlerService.crawlPost(url, platform);
 
             if (data.success) {
                 console.log('[Orchestrator] Data fetched via Crawler.');

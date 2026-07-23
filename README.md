@@ -37,14 +37,20 @@ src/
 ├── api/                # Supabase client
 ├── components/         # UI Components (PostCard, RemixPanel, UrlInput...)
 ├── features/           # Redux Slices (postsSlice)
-├── services/           # 核心服務
-│   ├── aiService.js            # AI 分析與改寫 (Mock)
-│   ├── socialApiService.js     # API 串接
-│   ├── crawlerService/         # Puppeteer 爬蟲
-│   └── orchestrator.js         # 調度中心
 ├── store/              # Redux Store
-└── server/             # Backend Entry Point
+server/
+├── index.js                    # Express Backend Entry Point
+└── services/
+    ├── aiService.js            # AI 分析與改寫
+    ├── crawlerService/         # Puppeteer / X Guest GraphQL 爬蟲
+    └── orchestrator.js         # Crawler-only 調度中心
 ```
+
+## `/api/process` 資料取得策略
+
+`/api/process` 保留既有 request/response 契約，供前端與 n8n 呼叫。資料取得一律不使用平台官方讀取 API：Threads 與一般網站由 Puppeteer 驅動 Chromium，X 使用網站 Guest Token 與內部 GraphQL 擷取。
+
+詳細行為、平台差異與待辦請見 [`docs/process_crawler_pipeline.md`](./docs/process_crawler_pipeline.md)。
 
 ## React Compiler
 

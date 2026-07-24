@@ -1,7 +1,7 @@
 # `/api/process` Crawler Ingestion 與 Agent/Codex 下游管線
 
 日期：2026-07-24
-狀態：現況已確認；Agent/Codex 目標流程尚未實作
+狀態：Stage A 本機程式與契約驗證完成；正式 DB migration／部署驗證與 Agent/Codex 目標流程尚未實作
 相關主規格：`docs/knowledge_action_vault_master_plan.md`
 
 ## 0. 明日接手摘要
@@ -32,7 +32,7 @@ n8n Capture Gateway
 → Content Studio／Integration Approval／Knowledge Catalog
 ```
 
-下一次討論從「MVP 分期與驗收標準」開始，不需重新定義產品目標。
+下一個實作入口是：在可回復環境套用 tenant-aware unique constraint 並驗證既有資料，接著設計 Stage B 的 source finalization／outbox migration。
 
 ## 1. 本文件的新邊界
 
@@ -68,6 +68,8 @@ n8n 只保留：
 3. 立即回覆 accepted＋correlation id。
 4. 呼叫 `/api/process`。
 5. 發送失敗、待批准或完成通知。
+
+目前 Stage A credential 設定請見 `docs/n8n_capture_setup.md`：n8n 以 `x-api-key` 認證，body 只送 URL，後端由 `MEDIA_API_KEY_USER_ID` 決定來源 owner。
 
 n8n 不再承擔：
 
@@ -207,7 +209,7 @@ Project Auditor 必須：
 - 每週進行完整掃描。
 - 新收藏與某專案高度相關時針對相關模組重掃。
 
-輸出 `project_snapshot` 與 `project_need`，而不是直接改 `tasks.md`。
+輸出 `project_snapshot` 與 `project_need`，而不是直接改 [`docs/project/tasks.md`](project/tasks.md)。
 
 每個 Project Need 必須有：
 
@@ -221,18 +223,19 @@ Project Auditor 必須：
 
 ### Stage A：先保護現況
 
-- 補 caller authentication。
-- caller 身分映射 user，不信任 body `userId`。
-- 加 correlation id。
-- 修復 tenant-aware unique key。
-- 修復 partial write 與 silent success。
-- 修復失效的 Gemini fallback 與 JSON schema validation。
+- [x] 補 caller authentication。
+- [x] caller 身分映射 user，不信任 body `userId`。
+- [x] 加 response `x-correlation-id`。
+- [~] tenant-aware unique key：使用者已回報執行 [`database/deployments/add_unique_constraint.sql`](../database/deployments/add_unique_constraint.sql)，待 smoke test 獨立驗證。
+- [~] partial write 與 silent success：寫入錯誤現會顯性失敗；跨表 atomic finalization 留待 Stage B。
+- [x] 移除 Gemini fallback；MiniMax 回應改為只接受完整 JSON object。
 - 保存成功、degraded、crawler failure fixtures。
 
 ### Stage B：新增可靠事件
 
 - 不改 request body 與 `{ source, data }`。
-- Source finalization 後寫入 outbox／queue。
+- [x] 本機已完成 `finalize_collection_capture(...)` RPC 與 `collection_capture_outbox` deployment SQL：source、analysis、media、comments 與 `source.ingested.v1` outbox 在單一 transaction 完成。
+- [~] 使用者已回報執行 [`database/deployments/stage_b_source_finalization.sql`](../database/deployments/stage_b_source_finalization.sql)；仍須依 [部署說明](stage_b_source_finalization_deployment.md) 做 `source_domains` 型別、RPC／idempotency smoke test。
 - 新增 Route Agent dry-run，不觸發 Codex 寫入。
 
 ### Stage C：接入 Content 快車道
@@ -257,12 +260,12 @@ Project Auditor 必須：
 
 Repo 靜態檢查已發現：
 
-1. `/api/process` 尚未套用 `requireApiAuth`。
-2. Body `userId` 會傳入使用 service-role 的 Backend。
-3. `original_url` 為全域 unique，manual find 沒有 tenant filter。
-4. analysis／media／comments delete-then-insert 失敗時仍可能回傳成功。
-5. `gemini-1.5-flash` 已關閉，Google fallback 目前不可依賴。
-6. AI JSON 解析缺少 Structured Output／schema validation。
+1. `/api/process` 的 caller authentication 與 server-side user mapping 已補上；部署環境需設定 `MEDIA_API_KEY_USER_ID` 給 n8n caller。
+2. body `userId` 已停止使用；前端改以 Bearer JWT。
+3. tenant-aware URL SQL 與 manual lookup 已更新，但遠端 constraint 尚未套用。
+4. analysis／media／comments 的 Stage B atomic finalization/outbox 程式與 SQL 已準備；尚待 staging 套用與實際 DB 驗證。
+5. Gemini 已完全移除；僅保留 MiniMax provider。
+6. AI JSON 改為完整 object parse；待補各 job type 的正式 JSON schema。
 
 正式實作前需檢查下游污染：
 

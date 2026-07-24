@@ -9,16 +9,16 @@ import StatCard from '../components/StatCard';
 import BarChart from '../components/BarChart';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
+import { authenticatedFetch } from '../api/authenticatedFetch';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: fetch wrapper
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function fetchStats(endpoint, userId, params = {}) {
+async function fetchStats(endpoint, params = {}) {
     const url = new URL(`${API_BASE_URL}${endpoint}`);
-    url.searchParams.set('userId', userId);
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    const res = await fetch(url.toString());
+    const res = await authenticatedFetch(url.toString());
     if (!res.ok) throw new Error(`${endpoint} failed: ${res.status}`);
     return res.json();
 }
@@ -72,12 +72,12 @@ const InsightPage = () => {
         setError(null);
         try {
             const [ov, cat, dom, auth, tr, tg, ov_configs] = await Promise.all([
-                fetchStats('/api/stats/overview', userId),
-                fetchStats('/api/stats/categories', userId),
-                fetchStats('/api/stats/domains', userId, { limit: 10 }),
-                fetchStats('/api/stats/authors', userId, { minCount: 2 }),
-                fetchStats('/api/stats/trend', userId, { days: 30 }),
-                fetchStats('/api/stats/tags', userId, { limit: 20 }),
+                fetchStats('/api/stats/overview'),
+                fetchStats('/api/stats/categories'),
+                fetchStats('/api/stats/domains', { limit: 10 }),
+                fetchStats('/api/stats/authors', { minCount: 2 }),
+                fetchStats('/api/stats/trend', { days: 30 }),
+                fetchStats('/api/stats/tags', { limit: 20 }),
                 supabase.from('collection_category_configs').select('*').order('created_at', { ascending: true })
             ]);
             setOverview(ov);
@@ -126,7 +126,7 @@ const InsightPage = () => {
     const handleBatchClassify = async () => {
         setBatchStatus('running');
         try {
-            const res = await fetch(`${API_BASE_URL}/api/batch-classify`, {
+            const res = await authenticatedFetch(`${API_BASE_URL}/api/batch-classify`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ruleOnly: true, limit: 200 }),

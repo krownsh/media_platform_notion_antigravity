@@ -101,7 +101,7 @@ ${configLabels}
 - [other]: Any content that strictly doesn't fit the themes above.
 
 If the content spans multiple, pick the most dominant one. Avoid "other" unless it's completely unrelated.
-Respond with ONLY the lowercase category name.
+Respond with ONLY a JSON object in this exact form: {"primary_category":"one of the allowed lowercase slugs"}.
 
 Text:
 ${content.substring(0, 500)}`;
@@ -109,7 +109,8 @@ ${content.substring(0, 500)}`;
         try {
             let aiResponse = 'other';
 
-            // 優先使用 Minimax (依據使用者要求)
+            // MiniMax is the only LLM fallback. If it is unavailable, retain the
+            // deterministic rule-based "other" result instead of using a mock.
             if (aiService.minimaxApiKey) {
                 // 直接調用 aiService 的統一部分析方法，確保認證資訊一致
                 const aiResult = await aiService.analyzeWithMinimax(
@@ -124,11 +125,6 @@ ${content.substring(0, 500)}`;
                 } else if (aiResult && aiResult.summary) {
                     aiResponse = typeof aiResult.summary === 'string' ? aiResult.summary : JSON.stringify(aiResult.summary);
                 }
-            } else if (aiService.googleApiKey) {
-                console.log('[CategoryProcessor] Fallback to Google Gemini (Minimax key missing)...');
-                const model = aiService.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-                const result = await model.generateContent(prompt);
-                aiResponse = result.response.text();
             }
 
             // 動態處理 AI 回應：移除空格與換行，並轉為小寫

@@ -50,7 +50,7 @@
     * `summarize`: 產生 100 字內短摘要。
     * `tagging`: 根據內文產生 3-5 個 Hashtags。
     * `insight`: 根據留言情緒與內文，提出 2 個延伸思考點。
-* **設計**：需設計成 Interface，方便未來從 Mock 替換成 Google Gemini / OpenAI。
+* **設計**：需設計成 Interface，方便未來替換或新增 LLM 供應商。
 
 ## 7. UI/UX Agent (前端互動設計師)
 * **職責**：React 前端實作與使用者體驗。

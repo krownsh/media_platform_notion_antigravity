@@ -15,7 +15,7 @@ export async function scrapeTwitterPost(url) {
 
         // 1. Get Guest Token
         const guestToken = await getGuestToken();
-        console.log(`[TwitterCrawler] Got guest token: ${guestToken}`);
+        console.log('[TwitterCrawler] Guest token acquired');
 
         // 2. Call GraphQL API
         const data = await fetchTweetData(tweetId, guestToken);
@@ -150,10 +150,11 @@ function getTweetId(url) {
 }
 
 async function getGuestToken() {
+    const appBearerToken = getTwitterPublicBearerToken();
     const response = await fetch('https://api.twitter.com/1.1/guest/activate.json', {
         method: 'POST',
         headers: {
-            'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+            'Authorization': `Bearer ${appBearerToken}`,
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     });
@@ -167,6 +168,7 @@ async function getGuestToken() {
 }
 
 async function fetchTweetData(tweetId, guestToken) {
+    const appBearerToken = getTwitterPublicBearerToken();
     const variables = {
         "tweetId": tweetId,
         "includePromotedContent": true,
@@ -227,7 +229,7 @@ async function fetchTweetData(tweetId, guestToken) {
     const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
-            'Authorization': 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA',
+            'Authorization': `Bearer ${appBearerToken}`,
             'x-guest-token': guestToken,
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -239,4 +241,12 @@ async function fetchTweetData(tweetId, guestToken) {
     }
 
     return await response.json();
+}
+
+function getTwitterPublicBearerToken() {
+    const token = process.env.TWITTER_PUBLIC_BEARER_TOKEN?.trim();
+    if (!token) {
+        throw new Error('TWITTER_PUBLIC_BEARER_TOKEN is not configured');
+    }
+    return token;
 }

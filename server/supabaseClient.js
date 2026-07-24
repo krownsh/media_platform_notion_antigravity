@@ -11,11 +11,12 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'http://64.181.223.48:8000';
 
 // For backend, use service role key to bypass RLS
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const isSupabaseConfigured = Boolean(supabaseUrl && supabaseServiceKey);
 
 let supabase = null;
 
-if (supabaseUrl && supabaseServiceKey) {
+if (isSupabaseConfigured) {
     supabase = createClient(supabaseUrl, supabaseServiceKey);
     console.log('✅ Supabase client initialized (Service Role):', supabaseUrl);
 } else {
@@ -34,4 +35,4 @@ if (supabaseUrl && supabaseServiceKey) {
     };
 }
 
-export { supabase };
+export { supabase, isSupabaseConfigured };

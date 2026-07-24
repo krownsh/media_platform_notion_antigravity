@@ -2,53 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight, ExternalLink, Settings2, Download, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../api/config';
+import { authenticatedFetch } from '../api/authenticatedFetch';
 import MarkdownRenderer from './MarkdownRenderer';
 
-// Hardcoded models as requested
+// Supported text-remix providers.
 const MODELS = [
     {
-        id: 'gemini-2.0-flash-exp',
-        name: 'Gemini 2.0 Flash (Exp)',
-        type: 'google',
-        capabilities: ['vision', 'fast'],
-        desc: 'Fast, Experimental'
-    },
-    {
-        id: 'gemini-2.0-flash-thinking-exp',
-        name: 'Gemini 2.0 Flash Thinking',
-        type: 'google',
-        capabilities: ['vision', 'deep'],
-        desc: 'Reasoning, Experimental'
-    },
-    {
-        id: 'gemini-2.0-pro-exp-02-05',
-        name: 'Gemini 2.0 Pro (Exp)',
-        type: 'google',
-        capabilities: ['vision', 'deep'],
-        desc: 'High Capability, Experimental'
-    },
-    {
-        id: 'x-ai/grok-4.1-fast:free',
-        name: 'xAI Grok 4.1 Fast',
-        type: 'openrouter',
+        id: 'minimax-m2.7',
+        name: 'MiniMax M2.7',
+        type: 'minimax',
         capabilities: ['text'],
-        desc: 'xAI Free Model'
-    },
-    {
-        id: 'deepseek/deepseek-r1:free',
-        name: 'DeepSeek R1',
-        type: 'openrouter',
-        capabilities: ['text', 'reasoning'],
-        desc: 'DeepSeek Reasoning'
-    },
-    {
-        id: 'qwen/qwen-2.5-vl-72b-instruct:free',
-        name: 'Qwen 2.5 VL 72B',
-        type: 'openrouter',
-        capabilities: ['vision', 'text'],
-        desc: 'Qwen Vision Model'
+        desc: 'Server-side MiniMax text model'
     }
 ];
+
+const IMAGE_GENERATION_AVAILABLE = false;
 
 const RemixPanel = ({ post, onClose }) => {
     const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
@@ -106,7 +74,7 @@ const RemixPanel = ({ post, onClose }) => {
                     delete dataCopy.images;
                 }
                 initialData = dataCopy;
-            } catch (e) {
+            } catch {
                 console.warn("Failed to strip images from JSON", e);
             }
         }
@@ -147,7 +115,7 @@ const RemixPanel = ({ post, onClose }) => {
                 return;
             }
 
-            const response = await fetch(`${API_BASE_URL}/api/remix`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/remix`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -187,7 +155,7 @@ const RemixPanel = ({ post, onClose }) => {
     const handleGenerateImage = async (index) => {
         setGeneratingImageIndex(index);
         try {
-            const response = await fetch(`${API_BASE_URL}/api/generate-image`, {
+            const response = await authenticatedFetch(`${API_BASE_URL}/api/generate-image`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -380,7 +348,7 @@ const RemixPanel = ({ post, onClose }) => {
                                         >
                                             {MODELS.map(model => (
                                                 <option key={model.id} value={model.id} className="bg-white text-[rgba(0,0,0,0.95)]">
-                                                    {model.type === 'google' ? '[Google] ' : '[OpenRouter] '}
+                                                    [MiniMax] 
                                                     {model.name}
                                                 </option>
                                             ))}
@@ -555,10 +523,10 @@ const RemixPanel = ({ post, onClose }) => {
                                                 {/* Center: Generate Button */}
                                                 <div className="shrink-0 flex flex-col items-center justify-center gap-1 px-2">
                                                     <button
-                                                        onClick={() => handleGenerateImage(idx)}
-                                                        disabled={generatingImageIndex === idx}
+                                                        onClick={() => IMAGE_GENERATION_AVAILABLE && handleGenerateImage(idx)}
+                                                        disabled={!IMAGE_GENERATION_AVAILABLE || generatingImageIndex === idx}
                                                         className="w-8 h-8 rounded-full bg-[#0075de] text-white flex items-center justify-center hover:bg-[#0075de]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-soft-card hover:scale-110 active:scale-95"
-                                                        title="生成配圖"
+                                                        title={IMAGE_GENERATION_AVAILABLE ? '生成配圖' : '未設定影像生成供應商'}
                                                     >
                                                         {generatingImageIndex === idx ? (
                                                             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -566,7 +534,7 @@ const RemixPanel = ({ post, onClose }) => {
                                                             <ChevronRight className="w-5 h-5" />
                                                         )}
                                                     </button>
-                                                    <span className="text-[10px] text-[#615d59] font-medium">生成</span>
+                                                    <span className="text-[10px] text-[#615d59] font-medium">{IMAGE_GENERATION_AVAILABLE ? '生成' : '未啟用'}</span>
                                                 </div>
 
                                                 {/* Right: Generated Image */}

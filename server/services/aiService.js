@@ -2,14 +2,13 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
 import { classifyByRules, normalizeCategorySlug } from './categoryRules.js';
 
 dotenv.config();
 
 /**
  * AI Service (Server-side only)
- * Handles interactions with LLMs via Minimax & Google for analysis.
+ * Handles interactions with MiniMax for analysis and rewriting.
  */
 class AiService {
     constructor() {
@@ -20,7 +19,6 @@ class AiService {
 
         this.minimaxApiKey = process.env.MINIMAX_API_KEY?.trim();
         this.minimaxGroupId = process.env.MINIMAX_GROUP_ID?.trim();
-        this.googleApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
         this.baseUrl = 'https://api.minimax.io/v1'; // 換成 .io 試試
 
         // 徹底過濾無效字元
@@ -29,11 +27,6 @@ class AiService {
         }
 
         console.log(`[AiService] Minimax Check: Key(len:${this.minimaxApiKey?.length || 0}), GroupId:${this.minimaxGroupId ? 'Valid' : 'None/Ignored'}`);
-
-        // Initialize Google AI
-        if (this.googleApiKey) {
-            this.genAI = new GoogleGenAI({ apiKey: this.googleApiKey });
-        }
 
         // Minimax Models (Official)
         this.freeModels = [
@@ -57,46 +50,31 @@ class AiService {
      */
     async analyzeThreadsPost(fullJsonData) {
         if (!fullJsonData || !Array.isArray(fullJsonData) || fullJsonData.length === 0) {
-            console.warn('[AiService] No valid data provided for Threads analysis');
-            return this.mockAnalysis();
+            throw new Error('No valid data provided for Threads analysis');
         }
         console.log('[AiService] Analyzing Threads post...');
         const mainPost = fullJsonData[0];
         if (!mainPost) {
-            return this.mockAnalysis();
+            throw new Error('Threads post data is empty');
         }
 
         const systemPrompt = await this.getSystemPrompt();
 
-        try {
-            // 1. Try Minimax (Official API) - User Preference
-            try {
-                return await this.analyzeWithMinimax(mainPost, systemPrompt, this.currentFreeModel);
-            } catch (error) {
-                console.warn(`[AiService] Minimax model ${this.currentFreeModel} failed:`, error.message);
-                this.switchToNextFreeModel();
-                try {
-                    return await this.analyzeWithMinimax(mainPost, systemPrompt, this.currentFreeModel);
-                } catch (retryError) {
-                    console.warn('[AiService] Minimax retry failed, checking Google fallback...');
-                }
-            }
-
-            // 2. Fallback to Google Gemini
-            if (this.googleApiKey) {
-                try {
-                    return await this.analyzeWithGoogle(mainPost, systemPrompt, 'gemini-1.5-flash');
-                } catch (error) {
-                    console.warn('[AiService] Google Gemini fallback failed:', error.message);
-                }
-            }
-
-            // 如果全部嘗試都失敗了且沒有丟出錯誤，也要回傳 mock
-            return this.mockAnalysis();
-        } catch (finalError) {
-            console.error('[AiService] All analysis models failed:', finalError.message);
-            return this.mockAnalysis();
+        if (!this.minimaxApiKey) {
+            throw new Error('MINIMAX_API_KEY is not configured');
         }
+
+        let lastError;
+        for (const model of this.freeModels) {
+            try {
+                return await this.analyzeWithMinimax(mainPost, systemPrompt, model);
+            } catch (error) {
+                lastError = error;
+                console.warn(`[AiService] MiniMax model ${model} failed:`, error.message);
+            }
+        }
+
+        throw lastError || new Error('MiniMax analysis failed');
     }
 
     /**
@@ -106,25 +84,21 @@ class AiService {
         console.log('[AiService] Analyzing Generic post...');
         const systemPrompt = await this.getGenericSystemPrompt();
 
-        if (this.minimaxApiKey) {
-            for (const model of this.freeModels) {
-                try {
-                    return await this.analyzeWithMinimax(contentData, systemPrompt, model);
-                } catch (error) {
-                    console.warn(`[AiService] Minimax model ${model} failed:`, error.message);
-                }
-            }
+        if (!this.minimaxApiKey) {
+            throw new Error('MINIMAX_API_KEY is not configured');
         }
 
-        if (this.googleApiKey) {
+        let lastError;
+        for (const model of this.freeModels) {
             try {
-                return await this.analyzeWithGoogle(contentData, systemPrompt, 'gemini-1.5-flash');
+                return await this.analyzeWithMinimax(contentData, systemPrompt, model);
             } catch (error) {
-                console.warn('[AiService] Google Gemini failed for generic post:', error.message);
+                lastError = error;
+                console.warn(`[AiService] MiniMax model ${model} failed:`, error.message);
             }
         }
 
-        return this.mockAnalysis();
+        throw lastError || new Error('MiniMax analysis failed');
     }
 
     async getSystemPrompt() {
@@ -149,27 +123,6 @@ class AiService {
         } catch (error) {
             return "Restate the content from the author's perspective. Respond in JSON.";
         }
-    }
-
-    async analyzeWithGoogle(mainPost, systemPrompt, modelName = 'gemini-1.5-flash') {
-        console.log(`[AiService] Google Analysis: ${modelName}`);
-        const repliesText = (mainPost.replies || []).map(r => `- ${r.author || 'User'}: ${r.text}`).join('\n') || '(No replies)';
-        const textPart = `${systemPrompt}\n\nContent: ${mainPost.content || mainPost.main_text}\nAuthor: ${mainPost.author || 'Unknown'}\nReplies:\n${repliesText}`;
-
-        const parts = [{ text: textPart }];
-        if (mainPost.images?.length > 0) {
-            for (const url of mainPost.images.slice(0, 3)) {
-                const base64Data = await this.imageUrlToBase64(url);
-                if (base64Data) {
-                    parts.push({ inlineData: { data: base64Data.split(',')[1], mimeType: 'image/jpeg' } });
-                }
-            }
-        }
-
-        const model = this.genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent({ contents: [{ parts }] });
-        const text = result.response.text();
-        return this.parseAiResponse(text, `google/${modelName}`, null, mainPost.content || mainPost.main_text);
     }
 
     async analyzeWithMinimax(mainPost, systemPrompt, modelName) {
@@ -213,26 +166,24 @@ class AiService {
     }
 
     parseAiResponse(aiText, modelName, rawData = null, originalContent = '') {
-        let parsedData = null;
+        let parsedData;
         try {
-            const firstBrace = aiText.indexOf('{');
-            const lastBrace = aiText.lastIndexOf('}');
-            if (firstBrace !== -1 && lastBrace !== -1) {
-                parsedData = JSON.parse(aiText.substring(firstBrace, lastBrace + 1));
-            } else {
-                parsedData = JSON.parse(aiText.trim());
-            }
+            parsedData = JSON.parse(aiText.trim());
         } catch (e) {
-            console.warn('[AiService] JSON Parse failed');
+            throw new Error(`MiniMax returned invalid JSON: ${e.message}`);
         }
 
-        let primaryCategory = parsedData?.primary_category ? normalizeCategorySlug(parsedData.primary_category) : null;
+        if (!parsedData || Array.isArray(parsedData) || typeof parsedData !== 'object') {
+            throw new Error('MiniMax response must be a JSON object');
+        }
+
+        let primaryCategory = parsedData.primary_category ? normalizeCategorySlug(parsedData.primary_category) : null;
         if (!primaryCategory || primaryCategory === 'other') {
             primaryCategory = classifyByRules(originalContent);
         }
 
         return {
-            summary: parsedData || aiText,
+            summary: parsedData,
             structured: parsedData,
             primary_category: primaryCategory || 'other',
             model: modelName,
@@ -332,25 +283,14 @@ Respond ONLY with a JSON object matching this strict schema:
 
     parseRemixData(aiText) {
         try {
-            const match = aiText.match(/{[\s\S]*}/);
-            if (match && match[0]) {
-                return JSON.parse(match[0]);
+            const parsed = JSON.parse(aiText.trim());
+            if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+                throw new Error('Remix response must be a JSON object');
             }
-        } catch (e) { }
-        return { remixed_content: aiText, image_prompt: "N/A" };
-    }
-
-    async imageUrlToBase64(imageUrl) {
-        try {
-            const response = await fetch(imageUrl);
-            const arrayBuffer = await response.arrayBuffer();
-            const contentType = response.headers.get('content-type') || 'image/jpeg';
-            return `data:${contentType};base64,${Buffer.from(arrayBuffer).toString('base64')}`;
-        } catch (e) { return null; }
-    }
-
-    mockAnalysis() {
-        return { summary: "## Mock Data (AI Failed)\nCheck your API settings.", primary_category: 'other' };
+            return parsed;
+        } catch (error) {
+            throw new Error(`MiniMax returned invalid remix JSON: ${error.message}`);
+        }
     }
 }
 

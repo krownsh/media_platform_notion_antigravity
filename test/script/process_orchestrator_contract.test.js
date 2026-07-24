@@ -24,8 +24,18 @@ test('data acquisition is crawler-only', () => {
 });
 
 test('/api/process keeps the n8n-facing route and response contract', () => {
-    assert.match(serverSource, /app\.post\(['"]\/api\/process['"]/);
-    assert.match(serverSource, /const \{ url, userId \} = req\.body/);
-    assert.match(serverSource, /orchestrator\.processUrl\(url, userId\)/);
+    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth/);
+    assert.match(serverSource, /const \{ url \} = req\.body/);
+    assert.doesNotMatch(serverSource, /const \{ url, userId \} = req\.body/);
+    assert.match(serverSource, /const userId = getAuthenticatedUserId\(req\)/);
+    assert.match(serverSource, /orchestrator\.processUrl\(url\)/);
     assert.match(serverSource, /res\.json\(result\)/);
+});
+
+test('post finalization is tenant-aware and routed through the atomic database RPC', () => {
+    assert.doesNotMatch(orchestratorSource, /upsertPost\(/);
+    assert.doesNotMatch(orchestratorSource, /collection_posts/);
+    assert.match(serverSource, /rpc\('finalize_collection_capture'/);
+    assert.match(serverSource, /CAPTURE_FINALIZATION_FAILED/);
+    assert.match(serverSource, /finalizeCapture\(userId, correlationId, 'fallback'/);
 });

@@ -1,6 +1,6 @@
-# Styles Implementation Update (Based on DESIGN.md)
+# Styles Implementation Update (Based on [Design System](frontend/design_system.md))
 
-本文件紀錄了基於 `DESIGN.md` 所進行的前端 CSS 樣式及 Tailwind Config 更新。依據規定，當有前端樣式／結構調整時，需記錄於 `docs/` 資料夾內。
+本文件紀錄了基於 [`frontend/design_system.md`](frontend/design_system.md) 所進行的前端 CSS 樣式及 Tailwind Config 更新。依據規定，當有前端樣式／結構調整時，需記錄於 `docs/` 資料夾內。
 
 ## 修改核心
 完全拋棄了舊有的設計 (Rock Gray / Fog Blue 系列)，並全新建構了以 Notion 為靈感的空白畫布（blank canvas）主題，擁有微暖色特徵以及輕透的無極限陰影邊界系統。
@@ -8,7 +8,7 @@
 ### 1. `tailwind.config.js` 
 引入 `notion` 色票、圓角、文字和特殊設定：
 - **顏色系統 (`colors.notion`)**：加上了 `black`, `blue`, `warmWhite`, `warmDark` 甚至 `gray`。
-- **圓角系統 (`borderRadius`)**：引入 `micro` (4px)、`sm` (5px)、`md` (8px)、`lg` (12px)、`xl` (16px) 等級別以對應 `DESIGN.md` 的規畫。
+- **圓角系統 (`borderRadius`)**：引入 `micro` (4px)、`sm` (5px)、`md` (8px)、`lg` (12px)、`xl` (16px) 等級別以對應 [`frontend/design_system.md`](frontend/design_system.md) 的規畫。
 - **陰影系統 (`boxShadow`)**：寫入了 Notion 多層次的 `soft-card` 陰影與 `deep` 深層卡片陰影，營造自然真實的光線效果。
 
 ### 2. `src/index.css`

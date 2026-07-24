@@ -5,7 +5,7 @@
 
 ## 2. 核心組件
 - **CategoryProcessor (server/services/categoryProcessor.js)**: 負責調度分類邏輯，讀取 DB 配置並處理標籤判定。
-- **AiService (server/services/aiService.js)**: 提供 AI 模型連線，優先使用 **Minimax V2**，備援使用 **Gemini 1.5 Flash**。
+- **AiService (server/services/aiService.js)**: 提供 **MiniMax** 模型連線；無法取得合格 JSON 時回報失敗，不寫入 mock 分析結果。
 - **BatchProcessor (server/services/batchProcessor.js)**: 批量處理未分類貼文。
 
 ## 3. 分類流程

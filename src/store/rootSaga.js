@@ -78,16 +78,21 @@ function* handleFetchPost(action) {
     // 1. Initial State: Starting crawl
     yield put(updateTaskStatus({ taskId, status: 'crawling' }));
 
-    // 2. Get current authenticated user
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
-    const userId = user?.id;
+    // 2. Get the current session. The backend derives the owner from this JWT.
+    const { data: { session } } = yield call(() => supabase.auth.getSession());
+    if (!session?.access_token) {
+      throw new Error('請先登入後再擷取貼文');
+    }
 
     // 3. Call Backend API (Orchestrator) to get data AND save to DB
-    console.log('[Saga] Requesting backend to process & save:', url, 'for user:', userId);
+    console.log('[Saga] Requesting backend to process & save:', url);
     const response = yield call(fetch, `${API_BASE_URL}/api/process`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, userId }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ url }),
     });
 
     if (!response.ok) {
@@ -141,15 +146,23 @@ function* handleFetchPost(action) {
 // Worker Saga: Add annotation (筆記)
 function* handleAddAnnotation(action) {
   try {
-    const { postId, content, userId } = action.payload;
+    const { postId, content } = action.payload;
 
-    console.log('[Saga] Adding annotation:', { postId, content, userId });
+    const { data: { session } } = yield call(() => supabase.auth.getSession());
+    if (!session?.access_token) {
+      throw new Error('請先登入後再新增筆記');
+    }
+
+    console.log('[Saga] Adding annotation:', { postId, content });
 
     // Call backend API
     const response = yield call(fetch, `${API_BASE_URL}/api/posts/${postId}/annotations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, userId }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ content }),
     });
 
     if (!response.ok) {

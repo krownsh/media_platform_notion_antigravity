@@ -137,7 +137,7 @@ begin
         updated_at = now()
     returning id into v_post_id;
 
-    delete from public.collection_post_analysis where post_id = v_post_id;
+    delete from public.collection_post_analysis cpa where cpa.post_id = v_post_id;
     insert into public.collection_post_analysis (
         post_id, user_id, primary_category, summary, tags, topics, sentiment
     )
@@ -151,7 +151,7 @@ begin
         nullif(p_analysis ->> 'sentiment', '')
     );
 
-    delete from public.collection_post_media where post_id = v_post_id;
+    delete from public.collection_post_media cpm where cpm.post_id = v_post_id;
     insert into public.collection_post_media (post_id, user_id, type, url, "order")
     select
         v_post_id,
@@ -162,7 +162,7 @@ begin
     from jsonb_array_elements(coalesce(p_media, '[]'::jsonb)) with ordinality as media(value, ordinality)
     where nullif(btrim(media.value ->> 'url'), '') is not null;
 
-    delete from public.collection_post_comments where post_id = v_post_id;
+    delete from public.collection_post_comments cpc where cpc.post_id = v_post_id;
     insert into public.collection_post_comments (
         post_id, user_id, author_name, content, commented_at, raw_data
     )

@@ -168,7 +168,13 @@ class AiService {
     parseAiResponse(aiText, modelName, rawData = null, originalContent = '') {
         let parsedData;
         try {
-            parsedData = JSON.parse(aiText.trim());
+            let cleanText = aiText.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim();
+            } else if (cleanText.startsWith('```')) {
+                cleanText = cleanText.replace(/^```/, '').replace(/```$/, '').trim();
+            }
+            parsedData = JSON.parse(cleanText);
         } catch (e) {
             throw new Error(`MiniMax returned invalid JSON: ${e.message}`);
         }

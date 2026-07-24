@@ -15,7 +15,7 @@ import cors from 'cors';
 import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
-import { supabase } from './supabaseClient.js';
+import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
 
@@ -190,6 +190,12 @@ function normalizeCapturePlatform(platform) {
 }
 
 async function finalizeCapture(userId, correlationId, source, data) {
+    if (!hasSupabaseServiceConfig) {
+        const error = new Error('Supabase service client is not configured');
+        error.code = 'DATABASE_NOT_CONFIGURED';
+        throw error;
+    }
+
     const analysis = data.analysis || {};
     const originalUrl = data.original_url || data.originalUrl || data.url;
     if (!originalUrl) throw new Error('Capture is missing original_url');
@@ -275,6 +281,10 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
         return res.status(400).json({ error: 'URL is required' });
     }
 
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Database service is not configured' });
+    }
+
     try {
         const result = await orchestrator.processUrl(url);
 
@@ -339,6 +349,11 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
                 result.data.outboxEventId = finalization.outbox_event_id;
                 console.log('[Server] Capture finalized with outbox event');
             } catch (error) {
+                console.error('[Capture] finalization failed', {
+                    correlationId,
+                    message: error.message,
+                    code: error.code || null
+                });
                 error.code = 'CAPTURE_FINALIZATION_FAILED';
                 throw error;
             }
@@ -547,7 +562,7 @@ app.post('/api/signup', async (req, res) => {
 // ========== Posts API ==========
 app.get('/api/posts', async (req, res) => {
     const userId = getAuthenticatedUserId(req);
-    if (!isSupabaseConfigured()) {
+    if (!hasSupabaseServiceConfig) {
         return res.status(503).json({ error: 'Database service is not configured' });
     }
 
@@ -609,15 +624,6 @@ app.get('/api/posts', async (req, res) => {
 
 // ========== Annotations (筆記) API ==========
 
-// Database routes require the same service-role configuration used by the
-// server client. Do not report success merely because a browser anon key or a
-// development fallback URL exists.
-const isSupabaseConfigured = () => {
-    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-    return Boolean(url && serviceKey);
-};
-
 // Get annotations for a post
 app.get('/api/posts/:postId/annotations', async (req, res) => {
     const { postId } = req.params;
@@ -627,7 +633,7 @@ app.get('/api/posts/:postId/annotations', async (req, res) => {
         return res.status(400).json({ error: 'Post ID is required' });
     }
 
-    if (!isSupabaseConfigured()) {
+    if (!hasSupabaseServiceConfig) {
         console.warn('[Annotations] Supabase not configured');
         return res.status(503).json({ error: 'Database service is not configured' });
     }
@@ -660,7 +666,7 @@ app.post('/api/posts/:postId/annotations', async (req, res) => {
         return res.status(400).json({ error: 'Post ID and content are required' });
     }
 
-    if (!isSupabaseConfigured()) {
+    if (!hasSupabaseServiceConfig) {
         console.warn('[Annotations] Supabase not configured, cannot save annotation');
         return res.status(503).json({
             error: 'Database service is not configured'

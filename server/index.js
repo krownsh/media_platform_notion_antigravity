@@ -18,17 +18,16 @@ import { socialMediaService } from './services/socialMediaService.js';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
+import { agentJobRouter } from './routes/agentJobRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost"
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost";
 
 app.use(cors());
 app.use(express.json());
 
 function getBearerToken(req) {
-    const auth = req.header('authorization') || '';
-    const match = auth.match(/^Bearer\s+(.+)$/i);
     return match ? match[1] : null;
 }
 
@@ -857,6 +856,9 @@ app.post('/api/batch-classify', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+// Agent Job Control Plane API
+app.use('/api/agent/jobs', requireApiAuth, agentJobRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
 app.use('/api', (req, res) => {

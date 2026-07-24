@@ -21,13 +21,20 @@ if (isSupabaseConfigured) {
     console.log('✅ Supabase client initialized (Service Role):', supabaseUrl);
 } else {
     console.warn('⚠️ Supabase credentials not found. Database features will be disabled.');
-    // Create a mock client that returns empty results
+    const mockChain = {
+        select: () => mockChain,
+        eq: () => mockChain,
+        order: () => mockChain,
+        single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+        then: (resolve) => resolve({ data: [], error: new Error('Supabase not configured') })
+    };
+
     supabase = {
         from: () => ({
-            select: () => Promise.resolve({ data: [], error: null }),
-            insert: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-            update: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
-            delete: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+            select: () => mockChain,
+            insert: () => mockChain,
+            update: () => mockChain,
+            delete: () => mockChain
         }),
         auth: {
             getUser: () => Promise.resolve({ data: { user: null }, error: null })

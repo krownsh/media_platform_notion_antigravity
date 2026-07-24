@@ -298,6 +298,42 @@ Respond ONLY with a JSON object matching this strict schema:
             throw new Error(`MiniMax returned invalid remix JSON: ${error.message}`);
         }
     }
+
+    async generateStructuredJSON(systemPrompt, userPrompt) {
+        if (!this.minimaxApiKey) {
+            throw new Error('MiniMax API key not configured');
+        }
+
+        const body = {
+            model: this.currentFreeModel,
+            messages: [
+                { role: 'system', content: `${systemPrompt}\n\n**IMPORTANT: Respond with ONLY a valid JSON object.**` },
+                { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.3
+        };
+
+        const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.minimaxApiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            throw new Error(`MiniMax HTTP Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const aiText = data.choices?.[0]?.message?.content || '';
+        return this.parseRemixData(aiText);
+    }
 }
 
 export const aiService = new AiService();
+
+export async function generateContentJSON(systemPrompt, userPrompt) {
+    return aiService.generateStructuredJSON(systemPrompt, userPrompt);
+}

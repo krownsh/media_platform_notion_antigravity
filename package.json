@@ -8,7 +8,10 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "agent:inbox": "node scripts/agent-sdk/get-inbox.js",
+    "agent:analyze": "node scripts/agent-sdk/analyze-item.js",
+    "agent:complete": "node scripts/agent-sdk/complete-item.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

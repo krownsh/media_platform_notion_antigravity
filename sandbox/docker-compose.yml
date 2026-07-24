@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  poc-runner:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=development
+    # Runs infinitely until the job is done or stopped
+    command: ["sh", "-c", "echo 'Sandbox Runner Ready' && tail -f /dev/null"]

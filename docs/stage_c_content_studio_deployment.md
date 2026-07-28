@@ -69,3 +69,7 @@ npm run agent:content -- ca45f652-9f38-4f80-9cae-579a1ad45040
 ```
 
 The command generates drafts with the existing MiniMax provider, then persists each pending content route. It reuses the source/route idempotency key, so an interrupted retry does not create a duplicate revision. When all planned routes are terminal, the outbox changes to `sent`; otherwise it stays `pending`.
+
+## Production verification (2026-07-29)
+
+After Hotfix 002, a real routed source completed successfully: the `x_thread` and `linkedin_post` drafts each have AI revision 1 plus `source_post` and validated `poc_result` evidence links. The corresponding outbox status is `sent`.

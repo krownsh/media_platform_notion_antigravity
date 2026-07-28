@@ -25,6 +25,10 @@ The first Stage C SQL revision left the `revision_number` result column unqualif
 
 If you already ran the original Stage C file, run the complete contents of [`database/deployments/stage_c_content_studio_hotfix_001.sql`](../database/deployments/stage_c_content_studio_hotfix_001.sql) once in Supabase SQL Editor. It only replaces the function; it does not delete tables or data.
 
+## Hotfix 002 for deployments that already applied Hotfix 001
+
+If the first post-Hotfix-001 write reports `column reference "content_asset_id" is ambiguous`, run the complete contents of [`database/deployments/stage_c_content_studio_hotfix_002.sql`](../database/deployments/stage_c_content_studio_hotfix_002.sql) once. It preserves the first hotfix as an immutable deployment record and replaces only the RPC function.
+
 ## Verify after deployment
 
 Run these read-only checks in SQL Editor:

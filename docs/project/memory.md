@@ -4,6 +4,7 @@
 
 1. `RETURNS TABLE (...)` 的欄位在 PL/pgSQL 函式內也會成為變數名稱；未限定的 `revision_number` 會和資料表欄位衝突，即使查詢目標只有一張表。
 2. 所有函式內 SQL 查詢的資料表欄位都要使用 table alias（例如 `revision.revision_number`），並為已部署的錯誤函式提供獨立 hotfix migration，不得要求使用者重建或刪除表格。
+3. `ON CONFLICT (column...)` 也會被 PL/pgSQL 的回傳欄位名稱干擾；若衝突目標已有命名 unique constraint，改用 `ON CONFLICT ON CONSTRAINT constraint_name`。
 
 ## 2026-07-29：POC E2E 的需求偵測與安全生成
 

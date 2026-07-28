@@ -20,6 +20,7 @@ test('Content Studio deployment keeps draft storage tenant-aware, idempotent and
   assert.match(sql, /constraint content_revisions_asset_idempotency_unique unique \(content_asset_id, idempotency_key\)/);
   assert.match(sql, /security invoker/);
   assert.match(sql, /revision\.revision_number/);
+  assert.match(sql, /on conflict on constraint content_evidence_links_unique do nothing/);
   assert.doesNotMatch(sql, /select id, revision_number into/);
   assert.match(sql, /revoke all on function public\.store_content_draft[\s\S]+from public, anon, authenticated/);
   assert.match(sql, /grant execute on function public\.store_content_draft[\s\S]+to service_role/);

@@ -163,12 +163,12 @@ begin
 
     insert into public.content_evidence_links (user_id, content_asset_id, evidence_type, target_id, citation_text)
     values (p_user_id, v_asset_id, 'source_post', p_source_id, 'Original captured source')
-    on conflict (content_asset_id, evidence_type, target_id) do nothing;
+    on conflict on constraint content_evidence_links_unique do nothing;
 
     if p_poc_run_id is not null then
         insert into public.content_evidence_links (user_id, content_asset_id, evidence_type, target_id, citation_text)
         values (p_user_id, v_asset_id, 'poc_result', p_poc_run_id, 'Validated sandbox POC run')
-        on conflict (content_asset_id, evidence_type, target_id) do nothing;
+        on conflict on constraint content_evidence_links_unique do nothing;
     end if;
 
     return query select v_asset_id, v_revision_id, v_revision_number, true;

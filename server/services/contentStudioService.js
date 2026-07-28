@@ -30,7 +30,7 @@ Output Schema:
 /**
  * Generates a fast-track content draft based on post content and requested format.
  */
-export async function createFastTrackDraft(postData, format = 'x_thread') {
+export async function createFastTrackDraft(postData, format = 'x_thread', options = {}) {
   if (!postData || !postData.content) {
     throw new Error('postData with content is required for content adaptation');
   }
@@ -39,9 +39,10 @@ export async function createFastTrackDraft(postData, format = 'x_thread') {
 Title: ${postData.title || 'Untitled'}
 Source URL: ${postData.original_url || postData.url || 'N/A'}
 Content: ${postData.content.substring(0, 2000)}`;
+  const routeInstruction = options.instruction ? `\nRoute instruction: ${options.instruction}` : '';
 
   try {
-    const aiResult = await generateContentJSON(REWRITE_SYSTEM_PROMPT, prompt);
+    const aiResult = await generateContentJSON(REWRITE_SYSTEM_PROMPT, `${prompt}${routeInstruction}`);
     if (aiResult && aiResult.body) {
       return {
         title: aiResult.title || postData.title || 'Quick Adaptation',

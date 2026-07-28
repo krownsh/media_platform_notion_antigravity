@@ -12,6 +12,7 @@
     "agent:inbox": "node scripts/agent-sdk/get-inbox.js",
     "agent:analyze": "node scripts/agent-sdk/analyze-item.js",
     "agent:complete": "node scripts/agent-sdk/complete-item.js",
+    "agent:content": "node scripts/agent-sdk/process-content-routes.js",
     "agent:poc:check-storage": "node scripts/agent-sdk/check-poc-storage.js",
     "test:poc": "node --test test/script/poc_service.test.js",
     "test:poc:docker": "node scripts/agent-sdk/poc-smoke.js"

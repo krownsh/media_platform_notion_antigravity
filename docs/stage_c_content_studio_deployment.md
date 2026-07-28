@@ -19,6 +19,12 @@ All tables have RLS, tenant ownership policies, and `created_at` / `updated_at`.
 
 The repository does not currently have Supabase CLI installed, so this follows the existing `database/deployments/` manual-deployment convention.
 
+## Hotfix for deployments completed before 2026-07-29
+
+The first Stage C SQL revision left the `revision_number` result column unqualified inside the PL/pgSQL function. PostgreSQL therefore rejects the first draft write with `column reference "revision_number" is ambiguous`.
+
+If you already ran the original Stage C file, run the complete contents of [`database/deployments/stage_c_content_studio_hotfix_001.sql`](../database/deployments/stage_c_content_studio_hotfix_001.sql) once in Supabase SQL Editor. It only replaces the function; it does not delete tables or data.
+
 ## Verify after deployment
 
 Run these read-only checks in SQL Editor:

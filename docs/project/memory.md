@@ -1,5 +1,10 @@
 # Project Memory
 
+## 2026-07-29：PL/pgSQL 回傳欄位會與查詢欄位同名衝突
+
+1. `RETURNS TABLE (...)` 的欄位在 PL/pgSQL 函式內也會成為變數名稱；未限定的 `revision_number` 會和資料表欄位衝突，即使查詢目標只有一張表。
+2. 所有函式內 SQL 查詢的資料表欄位都要使用 table alias（例如 `revision.revision_number`），並為已部署的錯誤函式提供獨立 hotfix migration，不得要求使用者重建或刪除表格。
+
 ## 2026-07-29：POC E2E 的需求偵測與安全生成
 
 1. Project Auditor 若只看資料夾是否存在與少數安全模式，會把已有測試但仍有 `TODO/FIXME` 的專案誤判為「0 個需求」，使 POC 流程靜默跳過。需將具體實作標記轉成 `missing_feature`，並保留檔案位置與原始標記。

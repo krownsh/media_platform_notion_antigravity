@@ -125,30 +125,33 @@ begin
     returning id into v_asset_id;
 
     if v_asset_id is null then
-        select id into v_asset_id
-        from public.content_assets
-        where user_id = p_user_id and source_id = p_source_id and format = p_format
+        select asset.id into v_asset_id
+        from public.content_assets as asset
+        where asset.user_id = p_user_id
+          and asset.source_id = p_source_id
+          and asset.format = p_format
         for update;
     end if;
 
-    select id, revision_number into v_revision_id, v_revision_number
-    from public.content_revisions
-    where content_asset_id = v_asset_id and idempotency_key = p_idempotency_key;
+    select revision.id, revision.revision_number into v_revision_id, v_revision_number
+    from public.content_revisions as revision
+    where revision.content_asset_id = v_asset_id
+      and revision.idempotency_key = p_idempotency_key;
 
     if v_revision_id is not null then
         return query select v_asset_id, v_revision_id, v_revision_number, false;
         return;
     end if;
 
-    update public.content_assets
+    update public.content_assets as asset
     set title = p_title,
         metadata = coalesce(p_metadata, '{}'::jsonb),
         updated_at = now()
-    where id = v_asset_id;
+    where asset.id = v_asset_id;
 
-    select coalesce(max(revision_number), 0) + 1 into v_revision_number
-    from public.content_revisions
-    where content_asset_id = v_asset_id;
+    select coalesce(max(revision.revision_number), 0) + 1 into v_revision_number
+    from public.content_revisions as revision
+    where revision.content_asset_id = v_asset_id;
 
     insert into public.content_revisions (
         user_id, content_asset_id, revision_number, idempotency_key, body, change_summary, author_type

@@ -10,6 +10,8 @@ const sql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 's
 const aggregatorSql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'schema_aggregator.sql'), 'utf8');
 const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'), 'utf8');
 const orchestratorSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'orchestrator.js'), 'utf8');
+const completeItemSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'complete-item.js'), 'utf8');
+const routeStateSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'outboxRouteStateService.js'), 'utf8');
 
 test('Stage B finalization is one database transaction with an idempotent source outbox', () => {
     assert.match(sql, /^begin;/m);
@@ -39,4 +41,15 @@ test('all current schema sources agree that source_domains is a text array', () 
     assert.match(sql, /source_domains text\[\]/);
     assert.match(aggregatorSql, /source_domains TEXT\[\]/);
     assert.doesNotMatch(aggregatorSql, /source_domains JSONB/);
+});
+
+test('interactive completion finalizes one route and preserves the shared outbox lifecycle', () => {
+    assert.match(sql, /status text not null default 'pending' check \(status in \('pending', 'processing', 'sent', 'failed'\)\)/);
+    assert.match(completeItemSource, /persistOutboxRouteTransition/);
+    assert.match(completeItemSource, /<route_type>/);
+    assert.match(routeStateSource, /updated_at/);
+    assert.match(routeStateSource, /deriveOutboxStatus/);
+    assert.doesNotMatch(completeItemSource, /status: 'sent'/);
+    assert.doesNotMatch(completeItemSource, /status: 'processed'/);
+    assert.doesNotMatch(completeItemSource, /processed_at|error_message/);
 });

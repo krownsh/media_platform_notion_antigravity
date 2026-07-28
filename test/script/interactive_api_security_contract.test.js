@@ -14,6 +14,7 @@ const serverEnvTemplate = fs.readFileSync(path.join(projectRoot, 'server', '.env
 const twitterReference = fs.readFileSync(path.join(projectRoot, 'server', 'fixtures', 'crawler', 'twitter', 'example1', 'doc.md'), 'utf8');
 
 test('only /api/process accepts the mapped n8n key; interactive routes require a Supabase JWT', () => {
+    assert.match(serverSource, /authorization\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
     assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth/);
 
     for (const route of [

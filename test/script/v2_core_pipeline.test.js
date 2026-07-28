@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'path';
 
 import { classifyRoutesByRules, classifyPostRoutes } from '../../server/services/routeAgent.js';
@@ -30,6 +32,23 @@ test('Project Auditor - Local Directory Dry-Run Scan', async () => {
   assert.ok(snapshot.fileCount > 0);
   assert.ok(snapshot.projectName);
   assert.ok(Array.isArray(needs));
+});
+
+test('Project Auditor - reports a concrete TODO implementation gap', async () => {
+  const fixtureDir = fs.mkdtempSync(path.join(os.tmpdir(), 'project-auditor-'));
+  const sourcePath = path.join(fixtureDir, 'adapter.js');
+  fs.writeFileSync(sourcePath, '// TODO: Implement external platform adapter\nexport const adapter = null;\n');
+
+  try {
+    const { needs } = await auditProjectDirectory(fixtureDir);
+    const todoNeed = needs.find(need => need.category === 'missing_feature');
+
+    assert.ok(todoNeed);
+    assert.match(todoNeed.title, /TODO/);
+    assert.equal(todoNeed.evidence[0].type, 'implementation_marker');
+  } finally {
+    fs.rmSync(fixtureDir, { recursive: true, force: true });
+  }
 });
 
 test('Opportunity Matcher - Bi-directional Matching', () => {

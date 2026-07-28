@@ -109,7 +109,7 @@ class AiService {
             let systemPrompt = await fs.readFile(promptPath, 'utf-8');
             systemPrompt += '\n\n**IMPORTANT: You must respond with ONLY valid JSON format.**';
             return systemPrompt;
-        } catch (error) {
+        } catch {
             return "You are a helpful social media analyst. Summarize in Traditional Chinese. Respond in JSON.";
         }
     }
@@ -120,7 +120,7 @@ class AiService {
             const __dirname = path.dirname(__filename);
             const promptPath = path.join(__dirname, '..', 'prompts', 'generic_summary_prompt.md');
             return await fs.readFile(promptPath, 'utf-8');
-        } catch (error) {
+        } catch {
             return "Restate the content from the author's perspective. Respond in JSON.";
         }
     }
@@ -142,6 +142,7 @@ class AiService {
 
         const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
             method: 'POST',
+            signal: AbortSignal.timeout(30_000),
             headers: headers,
             body: JSON.stringify({
                 model: modelName,
@@ -206,6 +207,7 @@ class AiService {
 
             const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
                 method: 'POST',
+                signal: AbortSignal.timeout(30_000),
                 headers: headers,
                 body: JSON.stringify({
                     model: this.currentFreeModel,
@@ -253,6 +255,7 @@ Respond ONLY with a JSON object matching this strict schema:
 
                     const response = await fetch(config.url, {
                         method: 'POST',
+                        signal: AbortSignal.timeout(30_000),
                         headers: headers,
                         body: JSON.stringify({
                             model: this.currentFreeModel,
@@ -267,7 +270,7 @@ Respond ONLY with a JSON object matching this strict schema:
                     let data;
                     try {
                         data = JSON.parse(responseText);
-                    } catch (e) { continue; }
+                    } catch { continue; }
 
                     if (response.ok) {
                         const aiText = data.choices?.[0]?.message?.content || '';
@@ -289,7 +292,13 @@ Respond ONLY with a JSON object matching this strict schema:
 
     parseRemixData(aiText) {
         try {
-            const parsed = JSON.parse(aiText.trim());
+            let cleanText = aiText.trim();
+            if (cleanText.startsWith('```json')) {
+                cleanText = cleanText.replace(/^```json/, '').replace(/```$/, '').trim();
+            } else if (cleanText.startsWith('```')) {
+                cleanText = cleanText.replace(/^```/, '').replace(/```$/, '').trim();
+            }
+            const parsed = JSON.parse(cleanText);
             if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
                 throw new Error('Remix response must be a JSON object');
             }
@@ -315,6 +324,7 @@ Respond ONLY with a JSON object matching this strict schema:
 
         const response = await fetch(`${this.baseUrl}/text/chatcompletion_v2`, {
             method: 'POST',
+            signal: AbortSignal.timeout(30_000),
             headers: {
                 'Authorization': `Bearer ${this.minimaxApiKey}`,
                 'Content-Type': 'application/json'

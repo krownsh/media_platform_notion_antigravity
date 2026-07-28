@@ -23,7 +23,9 @@ test('Gemini SDK and fallback paths are removed', () => {
 });
 
 test('AI analysis only accepts a complete JSON object', () => {
-    assert.match(aiServiceSource, /JSON\.parse\(aiText\.trim\(\)\)/);
+    assert.match(aiServiceSource, /cleanText\.startsWith\('```json'\)/);
+    assert.match(aiServiceSource, /JSON\.parse\(cleanText\)/);
+    assert.match(aiServiceSource, /Array\.isArray\(parsed(?:Data)?\)/);
     assert.doesNotMatch(aiServiceSource, /lastIndexOf\('}'\)|match\(\/\{\[\\s\\S\]\*\}\//);
     assert.match(aiServiceSource, /throw new Error\(`MiniMax returned invalid JSON:/);
 });

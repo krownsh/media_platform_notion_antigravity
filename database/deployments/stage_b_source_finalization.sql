@@ -40,7 +40,7 @@ create table if not exists public.collection_capture_outbox (
 comment on table public.collection_capture_outbox is
     'Transactional outbox for source.ingested.v1. A worker may claim pending rows and deliver downstream route jobs.';
 comment on column public.collection_capture_outbox.payload is
-    'Event envelope: event_type, source_id (collection_posts.id), source_version_id (null for legacy V1), user_id, correlation_id, capture_quality, and pipeline_version.';
+    'Event envelope: event_type, source_id (collection_posts.id), source_version_id (null for legacy V1), user_id, correlation_id, capture_quality, and pipeline_version. Optional agent_routes JSONB uses schema_version=1 and contains planned_at, updated_at, and routes[] entries with type, priority, reason, status (pending|in_progress|completed|failed|skipped), status_updated_at, and outcome.';
 
 create index if not exists collection_capture_outbox_pending_idx
     on public.collection_capture_outbox (available_at, created_at)

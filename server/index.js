@@ -28,6 +28,8 @@ app.use(cors());
 app.use(express.json());
 
 function getBearerToken(req) {
+    const authorization = req.header('authorization') || '';
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
     return match ? match[1] : null;
 }
 

@@ -1,4 +1,3 @@
-import fetch from 'node-fetch'; // Requires node-fetch if Node < 18, but Node 20 has built-in fetch. We use native fetch.
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,6 +36,7 @@ function setCache(postId, data) {
  */
 export async function enrichContext(postData) {
     const postId = postData.id;
+    const startedAt = Date.now();
     
     // 1. Check local cache to prevent burning credits on repeated runs!
     const cachedData = getCache(postId);
@@ -51,7 +51,7 @@ export async function enrichContext(postData) {
     if (analysis && analysis.summary) {
         try {
             summaryData = typeof analysis.summary === 'string' ? JSON.parse(analysis.summary) : analysis.summary;
-        } catch(e) {}
+        } catch {}
     }
 
     const title = postData.title || summaryData.core_insight || '';
@@ -74,6 +74,7 @@ export async function enrichContext(postData) {
     try {
         const response = await fetch('https://api.tavily.com/search', {
             method: 'POST',
+            signal: AbortSignal.timeout(15_000),
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -104,9 +105,11 @@ export async function enrichContext(postData) {
         // Cache the result to save credits
         setCache(postId, markdownReport);
 
+        console.log(`[Enrichment] Completed in ${Date.now() - startedAt}ms.`);
+
         return markdownReport;
     } catch (err) {
-        console.error('❌ [Enrichment] Failed to fetch from Tavily:', err.message);
+        console.error(`❌ [Enrichment] Tavily request failed after ${Date.now() - startedAt}ms:`, err.message);
         
         // Fallback to SERP API (if needed) could be implemented here.
         // For now, we return the error gracefully so the pipeline doesn't break.

@@ -122,6 +122,25 @@ function inspectFile(filePath, filename, needs, capabilities) {
   if (filename.endsWith('.js') || filename.endsWith('.ts')) {
     try {
       const content = fs.readFileSync(filePath, 'utf8');
+      const implementationMarker = content.match(/^\s*\/\/\s*(TODO|FIXME)\s*:\s*(.+)$/m);
+
+      if (implementationMarker) {
+        const [, markerType, detail] = implementationMarker;
+        needs.push({
+          title: `Unimplemented ${markerType} marker in ${filename}`,
+          category: 'missing_feature',
+          impact: `A documented implementation gap remains in ${relativePath}`,
+          severity: 'medium',
+          confidence: 0.9,
+          evidence: [{
+            type: 'implementation_marker',
+            location: relativePath,
+            detail: `${markerType}: ${detail.trim().slice(0, 300)}`
+          }],
+          suggested_validation: 'Implement the marked behavior and add a focused regression test'
+        });
+      }
+
       if (content.includes('process.env.') && !content.includes('requireApiAuth') && relativePath.includes('routes/')) {
         needs.push({
           title: `Unauthenticated route script detected in ${filename}`,

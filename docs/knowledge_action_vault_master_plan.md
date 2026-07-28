@@ -301,6 +301,15 @@ POC 規則：
 - 保存版本、環境、命令、baseline、log、成本與重現方式。
 - 失敗不得偽裝成成功或只留在 console。
 
+2026-07-28 MVP 實作狀態：
+
+- `server/services/pocService.js` 已完成 MiniMax POC 生成、靜態安全檢查、artifact 落盤、Docker 執行與 JSONB 結果寫回。
+- Windows 由 Node 直接呼叫 `docker compose`；macOS／Linux 使用 `sandbox/runner.sh`，避免把 WSL 當成 Windows 必要依賴。
+- Container 已設定斷網、唯讀、capability 移除、process／CPU／記憶體／timeout 限制。
+- 第一版只允許 Node.js／Python 標準函式庫，不執行第三方套件安裝；外部套件型 POC 待 allowlist 與供應鏈隔離方案完成後再開放。
+- 結果暫存既有 `collection_post_analysis.insights` JSONB，不變更正式 Schema；多 runner 併發前需改為 transaction RPC 或正式實驗資料表。
+- 單元／契約測試已完成；真實 Docker E2E 因驗證時 daemon 未啟動，仍是待辦。
+
 標準結論：
 
 - `adopt`

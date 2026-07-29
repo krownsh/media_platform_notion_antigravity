@@ -43,3 +43,16 @@
 - MVP 不寫 `source_routes` table。既有 `collection_capture_outbox.payload.agent_routes` 已保存同一份 route plan，再寫一張表會形成兩個真相來源。
 - `agent_jobs` 只代表「人類已批准執行的具體任務」，包含允許的專案、路徑、命令、lease、結果與錯誤。文章入庫或分類時不能自動建立 `agent_jobs`。
 - POC、改碼、安裝套件與發布仍需明確人工批准；Hermes 預設分析命令不得帶 `--execute-poc`。
+
+## 2026-07-29：剛才是否已修改資料庫？下一步是什麼？
+
+### 使用者提問
+
+1. 剛才有改資料庫嗎？
+2. 下一步是什麼？
+
+### 回答與決策
+
+- 尚未修改線上的 Supabase 資料庫，也沒有執行任何 migration。
+- 已修改的只有本機 schema 文件與新增 additive migration：`database/deployments/stage_d_2_article_title.sql`。
+- 下一步只做一件事：經人類明確確認後，把該 migration 套用到 Supabase；完成後再設定 Hermes Cron。

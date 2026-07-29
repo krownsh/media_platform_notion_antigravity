@@ -43,3 +43,9 @@ npm run agent:analyze -- <outbox_id> --execute-poc
 ```
 
 後者才可能呼叫 MiniMax、Tavily 與 Docker sandbox。
+
+## GitHub 連接界線
+
+- `github:owner/repository` 是跨電腦的專案身分；本機 checkout 只是實際掃描與 sandbox 的暫時執行位置。
+- Codex 的 GitHub connector 可讓操作員唯讀盤點與搜尋 repo，但它不是產品 runtime 可直接呼叫的服務。
+- 若產品要自動同步使用者所有 repo，下一階段應使用只讀權限的 GitHub App 或 GitHub OAuth，並將同步結果存為專案目錄；不應把個人 access token 放進瀏覽器或資料庫。

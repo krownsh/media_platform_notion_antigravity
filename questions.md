@@ -25,3 +25,4 @@
 - 專案的穩定身分採 Git remote 推得的 `github:owner/repository`，而非本機資料夾名稱。以本專案為例是 `github:krownsh/media_platform_notion_antigravity`。
 - GitHub repo 用來識別同一個專案與日後讀取遠端；目前程式內容的唯讀掃描仍針對本機已 checkout 的同一 repo。沒有對應 checkout 時，不允許執行 POC。
 - `poc_proposal` 只產生提案；MiniMax、Tavily 與 Docker 仍要人類明確加上 `--execute-poc`。
+- 已確認 Codex 的 GitHub connector 可唯讀列出目前授權帳號可存取的 `krownsh` repo；但這只服務於 agent 操作。產品 runtime 應另接只讀 GitHub App／OAuth，不能把 MCP 當成產品的常駐 API。

@@ -17,9 +17,9 @@ create table if not exists public.collection_topic_scopes (
 );
 
 comment on table public.collection_topic_scopes is
-    'User-controlled action boundary for a collection folder. collect stores only; research creates a proposal; poc_proposal permits a proposal for explicitly listed project target aliases. It never authorizes automatic POC execution.';
+    'User-controlled action boundary for a collection folder. collect stores only; research creates a proposal; poc_proposal permits a proposal for explicitly listed GitHub project targets. It never authorizes automatic POC execution.';
 comment on column public.collection_topic_scopes.project_targets is
-    'Project target aliases that this topic may be matched against, for example media_platform_notion_antigravity. Empty means no project audit or POC proposal is allowed.';
+    'Canonical GitHub project targets in github:owner/repository format. Empty means no project audit or POC proposal is allowed.';
 
 create index if not exists collection_topic_scopes_user_active_idx
     on public.collection_topic_scopes (user_id, is_active);

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { execFileSync } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,7 +13,7 @@ import { matchSourceToProjectNeeds } from '../../server/services/opportunityMatc
 import { auditProjectDirectory } from '../../server/services/projectAuditor.js';
 import { enrichContext } from '../../server/services/enrichmentService.js';
 import { runPocWorkflow } from '../../server/services/pocService.js';
-import { getTopicScopesForPost, selectPocTopicScope } from '../../server/services/topicScopeService.js';
+import { getTopicScopesForPost, normalizeGitHubTarget, selectPocTopicScope } from '../../server/services/topicScopeService.js';
 import {
     ensureOutboxRoutePlan,
     persistOutboxRouteTransition
@@ -26,10 +27,25 @@ function getSuccessfulPoc(postData) {
     return insights.find(insight => insight?.type === 'poc_run' && insight?.status === 'success') || null;
 }
 
-async function findMatches(postData, classificationResult) {
+export function resolveWorkspaceTarget(projectDir) {
+    try {
+        const remoteUrl = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
+            cwd: projectDir,
+            encoding: 'utf8',
+            stdio: ['ignore', 'pipe', 'ignore']
+        });
+        const githubTarget = normalizeGitHubTarget(remoteUrl);
+        if (githubTarget) return githubTarget;
+    } catch {
+        // A local-only project has no stable remote identity. It is intentionally not POC-eligible.
+    }
+    return null;
+}
+
+async function findMatches(postData, classificationResult, workspaceTarget) {
     const { snapshot, needs } = await auditProjectDirectory(path.resolve(__dirname, '../../'));
     console.log(`[Agent SDK] Project Auditor scanned ${snapshot.projectName}: found ${needs.length} active needs.`);
-    return matchSourceToProjectNeeds(classificationResult, postData, needs, { id: snapshot.projectName });
+    return matchSourceToProjectNeeds(classificationResult, postData, needs, { id: workspaceTarget });
 }
 
 export async function analyzeItem(outboxId, options = {}) {
@@ -59,7 +75,11 @@ export async function analyzeItem(outboxId, options = {}) {
     const postData = Array.isArray(event.collection_posts) ? event.collection_posts[0] : event.collection_posts;
     if (!postData) throw new Error('Related post data not found for this outbox event');
 
-    const workspaceTarget = path.basename(path.resolve(__dirname, '../../'));
+    const workspaceDir = path.resolve(__dirname, '../../');
+    const workspaceTarget = resolveWorkspaceTarget(workspaceDir);
+    if (!workspaceTarget) {
+        throw new Error('This checkout has no GitHub origin remote, so it cannot be selected as a POC target.');
+    }
     const topicScopes = await getTopicScopesForPost(postData, supabase);
     const pocScope = selectPocTopicScope(topicScopes, workspaceTarget);
     const hasResearchScope = topicScopes.some(scope => scope.mode === 'research' && scope.is_active !== false);
@@ -98,7 +118,7 @@ export async function analyzeItem(outboxId, options = {}) {
         return { event: activeEvent, postData, classificationResult, skipped: 'poc_scope' };
     }
 
-    const matches = await findMatches(postData, classificationResult);
+    const matches = await findMatches(postData, classificationResult, workspaceTarget);
     if (matches.length === 0) {
         activeEvent = await persistOutboxRouteTransition(
             activeEvent,

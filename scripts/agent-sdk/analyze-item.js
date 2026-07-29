@@ -19,7 +19,7 @@ import {
     persistOutboxRouteTransition
 } from '../../server/services/outboxRouteStateService.js';
 
-function getSuccessfulPoc(postData) {
+export function getSuccessfulPoc(postData) {
     const analysis = Array.isArray(postData.collection_post_analysis)
         ? postData.collection_post_analysis[0]
         : postData.collection_post_analysis;
@@ -103,6 +103,21 @@ export async function analyzeItem(outboxId, options = {}) {
         return { event: activeEvent, postData, classificationResult };
     }
 
+    const existingSuccess = getSuccessfulPoc(postData);
+    if (existingSuccess) {
+        if (applyPocRoute.status !== 'completed') {
+            activeEvent = await persistOutboxRouteTransition(
+                activeEvent,
+                'apply_poc',
+                'completed',
+                { completed_at: new Date().toISOString(), reused_run_id: existingSuccess.run_id, status: existingSuccess.status },
+                supabase
+            );
+        }
+        console.log(`[Agent SDK] Reused successful POC result: ${existingSuccess.run_id}`);
+        return { event: activeEvent, postData, classificationResult, reused_run_id: existingSuccess.run_id };
+    }
+
     if (!pocScope) {
         activeEvent = await persistOutboxRouteTransition(
             activeEvent,
@@ -148,19 +163,6 @@ export async function analyzeItem(outboxId, options = {}) {
             supabase
         );
         console.log('[Agent SDK] POC proposal recorded. No MiniMax, Tavily, or Docker action was run.');
-        return { event: activeEvent, postData, classificationResult, matches };
-    }
-
-    const existingSuccess = getSuccessfulPoc(postData);
-    if (existingSuccess) {
-        activeEvent = await persistOutboxRouteTransition(
-            activeEvent,
-            'apply_poc',
-            'completed',
-            { completed_at: new Date().toISOString(), reused_run_id: existingSuccess.run_id, status: existingSuccess.status },
-            supabase
-        );
-        console.log(`[Agent SDK] Reused successful POC result: ${existingSuccess.run_id}`);
         return { event: activeEvent, postData, classificationResult, matches };
     }
 

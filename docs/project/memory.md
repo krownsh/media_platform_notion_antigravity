@@ -1,5 +1,13 @@
 # Project Memory
 
+## 2026-07-29：Hermes 採 pull-based inbox，不是常駐自動執行器
+
+1. `/api/process` 只負責擷取、Atomic Finalization 與建立 outbox；後端不啟動常駐 dispatcher。
+2. Hermes Cron 先跑零 LLM gate；只有 unlocked／stale-locked pending row 才喚醒 Agent。claim 時保持 `pending` 並寫 lease，route plan 成功後才改 `processing`，避免主機 crash 造成永遠無法回收的 processing row。
+3. `payload.agent_routes` 是 MVP 唯一 route-plan 真相來源，不同步寫 `source_routes` table。
+4. 收藏與分類不得自動建立 `agent_jobs`。只有人類批准具體任務後，才可建立帶 allowed paths／commands 的 execution job。
+5. Hermes 錯誤必須寫入結構化 `last_error` 並通知；失敗項目不進無限重試迴圈，等待人類決定。
+
 ## 2026-07-29：E2E 完成必須交付使用者可見成果
 
 1. 後端資料庫狀態為 `sent`、測試通過或 API 回應成功，都不是使用者可驗收的完成品。

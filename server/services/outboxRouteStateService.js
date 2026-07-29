@@ -143,19 +143,21 @@ export async function ensureOutboxRoutePlan(event, routes, supabaseClient, now =
   }
   if (!supabaseClient) throw new Error('Supabase client is required');
 
-  if (event.payload?.agent_routes?.schema_version === 1) return event;
+  const hasPersistedPlan = event.payload?.agent_routes?.schema_version === 1;
+  if (hasPersistedPlan && event.status !== 'pending') return event;
 
   const nextEvent = {
     ...event,
+    status: event.status === 'pending' ? 'processing' : event.status,
     payload: {
       ...(event.payload || {}),
-      agent_routes: buildInitialRouteState(routes, now)
+      agent_routes: hasPersistedPlan ? event.payload.agent_routes : buildInitialRouteState(routes, now)
     }
   };
 
   const { data, error } = await supabaseClient
     .from('collection_capture_outbox')
-    .update({ payload: nextEvent.payload })
+    .update({ status: nextEvent.status, payload: nextEvent.payload })
     .eq('id', event.id)
     .eq('user_id', event.user_id)
     .eq('updated_at', event.updated_at)

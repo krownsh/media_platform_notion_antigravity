@@ -9,6 +9,7 @@
 - [Stage B source-finalization deployment](stage_b_source_finalization_deployment.md)
 - [Stage C Content Studio deployment](stage_c_content_studio_deployment.md)
 - [POC generation and sandbox workflow](poc_sandbox_workflow.md)
+- [Hermes pull-based outbox workflow](hermes_outbox_workflow.md)
 
 ## Architecture
 

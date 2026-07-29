@@ -90,6 +90,7 @@ test('route-plan persistence and route transition use updated_at as an optimisti
   const event = createEvent();
   const plannedEvent = {
     ...event,
+    status: 'processing',
     payload: {
       ...event.payload,
       agent_routes: buildInitialRouteState([{ type: 'apply_poc', priority: 90, reason: 'Tool source' }], NOW)
@@ -100,6 +101,7 @@ test('route-plan persistence and route transition use updated_at as an optimisti
   const persistedPlan = await ensureOutboxRoutePlan(event, [{ type: 'apply_poc', priority: 90, reason: 'Tool source' }], planMock.client, NOW);
 
   assert.equal(persistedPlan.updated_at, plannedEvent.updated_at);
+  assert.equal(planMock.calls.payload.status, 'processing');
   assert.deepEqual(planMock.calls.eq, [
     ['id', event.id],
     ['user_id', event.user_id],

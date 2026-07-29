@@ -12,6 +12,7 @@ const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'
 const orchestratorSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'orchestrator.js'), 'utf8');
 const completeItemSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'complete-item.js'), 'utf8');
 const routeStateSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'outboxRouteStateService.js'), 'utf8');
+const articleTitleSql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'stage_d_2_article_title.sql'), 'utf8');
 
 test('Stage B finalization is one database transaction with an idempotent source outbox', () => {
     assert.match(sql, /^begin;/m);
@@ -41,6 +42,16 @@ test('all current schema sources agree that source_domains is a text array', () 
     assert.match(sql, /source_domains text\[\]/);
     assert.match(aggregatorSql, /source_domains TEXT\[\]/);
     assert.doesNotMatch(aggregatorSql, /source_domains JSONB/);
+});
+
+test('article titles use an additive deployment without mutating the deployed Stage B contract', () => {
+    assert.match(articleTitleSql, /add column if not exists title text/);
+    assert.match(articleTitleSql, /create or replace function public\.finalize_collection_capture/);
+    assert.match(articleTitleSql, /title = excluded\.title/);
+    assert.match(articleTitleSql, /security invoker/);
+    assert.match(articleTitleSql, /grant execute on function public\.finalize_collection_capture[\s\S]+to service_role/);
+    assert.match(serverSource, /title: data\.title \|\| null/);
+    assert.doesNotMatch(sql, /add column if not exists title text/);
 });
 
 test('interactive completion finalizes one route and preserves the shared outbox lifecycle', () => {

@@ -5,7 +5,10 @@ import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({
+    path: path.join(__dirname, '.env'),
+    quiet: process.env.SUPABASE_CLIENT_QUIET === '1'
+});
 
 // Try to get from environment variables first
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'http://64.181.223.48:8000';
@@ -18,14 +21,21 @@ let supabase = null;
 
 if (isSupabaseConfigured) {
     supabase = createClient(supabaseUrl, supabaseServiceKey);
-    console.log('✅ Supabase client initialized (Service Role):', supabaseUrl);
+    if (process.env.SUPABASE_CLIENT_QUIET !== '1') {
+        console.log('✅ Supabase client initialized (Service Role):', supabaseUrl);
+    }
 } else {
     console.warn('⚠️ Supabase credentials not found. Database features will be disabled.');
     const mockChain = {
         select: () => mockChain,
         eq: () => mockChain,
+        is: () => mockChain,
+        lte: () => mockChain,
+        or: () => mockChain,
         order: () => mockChain,
+        limit: () => mockChain,
         single: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+        maybeSingle: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
         then: (resolve) => resolve({ data: [], error: new Error('Supabase not configured') })
     };
 

@@ -10,6 +10,7 @@ CREATE TABLE public.collection_posts (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL CHECK (platform IN ('instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github')),
     original_url TEXT NOT NULL,
+    title TEXT,
     platform_post_id VARCHAR(255), -- ID from the original platform
     author_name VARCHAR(255),
     author_id VARCHAR(255), -- ID of the author on the platform
@@ -28,6 +29,7 @@ CREATE TABLE public.collection_posts (
 COMMENT ON TABLE public.collection_posts IS 'Core table storing social media posts.';
 COMMENT ON COLUMN public.collection_posts.platform IS 'Source platform: instagram, facebook, twitter, threads';
 COMMENT ON COLUMN public.collection_posts.original_url IS 'The original URL input by the user';
+COMMENT ON COLUMN public.collection_posts.title IS 'Normalized source title for articles, repositories, videos, and social posts when available.';
 COMMENT ON COLUMN public.collection_posts.source_domains IS 'Normalized source hostnames discovered during capture; empty when none are found.';
 
 -- RLS for collection_posts

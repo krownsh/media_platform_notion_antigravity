@@ -211,6 +211,7 @@ async function finalizeCapture(userId, correlationId, source, data) {
             p_post: {
                 platform: normalizeCapturePlatform(data.platform),
                 original_url: originalUrl,
+                title: data.title || null,
                 author_name: data.author || data.author_name || null,
                 author_id: data.authorHandle || data.author_id || null,
                 author_avatar_url: data.avatar || data.author_avatar_url || null,

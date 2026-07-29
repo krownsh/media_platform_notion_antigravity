@@ -12,6 +12,8 @@ does **not** execute SQL or create Supabase migration history.
   for `collection_posts(user_id, original_url)`.
 - `deployments/stage_b_source_finalization.sql` — Stage B RPC and transactional
   outbox deployment.
+- `deployments/stage_d_2_article_title.sql` — additive article-title column and
+  a service-role-only replacement of the existing capture finalization RPC.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

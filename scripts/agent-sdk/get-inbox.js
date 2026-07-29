@@ -1,75 +1,99 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
+
+import { listHermesInbox, normalizeInboxLimit } from '../../server/services/hermesOutboxService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../../server/.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../server/.env'), quiet: true });
 
-import { supabase } from '../../server/supabaseClient.js';
-
-/**
- * 取得待處理的收藏項目 (status = pending)
- */
-async function getInbox() {
-    console.log('[Agent SDK] Fetching pending inbox items...');
-    
-    // 取得 outbox 中的 pending 事件
-    const { data: outboxEvents, error: outboxError } = await supabase
-        .from('collection_capture_outbox')
-        .select(`
-            id, 
-            aggregate_id, 
-            event_type,
-            created_at,
-            collection_posts (
-                id,
-                platform,
-                original_url,
-                author_name,
-                content,
-                collection_post_analysis (
-                    summary
-                )
-            )
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
-
-    if (outboxError) {
-        console.error('❌ Failed to fetch outbox events:', outboxError.message);
-        process.exit(1);
-    }
-
-    if (!outboxEvents || outboxEvents.length === 0) {
-        console.log('✅ No pending items in the inbox. You are all caught up!');
-        process.exit(0);
-    }
-
-    console.log(`\n📬 Found ${outboxEvents.length} pending item(s):`);
-    console.log('='.repeat(50));
-
-    outboxEvents.forEach((event, index) => {
-        const post = event.collection_posts;
-        // In some supabase setups, joined tables return an array or single object. We handle both just in case.
-        const postData = Array.isArray(post) ? post[0] : post; 
-        
-        if (!postData) {
-            console.log(`\n[Item ${index + 1}] Outbox ID: ${event.id} (Warning: Linked post not found)`);
-            return;
-        }
-
-        console.log(`\n[Item ${index + 1}] Outbox ID: ${event.id}`);
-        console.log(`Platform: ${postData.platform}`);
-        console.log(`URL: ${postData.original_url}`);
-        console.log(`Author: ${postData.author_name || 'Unknown'}`);
-        const analysis = Array.isArray(postData.collection_post_analysis) ? postData.collection_post_analysis[0] : postData.collection_post_analysis;
-        console.log(`Summary: ${analysis?.summary || 'No summary available.'}`);
-        console.log(`Type: ${event.event_type}`);
-    });
-
-    console.log('\n='.repeat(50));
-    console.log('\n💡 Next Step: Run `npm run agent:analyze <Outbox_ID>` to deeply analyze and propose an action plan for a specific item.');
+function readOption(args, name, fallback = null) {
+  const index = args.indexOf(name);
+  return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 }
 
-getInbox();
+function postFromEvent(event) {
+  return Array.isArray(event.collection_posts) ? event.collection_posts[0] : event.collection_posts;
+}
+
+function analysisFromPost(post) {
+  return Array.isArray(post?.collection_post_analysis)
+    ? post.collection_post_analysis[0]
+    : post?.collection_post_analysis;
+}
+
+export function buildHermesGateResult(events) {
+  if (!Array.isArray(events) || events.length === 0) return { wakeAgent: false };
+  return {
+    wakeAgent: true,
+    context: {
+      pending_count: events.length,
+      outbox_ids: events.map(event => event.id)
+    }
+  };
+}
+
+export async function getInbox(options = {}) {
+  const supabaseClient = options.supabaseClient;
+  if (!supabaseClient) throw new Error('Supabase client is required');
+  return listHermesInbox(supabaseClient, {
+    limit: normalizeInboxLimit(options.limit),
+    status: options.status || 'pending',
+    leaseMinutes: options.leaseMinutes || 15,
+    now: options.now || new Date()
+  });
+}
+
+function printHumanInbox(events, status) {
+  if (events.length === 0) {
+    console.log(`✅ No ${status} items in the Hermes inbox.`);
+    return;
+  }
+
+  console.log(`📬 Found ${events.length} ${status} item(s):`);
+  console.log('='.repeat(60));
+  events.forEach((event, index) => {
+    const post = postFromEvent(event);
+    const analysis = analysisFromPost(post);
+    console.log(`\n[Item ${index + 1}] Outbox ID: ${event.id}`);
+    console.log(`Status: ${event.status}`);
+    console.log(`Platform: ${post?.platform || 'unknown'}`);
+    console.log(`URL: ${post?.original_url || 'missing'}`);
+    console.log(`Author: ${post?.author_name || 'Unknown'}`);
+    console.log(`Summary: ${analysis?.summary || 'No summary available.'}`);
+    console.log(`Attempts: ${event.attempt_count || 0}`);
+    if (event.locked_by) console.log(`Locked by: ${event.locked_by}`);
+    if (event.last_error) console.log(`Last error: ${event.last_error}`);
+  });
+  console.log('\n' + '='.repeat(60));
+  console.log('Next: npm run agent:analyze -- <outbox-id> --agent <hermes-identity>');
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+  const json = args.includes('--json');
+  const gate = args.includes('--gate');
+  const status = readOption(args, '--status', 'pending');
+  const limit = readOption(args, '--limit', 20);
+  const leaseMinutes = readOption(args, '--lease-minutes', 15);
+  process.env.SUPABASE_CLIENT_QUIET = json || gate ? '1' : process.env.SUPABASE_CLIENT_QUIET;
+  const { supabase } = await import('../../server/supabaseClient.js');
+  const events = await getInbox({ supabaseClient: supabase, limit, status, leaseMinutes });
+
+  if (gate) {
+    process.stdout.write(`${JSON.stringify(buildHermesGateResult(events))}\n`);
+  } else if (json) {
+    process.stdout.write(`${JSON.stringify({ ok: true, status, count: events.length, events }, null, 2)}\n`);
+  } else {
+    printHumanInbox(events, status);
+  }
+}
+
+const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMainModule) {
+  main().catch(error => {
+    process.stderr.write(`${JSON.stringify({ ok: false, code: error.code || 'ERROR', error: error.message })}\n`);
+    process.exitCode = 1;
+  });
+}

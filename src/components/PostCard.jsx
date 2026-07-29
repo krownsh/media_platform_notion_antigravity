@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
+import { suggestFolders } from '../utils/folderSuggestion';
 
 
 // Custom Threads Icon
@@ -31,6 +32,8 @@ const PostCard = ({
 
     const dispatch = useDispatch();
     const { collections } = useSelector(state => state.posts);
+    const folderSuggestions = suggestFolders(post, collections);
+    const topFolderSuggestion = folderSuggestions[0] || null;
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -84,7 +87,11 @@ const PostCard = ({
                     {platformStyle.icon}
                     <span className={`${isCompact ? 'text-[9px]' : 'text-[11px] sm:text-[11px]'} font-bold uppercase tracking-wider text-[#615d59] leading-none`}>{platformStyle.label}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                    <span className={`${isCompact ? 'text-[9px] max-w-[80px]' : 'text-[11px] sm:text-[11px] max-w-[120px] sm:max-w-[160px]'} text-[#615d59]/80 font-medium leading-none truncate`}>{post.collectionId ? collections.find(c => c.id === post.collectionId)?.name || '未分類' : '未分類'}</span>
+                    <span className={`${isCompact ? 'text-[9px] max-w-[80px]' : 'text-[11px] sm:text-[11px] max-w-[120px] sm:max-w-[160px]'} text-[#615d59]/80 font-medium leading-none truncate`} title={topFolderSuggestion ? `建議放入：${topFolderSuggestion.collection.name}` : undefined}>
+                        {post.collectionId
+                            ? collections.find(c => c.id === post.collectionId)?.name || '未分類'
+                            : topFolderSuggestion ? `建議：${topFolderSuggestion.collection.name}` : '未分類'}
+                    </span>
                 </div>
                 <button
                     className="p-2 rounded-full hover:bg-black/5 text-[#615d59]"
@@ -196,6 +203,15 @@ const PostCard = ({
                         
                         {!showMoveMenu ? (
                             <>
+                                {topFolderSuggestion && (
+                                    <button
+                                        className="flex flex-col gap-1 p-3 mb-1 rounded-lg bg-[#0075de]/5 text-[#0075de] hover:bg-[#0075de]/10 w-full text-left"
+                                        onClick={(e) => handleMoveToCollection(e, topFolderSuggestion.collection.id)}
+                                    >
+                                        <span className="flex items-center gap-2 font-medium"><FolderInput size={16} /> 建議移至「{topFolderSuggestion.collection.name}」</span>
+                                        <span className="pl-6 text-[11px] text-[#615d59]">依據：{topFolderSuggestion.reasons.join('、')}</span>
+                                    </button>
+                                )}
                                 <button 
                                     className="flex items-center gap-2 p-3 hover:bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)] w-full text-left" 
                                     onClick={(e) => { e.stopPropagation(); setShowMoveMenu(true); }}

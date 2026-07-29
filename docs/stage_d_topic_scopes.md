@@ -44,6 +44,12 @@ npm run agent:analyze -- <outbox_id> --execute-poc
 
 後者才可能呼叫 MiniMax、Tavily 與 Docker sandbox。
 
+## 未整理貼文的資料夾建議
+
+未整理貼文不會自動被搬移。首頁卡片會根據貼文內文、分析標籤與既有資料夾名稱顯示一個建議資料夾；在卡片選單按「建議移至」才會真的變更收藏歸屬。
+
+目前規則優先辨識工程開發、agent、skill、套件、影音 AI 與投資等主題。這是可見、可覆核的 deterministic suggestion，不會呼叫模型或產生 API 成本。
+
 ## GitHub 連接界線
 
 - `github:owner/repository` 是跨電腦的專案身分；本機 checkout 只是實際掃描與 sandbox 的暫時執行位置。

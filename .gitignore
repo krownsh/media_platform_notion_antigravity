@@ -35,3 +35,6 @@ build_log_*.txt
 # Coverage
 coverage/
 
+# Server secrets
+server/keys/*
+!server/keys/.gitkeep

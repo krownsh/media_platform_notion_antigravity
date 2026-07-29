@@ -6,6 +6,7 @@ import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft,
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
+import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
 
 
@@ -354,6 +355,7 @@ const PostDetailView = ({ onRemix }) => {
 
                     <div className="flex-1 md:overflow-y-auto p-5 custom-scrollbar">
                         <PocResultPanel insights={analysis?.insights} />
+                        <PocWorkbenchPanel postId={post.dbId || post.id} />
 
                         {analysis?.summary ? (
                             <div className="mt-6 space-y-6">

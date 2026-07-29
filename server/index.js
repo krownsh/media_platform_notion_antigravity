@@ -19,6 +19,7 @@ import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './su
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
+import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -861,6 +862,7 @@ app.post('/api/batch-classify', async (req, res) => {
 
 // Agent Job Control Plane API
 app.use('/api/agent/jobs', requireApiAuth, agentJobRouter);
+app.use('/api/poc-workbench', requireSupabaseJwt, pocWorkbenchRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
 app.use('/api', (req, res) => {

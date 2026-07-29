@@ -20,6 +20,15 @@
 8. 將程式碼、雜湊、stdout、stderr、exit code、耗時與成功狀態追加至 `collection_post_analysis.insights` JSONB。
 9. 貼文詳情頁會顯示最新成功 POC 的驗證目標、沙盒耗時、stdout 與安全 fallback 說明；衍生內容草稿不會取代原始貼文或自動發布。
 10. POC 執行前須通過資料夾的 `collection_topic_scopes` 邊界：只有 `poc_proposal` 模式且明確列出目標專案的資料夾可提出 POC；CLI 預設只提案，必須加上 `--execute-poc` 才可真的呼叫模型、Tavily 與 Docker。
+11. 貼文詳情頁的「POC 工作台」是日常入口：會顯示該資料夾目標、綁定的 GitHub 專案、目前提案與已驗證結果。按「產生提案」只執行安全的本機分析；按「執行 POC」會先要求瀏覽器確認，才會送出 `EXECUTE_POC` 並實際呼叫模型、Tavily 與 Docker。未按確認不會產生付費 API 或沙盒執行。
+
+## 前端操作
+
+打開已歸入具備 `poc_proposal` 主題範圍的貼文詳情，即可看到「POC 工作台」。該面板只在主題範圍的 `project_targets` 包含目前 checkout 的 GitHub remote（本機為 `github:krownsh/media_platform_notion_antigravity`）時開放操作，避免將一個專案的 POC 套到另一個專案。
+
+1. 按「產生提案」：更新候選 POC 與理由，不會執行 Docker 或外部模型。
+2. 確認提案後按「執行 POC」：瀏覽器跳出確認；確認後才真的執行。
+3. 成功後，原本的「POC 驗證結果」面板會顯示 stdout、耗時與驗證結果。
 
 只要提案、不生成也不執行：
 

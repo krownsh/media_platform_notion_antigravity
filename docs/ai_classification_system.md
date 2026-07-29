@@ -1,7 +1,7 @@
 # AI 內容分類系統 (V2 - 動態配置版)
 
 ## 1. 系統概述
-本系統採用「規則優先 (Rule-based) + LLM 備援 (LLM Fallback)」的雙軌制，對所有採集到的內容進行貼標分類。所有的分類邏輯（包含關鍵字與 AI 提示描述）均存儲於 `category_configs` 資料庫表中。
+本系統採用「規則優先 (Rule-based) + LLM 備援 (LLM Fallback)」的雙軌制，對所有採集到的內容進行貼標分類。所有的分類邏輯（包含關鍵字與 AI 提示描述）均存儲於 `collection_category_configs` 資料庫表中。
 
 ## 2. 核心組件
 - **CategoryProcessor (server/services/categoryProcessor.js)**: 負責調度分類邏輯，讀取 DB 配置並處理標籤判定。
@@ -15,7 +15,7 @@
    - 採用的 Prompt 會強迫 AI 從定義好的 Slug 清單中選取一個。
 3. **模糊判定**: 為了防止 AI 的回覆包含廢話，程式會檢索回覆中是否包含特定的 Slug 關鍵字。
 
-## 4. 資料庫結構 (category_configs)
+## 4. 資料庫結構 (collection_category_configs)
 - `slug`: 標籤識別碼（如 `ai`, `tool`）
 - `label`: 顯示標題
 - `description`: 供 AI 參考的判定準則

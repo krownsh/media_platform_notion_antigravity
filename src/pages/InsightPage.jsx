@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSelector } from 'react-redux';
+import { AnimatePresence } from 'framer-motion';
 import {
     BarChart3, TrendingUp, Globe, Users, Tag, BookOpen,
     RefreshCw, Sparkles, AlertCircle, Settings, Plus, Save, Trash2, Edit3, X
@@ -10,6 +9,7 @@ import BarChart from '../components/BarChart';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
+import TopicScopePanel from '../components/TopicScopePanel';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: fetch wrapper
@@ -377,6 +377,8 @@ const InsightPage = () => {
             )}
 
             {/* ── 分類策略管理區 (Setting Section) ── */}
+            <TopicScopePanel userId={userId} />
+
             <div className="mt-8 bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card overflow-hidden">
                 <div className="px-6 py-4 border-b notion-whisper-border bg-black/[0.02] flex items-center justify-between">
                     <div className="flex items-center gap-2">

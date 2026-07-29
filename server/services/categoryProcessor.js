@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient.js';
  * Category Processor
  * Core logic for classifying scraped content, aligning with fieldtheory-cli.
  * 
- * Update: Now dynamic and reads from database category_configs.
+ * Update: Now dynamic and reads from database collection_category_configs.
  */
 class CategoryProcessor {
     constructor() {

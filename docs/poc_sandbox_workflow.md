@@ -19,6 +19,7 @@
 7. 在斷網、唯讀、受限資源的 Docker container 執行。
 8. 將程式碼、雜湊、stdout、stderr、exit code、耗時與成功狀態追加至 `collection_post_analysis.insights` JSONB。
 9. 貼文詳情頁會顯示最新成功 POC 的驗證目標、沙盒耗時、stdout 與安全 fallback 說明；衍生內容草稿不會取代原始貼文或自動發布。
+10. POC 執行前須通過資料夾的 `collection_topic_scopes` 邊界：只有 `poc_proposal` 模式且明確列出目標專案的資料夾可提出 POC；CLI 預設只提案，必須加上 `--execute-poc` 才可真的呼叫模型、Tavily 與 Docker。
 
 只要提案、不生成也不執行：
 

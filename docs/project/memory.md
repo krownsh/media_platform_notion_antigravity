@@ -84,3 +84,18 @@
 3. 完成後同時核對 robocopy failed/mismatch、byte length 與來源／備份 SHA-256。
 4. Docker Desktop 必須完全停止且 VHDX 可獨占開啟後才能備份。
 5. Docker disk image 的正式搬移使用 Docker Desktop GUI；不得手動剪下 VHDX。
+
+## 2026-07-29：部署交接不得擠牙膏
+
+### 錯誤
+
+1. 完成程式修改後只回報「下一步套 migration」，沒有一次交代後端載入、Hermes 主機、Cron、訊息投遞、happy-path E2E、failure drill 與人工核准邊界。
+2. 讓使用者必須連續追問「下一步呢」，增加不必要的操作負擔。
+3. 盤點時自行猜錯 Stage D migration 檔名；實際檔案是 `stage_d_collection_topic_scopes.sql` 與 `stage_d_1_unfiled_topic_scope.sql`。
+
+### 正確做法
+
+1. 每次完成架構或部署工作，最後必須一次列出：已完成、未完成、阻塞原因、所有剩餘步驟、每步驗收標準、哪些動作需要人類授權。
+2. 能做的唯讀驗證與本機測試直接完成；schema、push、部署、外部訊息等需要授權的動作集中列出，不可逐項反問。
+3. 使用者回報 migration 已套用時，立即唯讀驗證 schema／RPC，並明確區分「SQL 已部署」與「整條工作流已上線」。
+4. 查找 deployment 必須先 `rg --files database/deployments`，不得先猜檔名。

@@ -56,3 +56,16 @@
 - 尚未修改線上的 Supabase 資料庫，也沒有執行任何 migration。
 - 已修改的只有本機 schema 文件與新增 additive migration：`database/deployments/stage_d_2_article_title.sql`。
 - 下一步只做一件事：經人類明確確認後，把該 migration 套用到 Supabase；完成後再設定 Hermes Cron。
+
+## 2026-07-29：為什麼沒有一次講完整個剩餘流程？
+
+### 使用者提問與糾正
+
+- 使用者已套用 migration，並指出逐步追問下一步非常疲累；要求一次講完所有待辦。
+
+### 修正後的完整交接
+
+- 已唯讀確認 `collection_posts.title` 可讀，且 `finalize_collection_capture` RPC 已暴露；舊文章 title 為 null 屬正常，因 migration 不回填。
+- 尚未完成的必要鏈：讓實際 backend 載入本機新程式、在真正的 Hermes 主機安裝／找到 CLI、安裝 gate、設定 project root、建立帶訊息投遞的 Cron、跑新文章 happy-path E2E、跑 disposable failure drill、確認人工核准邊界。
+- 目前程式只在本機 `agent-dev` commit，尚未 push／deploy；目前 Windows 找不到 `hermes` 指令，因此尚未建立 Cron。
+- 後續交接必須一次列出已完成、未完成、阻塞、驗收與需授權項目，不得再擠牙膏。

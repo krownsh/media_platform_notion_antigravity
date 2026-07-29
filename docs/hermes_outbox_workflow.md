@@ -122,6 +122,8 @@ Example scheduled agent job:
 hermes cron create "every 30m" \
   "Use MEDIA_PLATFORM_PROJECT_ROOT. Read at most 10 pending items with node scripts/agent-sdk/get-inbox.js --json --limit 10. Process only the oldest item with node scripts/agent-sdk/analyze-item.js <outbox-id> --agent hermes:cron:media-inbox. Never use --execute-poc. Never publish, install packages, or modify a project. Report the proposal or the recorded error; respond [SILENT] only when no item exists." \
   --script media-inbox-gate.py \
+  --workdir "/absolute/path/to/media_platform_notion_antigravity" \
+  --deliver all \
   --name "Media inbox review"
 ```
 
@@ -140,9 +142,58 @@ result before leaving the schedule enabled.
 
 ## Article title deployment
 
-The API now passes the crawler's normalized `title` into finalization. Existing
-databases must apply
-`database/deployments/stage_d_2_article_title.sql` before titles are persisted.
-The deployment adds one nullable column and replaces the existing
-service-role-only, `security invoker` finalization RPC. It does not run merely
-because the file exists.
+The API now passes the crawler's normalized `title` into finalization. The
+deployment adds one nullable column and replaces the existing service-role-only,
+`security invoker` finalization RPC.
+
+On 2026-07-29 the user applied
+`database/deployments/stage_d_2_article_title.sql`. A read-only verification
+confirmed that `collection_posts.title` is readable through the service-role
+Data API and that `/rpc/finalize_collection_capture` is exposed. The sampled
+legacy row still had a null title, as expected because the migration does not
+backfill old captures. A new controlled `/api/process` capture is still required
+to verify title persistence end to end.
+
+## Complete rollout checklist
+
+The workflow is not operational merely because the database migration exists.
+Finish the following chain in order:
+
+1. **Load the application code in the actual backend runtime.** The current
+   implementation is committed locally on `agent-dev`; it has not been pushed
+   or deployed. Restart a local backend, or explicitly approve the normal
+   branch integration and deployment process for a remote backend.
+2. **Choose the machine that actually runs Hermes.** That machine needs the
+   project checkout, Node.js, Python, access to `server/.env`, and a working
+   `hermes` CLI. The Windows machine checked on 2026-07-29 had a `.hermes`
+   directory but no `hermes` command on `PATH`, so no Cron job was created.
+3. **Install the gate and configure the project root.** Copy
+   `media-inbox-gate.py` into `~/.hermes/scripts/`, set
+   `MEDIA_PLATFORM_PROJECT_ROOT`, restart the Hermes gateway, and run the gate
+   once by hand. Database credentials stay in `server/.env` and never go in the
+   Cron prompt.
+4. **Create the scheduled review with delivery enabled.** Use `--workdir` so
+   project rules load, `--script media-inbox-gate.py` so empty polls spend no
+   LLM tokens, and `--deliver all` or one explicit configured channel so
+   proposals and failures cannot remain only in local logs.
+5. **Run one controlled happy-path acceptance test.** Submit a new test article
+   through `/api/process`; verify the saved `title`, returned outbox ID, pending
+   inbox visibility, one Hermes claim, the stored-only or proposed route result,
+   released lease, and delivered Hermes report.
+6. **Run one controlled failure drill.** Use a disposable test capture or test
+   environment to force analysis failure; verify terminal `failed`, structured
+   `last_error`, non-zero command exit, and Hermes delivery. Do not damage a real
+   captured article merely to test failure handling.
+7. **Confirm the human decision boundary.** `collect` ends at `sent` without an
+   action. `research` ends at a pending proposal. `poc_proposal` may be approved
+   from the existing POC Workbench, whose execute endpoint requires the literal
+   `EXECUTE_POC` confirmation. Content rewriting remains optional and must not
+   run for an original-author post unless explicitly requested. Capture and
+   classification never create `agent_jobs` automatically.
+8. **Operate and audit.** Check pending and failed inboxes periodically, inspect
+   `hermes cron runs "Media inbox review" --limit 20`, and keep failed rows until
+   a human decides to retry or close them. Do not add a resident dispatcher.
+
+MVP acceptance is complete only after steps 1–7 pass. A database-backed admin
+dashboard for pending／processing／failed rows is a later usability improvement,
+not a prerequisite for Hermes pull-based operation when delivery is configured.

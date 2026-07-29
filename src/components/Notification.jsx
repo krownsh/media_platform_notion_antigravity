@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { removeNotification } from '../features/uiSlice';
 
@@ -28,7 +28,7 @@ const NotificationItem = ({ notification }) => {
     };
 
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0, y: 50, x: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
@@ -49,7 +49,7 @@ const NotificationItem = ({ notification }) => {
             >
                 <X size={18} />
             </button>
-        </motion.div>
+        </Motion.div>
     );
 };
 

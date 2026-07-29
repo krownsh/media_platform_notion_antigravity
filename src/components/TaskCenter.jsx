@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, CheckCircle2, AlertCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
 import { toggleTaskCenter } from '../features/uiSlice';
 import { removeTask, addPostByUrl, updateTaskStatus } from '../features/postsSlice';
@@ -44,7 +44,7 @@ const TaskCenter = () => {
             {taskCenterOpen && (
                 <>
                     {/* Backdrop */}
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -53,7 +53,7 @@ const TaskCenter = () => {
                     />
 
                     {/* Drawer */}
-                    <motion.div
+                    <Motion.div
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
@@ -87,7 +87,7 @@ const TaskCenter = () => {
                                 </div>
                             ) : (
                                 [...tasks].reverse().map((task) => (
-                                    <motion.div
+                                    <Motion.div
                                         key={task.id}
                                         layout
                                         initial={{ opacity: 0, y: 10 }}
@@ -160,7 +160,7 @@ const TaskCenter = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
+                                    </Motion.div>
                                 ))
                             )}
                         </div>
@@ -171,7 +171,7 @@ const TaskCenter = () => {
                                 Concurrency Strategy Active (Max 3)
                             </div>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 </>
             )}
         </AnimatePresence>

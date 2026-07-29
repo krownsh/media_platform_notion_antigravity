@@ -9,8 +9,6 @@ import {
   addAnnotation,
   addAnnotationSuccess,
   addAnnotationFailure,
-  deletePostFailure,
-  addTask,
   updateTaskStatus,
   removeTask,
   createCollection,
@@ -24,8 +22,7 @@ import {
   movePostToCollectionFailure,
   updateCollectionName,
   updateCollectionNameSuccess,
-  deletePost,
-  deletePostSuccess
+  deletePost
 } from '../features/postsSlice';
 import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';

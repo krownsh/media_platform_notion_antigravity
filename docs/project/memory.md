@@ -99,3 +99,17 @@
 2. 能做的唯讀驗證與本機測試直接完成；schema、push、部署、外部訊息等需要授權的動作集中列出，不可逐項反問。
 3. 使用者回報 migration 已套用時，立即唯讀驗證 schema／RPC，並明確區分「SQL 已部署」與「整條工作流已上線」。
 4. 查找 deployment 必須先 `rg --files database/deployments`，不得先猜檔名。
+
+## 2026-07-29：Hermes 不在目前開發電腦運行
+
+1. 目前這台 Windows 電腦只負責專案程式、資料庫契約與本機驗證，不安裝、不啟動、不建立 Hermes Gateway／Cron。
+2. Hermes 的安裝、pre-check gate、Cron、通知與跨電腦 E2E 集中追蹤於 `todo/2026-07-29_Hermes遠端主機接線與E2E驗收.md`。
+3. 本機可以維護 Hermes 所需的跨平台腳本與測試，但不得因腳本存在就宣稱 Hermes 已上線。
+4. 整體完成條件必須包含 Hermes 實際主機的 Cron execution、通知投遞、happy-path 與 failure drill 證據。
+
+## 2026-07-29：完整 Lint 後仍要掃描 JSX runtime 名稱
+
+1. 全專案 Lint 原有 49 errors／4 warnings；清理時發現 `RemixPanel.jsx` 在無 binding 的 `catch` 內引用 `e`，會在錯誤分支再次拋出 `ReferenceError`。
+2. Lint 歸零後，文字掃描仍發現 `InsightPage.jsx` 使用未匯入的 `<motion.div>`。目前 ESLint 對小寫 JSX member expression 無法可靠抓出 `no-undef`。
+3. Framer Motion 一律匯入成大寫 `Motion` 並使用 `<Motion.div>`，讓 unused／undefined 檢查有效。
+4. 完整驗收要同時包含 ESLint、production build、測試與針對已知 JSX namespace 的文字掃描，不能只看單一工具綠燈。

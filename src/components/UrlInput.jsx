@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link2, ArrowRight, Loader2 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { addPostByUrl, addTask } from '../features/postsSlice';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { addNotification } from '../features/uiSlice';
 
 const UrlInput = () => {
@@ -33,7 +33,7 @@ const UrlInput = () => {
     };
 
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
@@ -75,7 +75,7 @@ const UrlInput = () => {
                 <span className="flex items-center gap-1.5 sm:gap-2 transition-colors hover:text-sky-500"><span className="w-1.5 h-1.5 rounded-full bg-sky-500/50"></span>Twitter / X</span>
                 <span className="flex items-center gap-1.5 sm:gap-2 transition-colors hover:text-[rgba(0,0,0,0.95)]"><span className="w-1.5 h-1.5 rounded-full bg-foreground/50"></span>Threads</span>
             </div>
-        </motion.div>
+        </Motion.div>
     );
 };
 

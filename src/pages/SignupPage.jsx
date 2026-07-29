@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 const SignupPage = () => {
@@ -12,7 +12,7 @@ const SignupPage = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(false);
+    const success = false;
     const navigate = useNavigate();
 
     const handleSignup = async (e) => {
@@ -72,7 +72,7 @@ const SignupPage = () => {
             <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0075de]/20 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-black/5 rounded-full blur-[120px] pointer-events-none" />
 
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
@@ -181,7 +181,7 @@ const SignupPage = () => {
                         </div>
                     )}
                 </div>
-            </motion.div>
+            </Motion.div>
         </div>
     );
 };

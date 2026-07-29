@@ -11,7 +11,7 @@ import CollectionFolder from './CollectionFolder';
 import CollectionModal from './CollectionModal';
 import { Layers, Plus, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 
 const CreateFolderInput = ({ onCreate, onCancel }) => {
     const [name, setName] = useState('');
@@ -429,7 +429,7 @@ const CollectionBoard = ({ onRemix }) => {
                 {createPortal(
                     <AnimatePresence>
                         {dropAnimation && (
-                            <motion.div
+                            <Motion.div
                                 initial={{
                                     position: 'fixed',
                                     left: dropAnimation.startRect.left,
@@ -454,7 +454,7 @@ const CollectionBoard = ({ onRemix }) => {
                                     onClick={() => { }}
                                     isOverlay
                                 />
-                            </motion.div>
+                            </Motion.div>
                         )}
                     </AnimatePresence>,
                     document.body

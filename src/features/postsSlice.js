@@ -50,7 +50,7 @@ const postsSlice = createSlice({
             state.error = action.payload;
         },
         // Action to trigger Saga
-        addPostByUrl(state, action) {
+        addPostByUrl(state) {
             // Payload: { url: string, taskId: string }
             state.analyzing = true;
             state.error = null;
@@ -130,7 +130,7 @@ const postsSlice = createSlice({
             state.error = action.payload;
         },
         // Collection Actions
-        createCollection(state) {
+        createCollection() {
             // Don't set loading to true to avoid full page skeleton flicker
         },
         createCollectionSuccess(state, action) {
@@ -154,7 +154,7 @@ const postsSlice = createSlice({
             state.loading = false;
             state.error = action.payload;
         },
-        movePostToCollection(state) {
+        movePostToCollection() {
             // Trigger Saga
         },
         movePostToCollectionSuccess(state, action) {
@@ -168,7 +168,7 @@ const postsSlice = createSlice({
         movePostToCollectionFailure(state, action) {
             state.error = action.payload;
         },
-        updateCollectionName(state) {
+        updateCollectionName() {
             // Trigger Saga
         },
         updateCollectionNameSuccess(state, action) {

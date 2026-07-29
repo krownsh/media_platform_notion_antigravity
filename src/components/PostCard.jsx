@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
@@ -20,13 +20,11 @@ const PostCard = ({
     onClick,
     onDelete,
     isMergeTarget = false,
-    mergeProgress = 0,
-    mergeReady = false,
     showSummary = false,
     isCompact = false,
 }) => {
-    const { platform, title, screenshot, analysis, category } = post;
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
+    const { platform, title, screenshot, analysis } = post;
+    const [currentImageIndex] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
 
@@ -67,7 +65,7 @@ const PostCard = ({
     };
 
     return (
-        <motion.div
+        <Motion.div
             layout
             initial={{ opacity: 0, y: 20 }}
             animate={{
@@ -191,7 +189,7 @@ const PostCard = ({
             {/* --- Hidden Menu Overlay --- */}
             <AnimatePresence>
                 {showMenu && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         className="absolute inset-0 z-50 bg-white/95 flex flex-col p-3 sm:p-4"
                         onClick={(e) => e.stopPropagation()}
@@ -247,10 +245,10 @@ const PostCard = ({
                                 </div>
                             </div>
                         )}
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </Motion.div>
     );
 };
 

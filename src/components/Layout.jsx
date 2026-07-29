@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
 import SidebarSearch from './SidebarSearch';
@@ -12,7 +12,7 @@ import { useDispatch } from 'react-redux';
 import { Activity } from 'lucide-react';
 import { createCollection } from '../features/postsSlice';
 
-const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
+const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <div
         className={`flex items-center gap-2 px-3 py-1.5 rounded-sm cursor-pointer transition-colors group ${active
             ? 'bg-black/5 text-[rgba(0,0,0,0.95)] font-semibold'
@@ -21,7 +21,7 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded,
         onClick={onClick}
         title={collapsed ? label : ''}
     >
-        <Icon size={16} className={`transition-colors ${active ? 'text-[rgba(0,0,0,0.95)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
+        <_Icon size={16} className={`transition-colors ${active ? 'text-[rgba(0,0,0,0.95)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
         {!collapsed && (
             <span className="flex-1 whitespace-nowrap overflow-hidden text-sm">{label}</span>
         )}
@@ -34,11 +34,10 @@ const SidebarItem = ({ icon: Icon, label, active, onClick, hasSubmenu, expanded,
 );
 
 const Layout = ({ children }) => {
-    const { items, collections, tasks } = useSelector((state) => state.posts);
+    const { collections, tasks } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
     const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [expandedCollections, setExpandedCollections] = useState(new Set());
     const navigate = useNavigate();
     const location = useLocation();
     const [user, setUser] = useState(null);
@@ -63,11 +62,9 @@ const Layout = ({ children }) => {
 
     // Save scroll position before location changes
     React.useLayoutEffect(() => {
-        const handleScroll = () => {
-            if (mainRef.current) {
-                scrollPositions.current.set(location.pathname, mainRef.current.scrollTop);
-            }
-        };
+        const mainElement = mainRef.current;
+        const positions = scrollPositions.current;
+        const pathname = location.pathname;
 
         // We can't easily hook into "before route change" in pure React Router v6 without unstable_useBlocker
         // So we save on unmount/change via cleanup, but we need the *previous* location.
@@ -75,8 +72,8 @@ const Layout = ({ children }) => {
         // or just save the current pos for the current path whenever the path changes (cleanup function).
 
         return () => {
-            if (mainRef.current) {
-                scrollPositions.current.set(location.pathname, mainRef.current.scrollTop);
+            if (mainElement) {
+                positions.set(pathname, mainElement.scrollTop);
             }
         };
     }, [location.pathname]);
@@ -127,7 +124,7 @@ const Layout = ({ children }) => {
             {/* Mobile Menu Overlay */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
@@ -234,14 +231,14 @@ const Layout = ({ children }) => {
                                 )}
                             </div>
                         </div>
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
 
             {/* Backdrop for Mobile Menu */}
             <AnimatePresence>
                 {isMobileMenuOpen && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -307,7 +304,7 @@ const Layout = ({ children }) => {
                     {/* Sub-collections */}
                     <AnimatePresence>
                         {isCollectionsExpanded && !isSidebarCollapsed && (
-                            <motion.div
+                            <Motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
@@ -351,7 +348,7 @@ const Layout = ({ children }) => {
                                         </button>
                                     </div>
                                 </div>
-                            </motion.div>
+                            </Motion.div>
                         )}
                     </AnimatePresence>
                 </nav>
@@ -411,14 +408,14 @@ const Layout = ({ children }) => {
                     {/* Badge */}
                     <AnimatePresence>
                         {tasks.length > 0 && (
-                            <motion.div
+                            <Motion.div
                                 initial={{ scale: 0, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-destructive text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center px-1"
                             >
                                 {tasks.length}
-                            </motion.div>
+                            </Motion.div>
                         )}
                     </AnimatePresence>
 

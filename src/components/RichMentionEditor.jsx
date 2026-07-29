@@ -59,8 +59,6 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
         if (!selection.rangeCount) return;
 
         const range = selection.getRangeAt(0);
-        const text = editorRef.current.innerText;
-
         // Check for @ trigger
         // We need to find the text node and offset
         const node = range.startContainer;

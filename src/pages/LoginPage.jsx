@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
 
 const LoginPage = () => {
@@ -17,7 +17,7 @@ const LoginPage = () => {
         setError(null);
 
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
@@ -39,7 +39,7 @@ const LoginPage = () => {
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-black/5 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[rgba(0,117,222,0.1)] rounded-full blur-[120px] pointer-events-none" />
 
-            <motion.div
+            <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
@@ -112,7 +112,7 @@ const LoginPage = () => {
                         </Link>
                     </div>
                 </div>
-            </motion.div>
+            </Motion.div>
         </div>
     );
 };

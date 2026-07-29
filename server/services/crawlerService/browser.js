@@ -75,7 +75,7 @@ class CrawlerService {
             // Notion/Dynamic Content Wait: Wait for a common content selector or wait a bit
             try {
                 await page.waitForSelector('.notion-page-content, article, main, .content', { timeout: 10000 });
-            } catch (e) {
+            } catch {
                 console.log('[CrawlerService] Timeout waiting for specific selectors, proceeding with body.');
             }
 
@@ -96,7 +96,6 @@ class CrawlerService {
                         .trim();
                 };
 
-                const url = window.location.href;
                 const hostname = window.location.hostname;
 
                 // 1. GitHub Specific Extraction

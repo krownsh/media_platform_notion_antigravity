@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Wand2, Copy, Share, RefreshCw, Image as ImageIcon, Sparkles, Brain, Eye, Zap, ChevronLeft, ChevronRight, ExternalLink, Settings2, Download, Share2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -74,8 +74,8 @@ const RemixPanel = ({ post, onClose }) => {
                     delete dataCopy.images;
                 }
                 initialData = dataCopy;
-            } catch {
-                console.warn("Failed to strip images from JSON", e);
+            } catch (error) {
+                console.warn("Failed to strip images from JSON", error);
             }
         }
 
@@ -109,7 +109,7 @@ const RemixPanel = ({ post, onClose }) => {
             let sourceJson;
             try {
                 sourceJson = JSON.parse(editableJson);
-            } catch (e) {
+            } catch {
                 alert('JSON 格式無效。請檢查您的編輯。');
                 setLoading(false);
                 return;
@@ -207,13 +207,13 @@ const RemixPanel = ({ post, onClose }) => {
     `.trim();
 
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop-blur-md p-4"
         >
-            <motion.div
+            <Motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
@@ -280,7 +280,7 @@ const RemixPanel = ({ post, onClose }) => {
                                     <div className="flex gap-3 relative overflow-hidden">
                                         <AnimatePresence mode="popLayout">
                                             {visibleImages.map((img, idx) => (
-                                                <motion.div
+                                                <Motion.div
                                                     key={`${img}-${imgStartIndex + idx}`}
                                                     initial={{ opacity: 0, x: 20 }}
                                                     animate={{ opacity: 1, x: 0 }}
@@ -298,7 +298,7 @@ const RemixPanel = ({ post, onClose }) => {
                                                     >
                                                         <X size={12} />
                                                     </button>
-                                                </motion.div>
+                                                </Motion.div>
                                             ))}
                                         </AnimatePresence>
                                     </div>
@@ -572,14 +572,14 @@ const RemixPanel = ({ post, onClose }) => {
                 {/* Image Preview Modal */}
                 <AnimatePresence>
                     {previewImage && (
-                        <motion.div
+                        <Motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8"
                             onClick={() => setPreviewImage(null)}
                         >
-                            <motion.div
+                            <Motion.div
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.9, opacity: 0 }}
@@ -593,12 +593,12 @@ const RemixPanel = ({ post, onClose }) => {
                                 >
                                     <X size={20} />
                                 </button>
-                            </motion.div>
-                        </motion.div>
+                            </Motion.div>
+                        </Motion.div>
                     )}
                 </AnimatePresence>
-            </motion.div>
-        </motion.div>
+            </Motion.div>
+        </Motion.div>
     );
 };
 

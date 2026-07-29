@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 /**
  * StatCard - 可複用的統計卡片元件
@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
  */
 const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' }) => {
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className="relative bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-4 sm:p-5 flex flex-col gap-2 overflow-hidden"
@@ -31,7 +31,7 @@ const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' 
             {subtext && (
                 <p className="text-xs text-[#615d59] leading-relaxed">{subtext}</p>
             )}
-        </motion.div>
+        </Motion.div>
     );
 };
 

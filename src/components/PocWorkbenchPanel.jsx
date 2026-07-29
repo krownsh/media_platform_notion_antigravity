@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlaskConical, Loader2, Play, Sparkles } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
@@ -8,15 +8,15 @@ const PocWorkbenchPanel = ({ postId }) => {
   const [status, setStatus] = useState('loading');
   const [message, setMessage] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/api/poc-workbench/${postId}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Unable to load POC workbench');
     setState(data);
     setStatus('ready');
-  };
+  }, [postId]);
 
-  useEffect(() => { void load().catch(error => { setMessage(error.message); setStatus('error'); }); }, [postId]);
+  useEffect(() => { void load().catch(error => { setMessage(error.message); setStatus('error'); }); }, [load]);
 
   const run = async (type) => {
     if (type === 'execute' && !window.confirm('這會呼叫模型、Tavily 與 Docker。確定執行 POC？')) return;

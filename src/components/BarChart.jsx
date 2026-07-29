@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 
 /**
  * BarChart - 純 CSS/SVG 水平長條圖（無需第三方圖表套件）
@@ -38,7 +38,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
                 const barColor = CATEGORY_COLORS[item.label] || colorClass;
 
                 return (
-                    <motion.div
+                    <Motion.div
                         key={item.label}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -52,7 +52,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
 
                         {/* Bar Track */}
                         <div className="flex-1 h-5 bg-black/5 rounded-full overflow-hidden">
-                            <motion.div
+                            <Motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
                                 transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
@@ -66,7 +66,7 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
                                 {item.value}
                             </span>
                         )}
-                    </motion.div>
+                    </Motion.div>
                 );
             })}
         </div>

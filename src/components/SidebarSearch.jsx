@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, X, Sparkles } from 'lucide-react';
 import { useSelector } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
 const SidebarSearch = ({ collapsed, onExpand }) => {
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]);
     const [isOpen, setIsOpen] = useState(false);
     const { items } = useSelector(state => state.posts);
     const searchRef = useRef(null);
@@ -23,12 +22,8 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        if (!query.trim()) {
-            setResults([]);
-            return;
-        }
-
+    const results = useMemo(() => {
+        if (!query.trim()) return [];
         const lowerQuery = query.toLowerCase();
         const filtered = items.filter(post => {
             const contentMatch = post.content?.toLowerCase().includes(lowerQuery);
@@ -40,7 +35,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
             return contentMatch || authorMatch || summaryMatch || commentsMatch;
         });
 
-        setResults(filtered.slice(0, 10)); // Limit to 10 results
+        return filtered.slice(0, 10); // Limit to 10 results
     }, [query, items]);
 
     const handleSelect = (post) => {
@@ -82,7 +77,6 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                     <button
                         onClick={() => {
                             setQuery('');
-                            setResults([]);
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-[#615d59] hover:text-destructive transition-colors"
                     >
@@ -93,7 +87,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
 
             <AnimatePresence>
                 {isOpen && query && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -132,7 +126,7 @@ const SidebarSearch = ({ collapsed, onExpand }) => {
                                 未找到結果
                             </div>
                         )}
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
         </div>

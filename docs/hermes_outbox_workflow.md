@@ -1,5 +1,11 @@
 # Hermes pull-based outbox workflow
 
+> Execution note (2026-07-29): Hermes does not run on the current Windows
+> development machine. Installation, Gateway, Cron, delivery, and cross-machine
+> E2E work are deferred to
+> [`todo/2026-07-29_Hermes遠端主機接線與E2E驗收.md`](../todo/2026-07-29_Hermes遠端主機接線與E2E驗收.md).
+> Do not configure Hermes on this machine.
+
 ## Decision
 
 `POST /api/process` stops after crawler ingestion, database finalization, and a
@@ -161,8 +167,8 @@ Finish the following chain in order:
 
 1. **Load the application code in the actual backend runtime.** The current
    implementation is committed locally on `agent-dev`; it has not been pushed
-   or deployed. Restart a local backend, or explicitly approve the normal
-   branch integration and deployment process for a remote backend.
+   or deployed. Local runtime and contract verification are completed here;
+   remote push／deployment still requires explicit authorization.
 2. **Choose the machine that actually runs Hermes.** That machine needs the
    project checkout, Node.js, Python, access to `server/.env`, and a working
    `hermes` CLI. The Windows machine checked on 2026-07-29 had a `.hermes`
@@ -194,6 +200,8 @@ Finish the following chain in order:
    `hermes cron runs "Media inbox review" --limit 20`, and keep failed rows until
    a human decides to retry or close them. Do not add a resident dispatcher.
 
-MVP acceptance is complete only after steps 1–7 pass. A database-backed admin
+Hermes-specific steps 2–8 are deliberately deferred to the tracked `/todo`
+item because Hermes runs on another computer. MVP acceptance is complete only
+after steps 1–7 pass across both computers. A database-backed admin
 dashboard for pending／processing／failed rows is a later usability improvement,
 not a prerequisite for Hermes pull-based operation when delivery is configured.

@@ -1,4 +1,3 @@
-import { normalizeCategorySlug } from './categoryRules.js';
 import { aiService } from './aiService.js';
 import { supabase } from '../supabaseClient.js';
 
@@ -56,7 +55,7 @@ class CategoryProcessor {
                     // Try to construct regex if it looks like one, or use simple includes
                     const regex = new RegExp(patternStr, 'i');
                     return regex.test(content);
-                } catch (e) {
+                } catch {
                     return content.toLowerCase().includes(patternStr.toLowerCase());
                 }
             });

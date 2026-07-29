@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import React, { useCallback, useEffect, useState } from 'react';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import {
     BarChart3, TrendingUp, Globe, Users, Tag, BookOpen,
     RefreshCw, Sparkles, AlertCircle, Settings, Plus, Save, Trash2, Edit3, X
@@ -66,7 +66,7 @@ const InsightPage = () => {
     }, []);
 
     // 載入所有統計資料
-    const loadStats = async () => {
+    const loadStats = useCallback(async () => {
         if (!userId) return;
         setLoading(true);
         setError(null);
@@ -96,11 +96,11 @@ const InsightPage = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
 
     useEffect(() => {
         if (userId) loadStats();
-    }, [userId]);
+    }, [userId, loadStats]);
 
     // 更新分類設定
     const handleSaveConfig = async (id) => {
@@ -159,7 +159,7 @@ const InsightPage = () => {
     }
 
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="w-full max-w-5xl mx-auto px-4 pb-20"
@@ -511,7 +511,7 @@ const InsightPage = () => {
                     </p>
                 </div>
             </div>
-        </motion.div >
+        </Motion.div>
     );
 };
 

@@ -24,7 +24,7 @@
 只要提案、不生成也不執行：
 
 ```powershell
-npm run agent:analyze -- <outbox-id> --propose-only
+npm run agent:analyze -- <outbox-id>
 ```
 
 ## 安全邊界

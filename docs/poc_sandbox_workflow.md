@@ -18,6 +18,7 @@
 6. 將程式與 manifest 寫到 `sandbox/runs/<run-id>/`。
 7. 在斷網、唯讀、受限資源的 Docker container 執行。
 8. 將程式碼、雜湊、stdout、stderr、exit code、耗時與成功狀態追加至 `collection_post_analysis.insights` JSONB。
+9. 貼文詳情頁會顯示最新成功 POC 的驗證目標、沙盒耗時、stdout 與安全 fallback 說明；衍生內容草稿不會取代原始貼文或自動發布。
 
 只要提案、不生成也不執行：
 

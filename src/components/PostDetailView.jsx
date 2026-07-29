@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library } from 'lucide-react';
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
+import PocResultPanel from './PocResultPanel';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -175,7 +176,7 @@ const PostDetailView = ({ onRemix }) => {
     };
 
     return (
-        <motion.div
+        <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex flex-col min-h-[100dvh] md:h-[calc(100vh-40px)] md:max-h-[calc(100vh-40px)] md:overflow-hidden overflow-x-hidden"
@@ -245,7 +246,7 @@ const PostDetailView = ({ onRemix }) => {
                             <div className="relative bg-neutral-50 border-b border-neutral-50 group">
                                 <div className="max-w-3xl mx-auto py-2">
                                     <div className="relative aspect-auto flex items-center justify-center overflow-hidden">
-                                        <motion.div
+                                        <Motion.div
                                             className="flex w-full"
                                             animate={{ x: `-${currentImageIndex * 100}%` }}
                                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -260,7 +261,7 @@ const PostDetailView = ({ onRemix }) => {
                                                     />
                                                 </div>
                                             ))}
-                                        </motion.div>
+                                        </Motion.div>
 
                                         {images.length > 1 && (
                                             <>
@@ -352,15 +353,19 @@ const PostDetailView = ({ onRemix }) => {
                     </div>
 
                     <div className="flex-1 md:overflow-y-auto p-5 custom-scrollbar">
+                        <PocResultPanel insights={analysis?.insights} />
+
                         {analysis?.summary ? (
-                            <div className="space-y-6">
+                            <div className="mt-6 space-y-6">
                                 {(() => {
                                     let data = analysis.summary;
                                     if (typeof data === 'string' && (data.trim().startsWith('{') || data.includes('```json'))) {
                                         try {
                                             const cleanJson = data.replace(/```json\s*|\s*```/g, '').trim();
                                             data = JSON.parse(cleanJson);
-                                        } catch (e) { }
+                                        } catch {
+                                            data = analysis.summary;
+                                        }
                                     }
 
                                     if (!data) return <p className='text-sm text-neutral-400 italic'>無效的摘要結構</p>;
@@ -420,14 +425,14 @@ const PostDetailView = ({ onRemix }) => {
             <AnimatePresence>
                 {isNoteOpen && (
                     <>
-                        <motion.div
+                        <Motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setIsNoteOpen(false)}
                             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[100]"
                         />
-                        <motion.div
+                        <Motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
@@ -502,7 +507,7 @@ const PostDetailView = ({ onRemix }) => {
                                     )}
                                 </div>
                             </div>
-                        </motion.div>
+                        </Motion.div>
                     </>
                 )}
             </AnimatePresence>
@@ -510,7 +515,7 @@ const PostDetailView = ({ onRemix }) => {
             {/* Zoomed Image Overlay */}
             <AnimatePresence>
                 {zoomedImage && (
-                    <motion.div
+                    <Motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -532,10 +537,10 @@ const PostDetailView = ({ onRemix }) => {
                             className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
                             onClick={(e) => e.stopPropagation()}
                         />
-                    </motion.div>
+                    </Motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </Motion.div>
     );
 };
 

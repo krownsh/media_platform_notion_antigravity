@@ -32,9 +32,11 @@ agentJobRouter.post('/lease', async (req, res) => {
  * POST /api/agent/jobs/:id/heartbeat
  */
 agentJobRouter.post('/:id/heartbeat', async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
   const runnerIdentity = req.body?.runnerIdentity || 'local-runner-default';
   try {
-    const updatedJob = await heartbeatJob(req.params.id, runnerIdentity, 15, supabase);
+    const updatedJob = await heartbeatJob(req.params.id, runnerIdentity, 15, supabase, userId);
     return res.status(200).json({ status: 'active', job: updatedJob });
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -45,11 +47,13 @@ agentJobRouter.post('/:id/heartbeat', async (req, res) => {
  * POST /api/agent/jobs/:id/complete
  */
 agentJobRouter.post('/:id/complete', async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
   const runnerIdentity = req.body?.runnerIdentity || 'local-runner-default';
   const artifacts = req.body?.artifacts || [];
 
   try {
-    const completed = await completeJob(req.params.id, runnerIdentity, artifacts, supabase);
+    const completed = await completeJob(req.params.id, runnerIdentity, artifacts, supabase, userId);
     return res.status(200).json({ status: 'completed', job: completed });
   } catch (err) {
     return res.status(400).json({ error: err.message });
@@ -60,11 +64,13 @@ agentJobRouter.post('/:id/complete', async (req, res) => {
  * POST /api/agent/jobs/:id/fail
  */
 agentJobRouter.post('/:id/fail', async (req, res) => {
+  const userId = req.auth?.userId;
+  if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
   const runnerIdentity = req.body?.runnerIdentity || 'local-runner-default';
   const errorTrace = req.body?.errorTrace || 'Unspecified failure';
 
   try {
-    const failed = await failJob(req.params.id, runnerIdentity, errorTrace, supabase);
+    const failed = await failJob(req.params.id, runnerIdentity, errorTrace, supabase, { userId });
     return res.status(200).json({ status: 'failed', job: failed });
   } catch (err) {
     return res.status(400).json({ error: err.message });

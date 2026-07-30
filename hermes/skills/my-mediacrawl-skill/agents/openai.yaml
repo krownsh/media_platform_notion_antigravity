@@ -1,0 +1,4 @@
+interface:
+  display_name: "My MediaCrawl Skill"
+  short_description: "Process captured links with approval-gated POCs"
+  default_prompt: "Inspect my new captures and help me decide the next action."

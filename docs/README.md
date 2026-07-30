@@ -7,6 +7,7 @@
 - [n8n capture setup](n8n_capture_setup.md)
 - [Supabase integration](supabase_integration.md)
 - [Stage B source-finalization deployment](stage_b_source_finalization_deployment.md)
+- [Topic Agent MVP](topic_agent_mvp.md)
 
 ## Architecture
 

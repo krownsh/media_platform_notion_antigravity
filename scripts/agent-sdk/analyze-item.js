@@ -11,8 +11,56 @@ import { classifyPostRoutes } from '../../server/services/routeAgent.js';
 import { matchSourceToProjectNeeds } from '../../server/services/opportunityMatcher.js';
 import { auditProjectDirectory } from '../../server/services/projectAuditor.js';
 import { enrichContext } from '../../server/services/enrichmentService.js';
+import { generatePocPlan } from '../../server/services/pocGenerator.js';
+import { executePocPlan } from '../../server/services/pocExecutionService.js';
+import { completeJob, createAgentJob, failJob, leaseJobById } from '../../server/services/agentJobService.js';
 
-async function analyzeItem(outboxId) {
+async function executeTopPoc({ event, postData, match, enrichedContext }) {
+    if (!event.user_id) throw new Error('Outbox event has no user_id; cannot create a scoped POC job');
+
+    const plan = await generatePocPlan({ source: postData, applicationCase: match, enrichedContext });
+    const runnerIdentity = 'interactive-poc-runner';
+    const job = await createAgentJob({
+        user_id: event.user_id,
+        job_type: 'poc_execute',
+        source_id: postData.id,
+        priority: Math.min(Math.max(Math.round(match.score || 50), 1), 100),
+        intent_capsule: {
+            source_url: postData.original_url || null,
+            application_case: {
+                title: match.title,
+                hypothesis: match.hypothesis,
+                candidate_module: match.candidate_module,
+                match_reasons: match.matchReasons
+            },
+            poc_objective: plan.objective
+        },
+        allowed_paths: [`sandbox/jobs/${event.id}`],
+        allowed_commands: [plan.command],
+        correlation_id: event.payload?.correlation_id || null
+    }, supabase);
+
+    const leasedJob = await leaseJobById(event.user_id, job.id, runnerIdentity, 15, supabase);
+    if (!leasedJob) throw new Error(`Could not lease newly created POC job ${job.id}`);
+
+    try {
+        const artifact = await executePocPlan(plan, { jobId: job.id });
+        if (artifact.execution.status === 'passed') {
+            await completeJob(job.id, runnerIdentity, [artifact], supabase, event.user_id);
+        } else {
+            await failJob(job.id, runnerIdentity, 'POC execution failed', supabase, {
+                userId: event.user_id,
+                artifacts: [artifact]
+            });
+        }
+        return { jobId: job.id, artifact };
+    } catch (error) {
+        await failJob(job.id, runnerIdentity, error.message, supabase, { userId: event.user_id });
+        throw error;
+    }
+}
+
+async function analyzeItem(outboxId, options = {}) {
     if (!outboxId) {
         console.error('❌ Please provide an Outbox ID. Usage: node analyze-item.js <outbox_id>');
         process.exit(1);
@@ -86,7 +134,26 @@ async function analyzeItem(outboxId) {
                     console.log(`Score: ${match.score}`);
                 });
                 
-                console.log('\n💡 [Agent Prompt]: Review the cases above. Ask the user if they want to execute any of these POCs.');
+                if (!options.executePoc) {
+                    console.log('\nPOC is ready but not executed. Re-run with --execute-poc to generate and run the highest-scoring isolated POC.');
+                    return;
+                }
+
+                console.log('\n[Phase 3-5] 🧪 Generating, executing, and recording the highest-scoring isolated POC...');
+                const { jobId, artifact } = await executeTopPoc({
+                    event,
+                    postData,
+                    match: matches[0],
+                    enrichedContext: postData.enriched_context || ''
+                });
+                console.log(`✅ POC job ${jobId} ${artifact.execution.status}.`);
+                console.log(JSON.stringify({
+                    status: artifact.execution.status,
+                    exit_code: artifact.execution.exit_code,
+                    timed_out: artifact.execution.timed_out,
+                    stdout: artifact.execution.stdout,
+                    stderr: artifact.execution.stderr
+                }, null, 2));
             } else {
                 console.log('✅ No matching project needs found for this POC. You may still propose a generic test to the user.');
             }
@@ -99,5 +166,5 @@ async function analyzeItem(outboxId) {
     }
 }
 
-const outboxIdArgs = process.argv.slice(2)[0];
-analyzeItem(outboxIdArgs);
+const outboxIdArgs = process.argv.slice(2).find((argument) => !argument.startsWith('--'));
+analyzeItem(outboxIdArgs, { executePoc: process.argv.includes('--execute-poc') });

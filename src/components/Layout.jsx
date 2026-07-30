@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -161,6 +161,12 @@ const Layout = ({ children }) => {
                                     onClick={() => { navigate('/insight'); setIsMobileMenuOpen(false); }}
                                 />
                                 <SidebarItem
+                                    icon={Target}
+                                    label="主題工作區"
+                                    active={location.pathname === '/topics'}
+                                    onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
                                     icon={Library}
                                     label="收藏夾"
                                     onClick={() => setIsCollectionsExpanded(!isCollectionsExpanded)}
@@ -292,6 +298,14 @@ const Layout = ({ children }) => {
                         label="趨勢看板"
                         active={location.pathname === '/insight'}
                         onClick={() => navigate('/insight')}
+                        collapsed={isSidebarCollapsed}
+                    />
+
+                    <SidebarItem
+                        icon={Target}
+                        label="主題工作區"
+                        active={location.pathname === '/topics'}
+                        onClick={() => navigate('/topics')}
                         collapsed={isSidebarCollapsed}
                     />
 

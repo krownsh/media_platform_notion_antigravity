@@ -10,6 +10,7 @@ import RemixPanel from './components/RemixPanel';
 import PostDetailView from './components/PostDetailView';
 import ImageWorkflowPage from './pages/ImageWorkflowPage';
 import InsightPage from './pages/InsightPage';
+import TopicsPage from './pages/TopicsPage';
 import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
 import { fetchPosts } from './features/postsSlice';
@@ -89,6 +90,11 @@ function App() {
           <Route path="/insight" element={
             <ProtectedRoute>
               <InsightPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/topics" element={
+            <ProtectedRoute>
+              <TopicsPage />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<LoginPage />} />

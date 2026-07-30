@@ -18,6 +18,7 @@ import { socialMediaService } from './services/socialMediaService.js';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
+import { suggestTopicMatches } from './services/topicAgent.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
 
 const app = express();
@@ -28,6 +29,8 @@ app.use(cors());
 app.use(express.json());
 
 function getBearerToken(req) {
+    const authorization = req.header('authorization') || '';
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
     return match ? match[1] : null;
 }
 
@@ -268,6 +271,108 @@ app.use('/api/generate-image', requireSupabaseJwt);
 app.use('/api/image-workflow', requireSupabaseJwt);
 app.use('/api/publish', requireSupabaseJwt);
 app.use('/api/batch-classify', requireSupabaseJwt);
+app.use('/api/topics', requireSupabaseJwt);
+
+function normalizeTopicTextList(value) {
+    return Array.isArray(value)
+        ? value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 30)
+        : [];
+}
+
+// Topic workspaces are user-created working contexts. Agent proposals and
+// source-match acceptance are intentionally separate future actions.
+app.get('/api/topics', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Database service is not configured' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('collection_topics')
+            .select('*')
+            .eq('user_id', getAuthenticatedUserId(req))
+            .order('updated_at', { ascending: false });
+
+        if (error) throw error;
+        return res.json({ topics: data || [] });
+    } catch (error) {
+        console.error('[Topics] list failed:', error.message);
+        return res.status(500).json({ error: 'Failed to list topics' });
+    }
+});
+
+app.post('/api/topics', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Database service is not configured' });
+    }
+
+    const { title, slug, description = null, purpose = null, desired_outcomes, keywords } = req.body || {};
+    if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
+        return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
+    }
+    if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(slug)) {
+        return res.status(400).json({ error: 'slug must be 2-80 letters, numbers, underscores, or hyphens' });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from('collection_topics')
+            .insert({
+                user_id: getAuthenticatedUserId(req),
+                title: title.trim(),
+                slug: slug.toLowerCase(),
+                description: typeof description === 'string' ? description.trim() || null : null,
+                purpose: typeof purpose === 'string' ? purpose.trim() || null : null,
+                desired_outcomes: normalizeTopicTextList(desired_outcomes),
+                keywords: normalizeTopicTextList(keywords),
+                origin: 'user',
+                status: 'active'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return res.status(201).json({ topic: data });
+    } catch (error) {
+        console.error('[Topics] create failed:', error.message);
+        return res.status(500).json({ error: 'Failed to create topic' });
+    }
+});
+
+app.post('/api/topics/matches/dry-run', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Database service is not configured' });
+    }
+
+    const { sourceId } = req.body || {};
+    if (typeof sourceId !== 'string' || !sourceId) {
+        return res.status(400).json({ error: 'sourceId is required' });
+    }
+
+    const userId = getAuthenticatedUserId(req);
+    try {
+        const [{ data: source, error: sourceError }, { data: topics, error: topicError }] = await Promise.all([
+            supabase
+                .from('collection_posts')
+                .select('id, content, original_url, source_domains')
+                .eq('id', sourceId)
+                .eq('user_id', userId)
+                .single(),
+            supabase
+                .from('collection_topics')
+                .select('id, title, description, keywords, status')
+                .eq('user_id', userId)
+                .eq('status', 'active')
+        ]);
+
+        if (sourceError) throw sourceError;
+        if (topicError) throw topicError;
+        return res.json({ source_id: source.id, matches: suggestTopicMatches(source, topics || []) });
+    } catch (error) {
+        console.error('[Topics] dry-run failed:', error.message);
+        return res.status(500).json({ error: 'Failed to match source to topics' });
+    }
+});
 
 // Process URL Endpoint
 app.post('/api/process', requireApiAuth, async (req, res) => {
@@ -858,7 +963,7 @@ app.post('/api/batch-classify', async (req, res) => {
 });
 
 // Agent Job Control Plane API
-app.use('/api/agent/jobs', requireApiAuth, agentJobRouter);
+app.use('/api/agent/jobs', requireSupabaseJwt, agentJobRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
 app.use('/api', (req, res) => {

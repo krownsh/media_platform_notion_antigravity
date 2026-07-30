@@ -64,7 +64,7 @@ export async function leaseNextJob(userId, runnerIdentity, jobTypes = [], leaseD
 
   if (supabaseClient) {
     // DB RPC or atomic update
-    const { data: candidates, error } = await supabaseClient
+    let candidateQuery = supabaseClient
       .from('agent_jobs')
       .select('*')
       .eq('user_id', userId)
@@ -72,6 +72,9 @@ export async function leaseNextJob(userId, runnerIdentity, jobTypes = [], leaseD
       .order('priority', { ascending: false })
       .order('created_at', { ascending: true })
       .limit(1);
+
+    if (jobTypes.length > 0) candidateQuery = candidateQuery.in('job_type', jobTypes);
+    const { data: candidates, error } = await candidateQuery;
 
     if (error) throw new Error(`Error fetching queued jobs: ${error.message}`);
     if (!candidates || candidates.length === 0) return null;
@@ -113,19 +116,60 @@ export async function leaseNextJob(userId, runnerIdentity, jobTypes = [], leaseD
 }
 
 /**
- * Extends the lease timer for an active job.
+ * Leases one known queued job. Used by an interactive runner after it creates
+ * a POC job, so it cannot accidentally lease another pending job.
  */
-export async function heartbeatJob(jobId, runnerIdentity, leaseDurationMinutes = 15, supabaseClient = null) {
-  const expiresAt = new Date(Date.now() + leaseDurationMinutes * 60 * 1000).toISOString();
+export async function leaseJobById(userId, jobId, runnerIdentity, leaseDurationMinutes = 15, supabaseClient = null) {
+  if (!userId || !jobId || !runnerIdentity) {
+    throw new Error('userId, jobId, and runnerIdentity are required to lease an Agent Job');
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + leaseDurationMinutes * 60 * 1000).toISOString();
 
   if (supabaseClient) {
     const { data, error } = await supabaseClient
       .from('agent_jobs')
-      .update({ lease_expires_at: expiresAt, status: 'running', updated_at: new Date().toISOString() })
+      .update({
+        status: 'leased',
+        lease_owner: runnerIdentity,
+        lease_expires_at: expiresAt,
+        attempts: 1,
+        updated_at: now.toISOString()
+      })
       .eq('id', jobId)
-      .eq('lease_owner', runnerIdentity)
+      .eq('user_id', userId)
+      .eq('status', 'queued')
       .select()
       .single();
+    if (error) throw new Error(`Could not lease Agent Job: ${error.message}`);
+    return data;
+  }
+
+  const job = inMemoryJobs.get(jobId);
+  if (!job || job.user_id !== userId || job.status !== 'queued') return null;
+  job.status = 'leased';
+  job.lease_owner = runnerIdentity;
+  job.lease_expires_at = expiresAt;
+  job.attempts += 1;
+  job.updated_at = now.toISOString();
+  return job;
+}
+
+/**
+ * Extends the lease timer for an active job.
+ */
+export async function heartbeatJob(jobId, runnerIdentity, leaseDurationMinutes = 15, supabaseClient = null, userId = null) {
+  const expiresAt = new Date(Date.now() + leaseDurationMinutes * 60 * 1000).toISOString();
+
+  if (supabaseClient) {
+    let updateQuery = supabaseClient
+      .from('agent_jobs')
+      .update({ lease_expires_at: expiresAt, status: 'running', updated_at: new Date().toISOString() })
+      .eq('id', jobId)
+      .eq('lease_owner', runnerIdentity);
+    if (userId) updateQuery = updateQuery.eq('user_id', userId);
+    const { data, error } = await updateQuery.select().single();
 
     if (error) throw new Error(`Heartbeat failed: ${error.message}`);
     return data;
@@ -145,9 +189,9 @@ export async function heartbeatJob(jobId, runnerIdentity, leaseDurationMinutes =
 /**
  * Completes a leased agent job.
  */
-export async function completeJob(jobId, runnerIdentity, artifacts = [], supabaseClient = null) {
+export async function completeJob(jobId, runnerIdentity, artifacts = [], supabaseClient = null, userId = null) {
   if (supabaseClient) {
-    const { data, error } = await supabaseClient
+    let updateQuery = supabaseClient
       .from('agent_jobs')
       .update({
         status: 'completed',
@@ -157,9 +201,9 @@ export async function completeJob(jobId, runnerIdentity, artifacts = [], supabas
         updated_at: new Date().toISOString()
       })
       .eq('id', jobId)
-      .eq('lease_owner', runnerIdentity)
-      .select()
-      .single();
+      .eq('lease_owner', runnerIdentity);
+    if (userId) updateQuery = updateQuery.eq('user_id', userId);
+    const { data, error } = await updateQuery.select().single();
 
     if (error) throw new Error(`Complete job failed: ${error.message}`);
     return data;
@@ -181,21 +225,24 @@ export async function completeJob(jobId, runnerIdentity, artifacts = [], supabas
 /**
  * Fails a leased agent job.
  */
-export async function failJob(jobId, runnerIdentity, errorTrace, supabaseClient = null) {
+export async function failJob(jobId, runnerIdentity, errorTrace, supabaseClient = null, options = {}) {
   if (supabaseClient) {
-    const { data, error } = await supabaseClient
+    const update = {
+      status: 'failed',
+      last_error: String(errorTrace),
+      lease_owner: null,
+      lease_expires_at: null,
+      updated_at: new Date().toISOString()
+    };
+    if (Array.isArray(options.artifacts)) update.result_artifacts = options.artifacts;
+
+    let updateQuery = supabaseClient
       .from('agent_jobs')
-      .update({
-        status: 'failed',
-        last_error: String(errorTrace),
-        lease_owner: null,
-        lease_expires_at: null,
-        updated_at: new Date().toISOString()
-      })
+      .update(update)
       .eq('id', jobId)
-      .eq('lease_owner', runnerIdentity)
-      .select()
-      .single();
+      .eq('lease_owner', runnerIdentity);
+    if (options.userId) updateQuery = updateQuery.eq('user_id', options.userId);
+    const { data, error } = await updateQuery.select().single();
 
     if (error) throw new Error(`Fail job failed: ${error.message}`);
     return data;
@@ -205,6 +252,7 @@ export async function failJob(jobId, runnerIdentity, errorTrace, supabaseClient 
   if (job && job.lease_owner === runnerIdentity) {
     job.status = 'failed';
     job.last_error = String(errorTrace);
+    if (Array.isArray(options.artifacts)) job.result_artifacts = options.artifacts;
     job.lease_owner = null;
     job.lease_expires_at = null;
     job.updated_at = new Date().toISOString();

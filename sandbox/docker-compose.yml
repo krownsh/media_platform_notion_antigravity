@@ -1,11 +1,35 @@
-version: '3.8'
 services:
-  poc-runner:
+  poc-node:
     image: node:20-alpine
-    working_dir: /app
+    working_dir: /workspace
+    user: node
+    read_only: true
+    network_mode: none
+    mem_limit: 256m
+    pids_limit: 64
+    cpus: 0.5
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m
     volumes:
-      - .:/app
-    environment:
-      - NODE_ENV=development
-    # Runs infinitely until the job is done or stopped
-    command: ["sh", "-c", "echo 'Sandbox Runner Ready' && tail -f /dev/null"]
+      - ./jobs:/workspace:ro
+  poc-python:
+    image: python:3.12-alpine
+    working_dir: /workspace
+    user: "65534:65534"
+    read_only: true
+    network_mode: none
+    mem_limit: 256m
+    pids_limit: 64
+    cpus: 0.5
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=64m
+    volumes:
+      - ./jobs:/workspace:ro

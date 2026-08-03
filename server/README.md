@@ -23,3 +23,41 @@ Useful checks:
 node server/scripts/diagnostics/verify_supabase_connection.js
 node --test test/server/index.security.test.js
 ```
+
+Run the capture API and worker as separate processes after the Stage E database
+deployment has been reviewed and applied:
+
+```bash
+npm start
+npm run worker:capture
+```
+
+`POST /api/captures` persists an accepted request and returns HTTP 202. The
+worker extracts and finalizes the source; Hermes consumes the resulting outbox
+event asynchronously, so AI latency never blocks intake.
+
+Image intake uses `POST /api/captures/images` with the raw image as the request
+body, an `image/*` content type, and an encoded filename in `x-file-name`.
+JPEG, PNG, WebP, and GIF are accepted up to 15 MB. The server validates the
+file signature, stores the object in the private `CAPTURE_IMAGE_BUCKET`, then
+enqueues a durable capture request. Apply Stage F after Stage E before enabling
+this endpoint.
+
+Stored bucket/path values are stable; browser-facing URLs are signed only while
+reading `/api/posts`. Hermes can materialize an outbox item's private media into
+a permission-restricted OS temporary directory with:
+
+```bash
+npm run agent:media -- <outbox-id>
+```
+
+After visually inspecting every returned file, Hermes writes a bounded JSON
+result back through a service-role-only, image-outbox-scoped RPC:
+
+```bash
+npm run agent:image-analysis -- <outbox-id> --agent hermes:cron:media-inbox --file <analysis.json>
+```
+
+The JSON requires `summary` and may include `description`, `ocr_text`, `tags`,
+`topics`, `primary_category`, and `sentiment`. The RPC updates only the image
+post and its existing analysis row, and records an idempotent audit insight.

@@ -21,6 +21,9 @@ import { batchClassify } from './services/batchProcessor.js';
 import { suggestTopicMatches } from './services/topicAgent.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
 import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
+import { captureRouter } from './routes/captureRoutes.js';
+import { finalizeCapture } from './services/captureFinalizationService.js';
+import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -175,78 +178,6 @@ async function getSafeProxyImageUrl(rawUrl) {
     return parsedUrl;
 }
 
-function serializeAnalysisSummary(summary) {
-    if (!summary) return null;
-    return typeof summary === 'object' ? JSON.stringify(summary) : summary;
-}
-
-function normalizeCommentTimestamp(value) {
-    const timestamp = value ? new Date(value) : new Date();
-    return Number.isNaN(timestamp.getTime()) ? new Date().toISOString() : timestamp.toISOString();
-}
-
-function normalizeCapturePlatform(platform) {
-    const supportedPlatforms = new Set([
-        'instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github'
-    ]);
-    return supportedPlatforms.has(platform) ? platform : 'generic';
-}
-
-async function finalizeCapture(userId, correlationId, source, data) {
-    if (!hasSupabaseServiceConfig) {
-        const error = new Error('Supabase service client is not configured');
-        error.code = 'DATABASE_NOT_CONFIGURED';
-        throw error;
-    }
-
-    const analysis = data.analysis || {};
-    const originalUrl = data.original_url || data.originalUrl || data.url;
-    if (!originalUrl) throw new Error('Capture is missing original_url');
-
-    const { data: finalized, error } = await supabase
-        .rpc('finalize_collection_capture', {
-            p_user_id: userId,
-            p_correlation_id: correlationId,
-            p_pipeline_version: 'capture-v2',
-            p_capture_quality: source === 'fallback' ? 'degraded' : 'complete',
-            p_post: {
-                platform: normalizeCapturePlatform(data.platform),
-                original_url: originalUrl,
-                title: data.title || null,
-                author_name: data.author || data.author_name || null,
-                author_id: data.authorHandle || data.author_id || null,
-                author_avatar_url: data.avatar || data.author_avatar_url || null,
-                content: data.content || null,
-                posted_at: data.posted_at || data.postedAt || null,
-                is_archived: data.is_archived ?? false,
-                full_json: data.full_json || data.fullJson || null,
-                source_domains: data.source_domains || []
-            },
-            p_analysis: {
-        primary_category: analysis.primary_category || 'other',
-                summary: serializeAnalysisSummary(analysis.summary),
-        tags: analysis.tags || [],
-        topics: analysis.topics || [],
-                sentiment: analysis.sentiment || null
-            },
-            p_media: (data.images || []).map((url, index) => ({ url, order: index })),
-            p_comments: (data.comments || []).map((comment) => ({
-                author_name: comment.user || comment.author || null,
-                content: comment.text || comment.content || null,
-                commented_at: normalizeCommentTimestamp(comment.postedAt || comment.commented_at),
-                raw_data: comment
-            }))
-        })
-        .single();
-
-    if (error) throw new Error(`Capture finalization failed: ${error.message}`);
-    if (!finalized?.post_id || !finalized?.outbox_event_id) {
-        throw new Error('Capture finalization returned an incomplete result');
-    }
-
-    return finalized;
-}
-
 // Health Check: explicit endpoint for monitors. Do not use '/' as API success signal.
 app.get('/healthz', (req, res) => {
     res.json({
@@ -261,8 +192,9 @@ app.get('/', (req, res) => {
     res.send('Social Media Platform Backend is running');
 });
 
-// The capture route below may use a mapped n8n key. Every interactive route
-// requires a real Supabase user JWT.
+// Capture endpoints may use a mapped n8n key. Every interactive route requires
+// a real Supabase user JWT.
+app.use('/api/captures', requireApiAuth, captureRouter);
 app.use('/api/posts', requireSupabaseJwt);
 app.use('/api/stats', requireSupabaseJwt);
 app.use('/api/analyze-post', requireSupabaseJwt);
@@ -688,6 +620,8 @@ app.get('/api/posts', async (req, res) => {
 
         if (postsError) throw postsError;
 
+        const postsWithResolvedMedia = await resolveStoredMediaUrls(posts || [], supabase);
+
         // Fetch collections
         const { data: collections, error: collectionsError } = await supabase
             .from('collection_collections')
@@ -698,20 +632,20 @@ app.get('/api/posts', async (req, res) => {
         if (collectionsError) throw collectionsError;
 
         // Transform data to match frontend expectations
-        const formattedPosts = posts.map(post => ({
+        const formattedPosts = postsWithResolvedMedia.map(post => ({
             id: post.id,
             dbId: post.id,
             platform: post.platform,
             author: post.author_name,
             authorHandle: post.author_id,
-            avatar: post.author_avatar_url,
+            avatar: null,
             content: post.content,
             postedAt: post.posted_at,
-            originalUrl: post.original_url,
+            originalUrl: post.platform === 'image' ? null : post.original_url,
             createdAt: post.created_at,
             fullJson: post.full_json,
             collectionId: post.collection_id,
-            images: post.collection_post_media?.filter(m => m.type === 'image').map(m => m.url) || [],
+            images: post.collection_post_media?.filter(m => m.type === 'image' && m.url).map(m => m.url) || [],
             comments: post.collection_post_comments?.map(c => ({
                 user: c.author_name,
                 text: c.content,
@@ -965,7 +899,7 @@ app.post('/api/batch-classify', async (req, res) => {
 });
 
 // Agent Job Control Plane API
-app.use('/api/agent/jobs', requireApiAuth, agentJobRouter);
+app.use('/api/agent/jobs', requireSupabaseJwt, agentJobRouter);
 app.use('/api/poc-workbench', requireSupabaseJwt, pocWorkbenchRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.

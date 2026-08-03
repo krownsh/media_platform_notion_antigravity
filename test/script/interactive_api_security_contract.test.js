@@ -13,9 +13,11 @@ const imageWorkflowPageSource = fs.readFileSync(path.join(projectRoot, 'src', 'p
 const serverEnvTemplate = fs.readFileSync(path.join(projectRoot, 'server', '.env.example'), 'utf8');
 const twitterReference = fs.readFileSync(path.join(projectRoot, 'server', 'fixtures', 'crawler', 'twitter', 'example1', 'doc.md'), 'utf8');
 
-test('only /api/process accepts the mapped n8n key; interactive routes require a Supabase JWT', () => {
+test('only capture endpoints accept the mapped n8n key; interactive routes require a Supabase JWT', () => {
     assert.match(serverSource, /authorization\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
     assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth/);
+    assert.match(serverSource, /app\.use\(['"]\/api\/captures['"], requireApiAuth, captureRouter\)/);
+    assert.match(serverSource, /app\.use\(['"]\/api\/agent\/jobs['"], requireSupabaseJwt, agentJobRouter\)/);
 
     for (const route of [
         '/api/posts',

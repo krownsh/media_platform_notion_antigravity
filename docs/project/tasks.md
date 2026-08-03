@@ -199,17 +199,22 @@
 - [ ] 確認 Claude-Obsidian Vault 在 Mac 的完整路徑、目錄分類、檔名規則與 frontmatter 契約。
 - [ ] 建立 read-only Markdown exporter，先輸出 preview，不直接寫正式 Vault。
 - [ ] 建立 Mac Local Sync Agent，使用 sync cursor、版本、checksum、原子寫入與衝突狀態同步 Supabase → Vault。
-- [ ] 保護人工筆記區塊，AI 同步只能更新 managed section，不得覆蓋本機人工編修。
+- [ ] 人工內容以獨立 source／inbox ingest；Hermes 與 Claude Code 共用 Claude-Obsidian transaction／lock，不直接覆寫 wiki。
 - [ ] 確認 n8n 執行位置；遠端 n8n 只排程，本機 Agent 負責 filesystem，若同機才允許 n8n 直接呼叫 exporter。
 - [ ] 圖片預設引用 Supabase Storage；離線附件下載列為第二階段。
+- [x] 直接圖片上傳先寫入 private Supabase Storage，再走 durable capture queue；網頁只使用短效 signed URL。
+- [x] Hermes inbox 暴露穩定 bucket/path，並提供受限 `agent:media` 暫存下載命令供視覺分析。
+- [x] Hermes 圖片摘要／OCR 透過 image-outbox-scoped RPC 寫回 post analysis，供網頁與 Obsidian 後續同步。
+- [x] 停止擷取／保存作者 avatar URL，網頁改用作者名稱第一個 grapheme 的文字頭像。
 
 ## Phase 18: Mac Claude-Obsidian Vault 建置
 - [x] GitHub 選型：採用 `AgriciDaniel/claude-obsidian`，不採用僅提供聊天介面的 Claudian。
 - [x] 唯讀檢查 `bin/setup-vault.sh` 的主要寫入與下載行為。
 - [ ] 在 Mac 確認外接碟實際掛載路徑為 `/Volumes/DevSSD`。
-- [ ] clone 至 `/Volumes/DevSSD/claude-obsidian`，執行 `bash bin/setup-vault.sh`。
+- [ ] clone 至 `/Volumes/DevSSD/claude-obsidian`，只作為工具 checkout。
 - [ ] clone 後先讀取 repo local `AGENTS.md`／`CLAUDE.md`，確認依賴、模式與寫入規則。
-- [ ] 在 Obsidian 將該資料夾開啟為 Vault，確認 graph、CSS、community plugins 與基本 wiki scaffold。
+- [ ] 另選實際 Vault 目錄，對該目錄執行 `bin/setup-vault.sh <VAULT_PATH>`。
+- [ ] 在 Obsidian 開啟實際 Vault，確認 graph、CSS、community plugins 與基本 wiki scaffold。
 - [ ] 選定方法論模式；本專案初步建議 PARA 作為行動管理、Topic Dossier 以 Resources／MOC 表達。
 - [ ] 建立 Supabase → preview → Vault 的 Local Sync Agent，不把 service-role key 寫入 Vault。
 - [ ] n8n 新增 process 後續節點：取得 postId → 觸發 Actionizer／Cluster → 寫入 sync outbox。

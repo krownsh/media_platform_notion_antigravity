@@ -646,7 +646,7 @@ flowchart TD
     A[手機分享連結] --> B[Mac n8n Webhook]
     B --> C[立即回覆手機：已收到]
     B --> D[URL 驗證／正規化／correlation id]
-    D --> E[POST /api/process]
+    D --> E[POST /api/captures：立即回 202]
     E --> F[共享 BrowserManager 或 X Adapter]
     F --> G[正規化貼文＋媒體＋留言]
     G --> H[(Supabase Source Post)]
@@ -665,7 +665,7 @@ flowchart TD
     R --> S[Mac Local Vault Bridge]
     S --> T[Preview 產生 Markdown]
     T --> U{驗證／衝突檢查}
-    U -->|安全| V[/Volumes/DevSSD/claude-obsidian]
+    U -->|安全| V[實際 Obsidian Vault：待選路徑]
     U -->|衝突| W[保留 conflict，通知 n8n]
     V --> X[Obsidian Action Inbox]
     X --> Y{使用者決定}
@@ -674,7 +674,24 @@ flowchart TD
     Y -->|略過| AB[封存但保留來源]
 ```
 
-## 2. Workflow A：手機 → n8n → `/api/process`
+## 2. Workflow A：手機 → n8n → `/api/captures`
+
+URL 與圖片共用 durable capture queue，但 intake 不等待 AI。圖片流程固定為：
+
+```text
+前端 raw image upload
+→ 後端驗證 MIME／magic bytes／15 MB 上限
+→ private Supabase Storage
+→ collection_capture_requests(input_type=image)
+→ capture worker 建立 collection_posts／collection_post_media
+→ source.ingested.v1 outbox（穩定 bucket/path）
+→ Hermes materialize 到 OS temp 後做視覺理解／OCR／研究
+→ 後續 Obsidian sync
+```
+
+網頁只在讀取貼文時取得短效 signed URL；Supabase 與 outbox 不保存這個會過期的
+網址。作者頭像不再擷取或保存外站 avatar URL，卡片與詳細頁一律以作者名稱的
+第一個 grapheme 產生穩定文字頭像。
 
 ### 2.1 n8n Webhook 輸入
 
@@ -1094,15 +1111,31 @@ POST /api/actions/:actionId/reject
 
 ## 10. Workflow D：Supabase → Claude-Obsidian
 
-### 10.1 Vault 選型
+### 10.1 工具 checkout 與 Vault 必須分離
 
-Mac Vault：
+Claude-Obsidian 程式碼 checkout：
 
 ```text
 /Volumes/DevSSD/claude-obsidian
 ```
 
-基底：`AgriciDaniel/claude-obsidian`。
+來源：`AgriciDaniel/claude-obsidian`。這個 Git clone 是工具程式碼，不等於
+Obsidian 實際開啟的 Vault。實際 Vault 必須是另一個資料夾，完整路徑待在
+Mac 上由使用者確認後寫入 Local Bridge allowlist。
+
+共用 Agent 規則大腦另位於：
+
+```text
+~/.my-main-agent/
+├── AGENTS.md
+├── CLAUDE.md
+├── GEMINI.md
+└── skills/
+```
+
+`~/.my-main-agent` 只管理上述規則文件與 Skills，不保存 Vault、wiki、raw
+sources、專案 runtime 或 Supabase 資料。舊的
+`~/.hermes/claude-obsidian/my_agent` 主檔不再使用。
 
 方法論：第一版使用 PARA，原因是使用者的目的包含學習、實作與產品化；不是純學術卡片收藏。
 
@@ -1123,28 +1156,15 @@ wiki/meta/sync-log.md                     同步紀錄
 
 實際資料夾名稱需在 clone 後依該 repo v1.9.2 PARA mode 驗證，不先硬改上游結構。
 
-### 10.3 Markdown 管理區
+### 10.3 Claude-Obsidian transaction 邊界
 
-```markdown
----
-cluster_id: "..."
-source_ids:
-  - "..."
-sync_version: 3
-action_status: pending
-last_synced_at: 2026-07-19T12:00:00+08:00
----
+Local Bridge 只負責把 Supabase source／sync payload 安全送進本機 staging，
+再呼叫 Claude-Obsidian 的 capture／transaction／ingest 流程。Bridge 不自行
+發明第二套 Markdown schema，也不直接繞過 transaction 覆寫 wiki。
 
-<!-- SYNC_MANAGED_START -->
-由資料庫同步的 Dossier、來源、差異與建議行動。
-<!-- SYNC_MANAGED_END -->
-
-<!-- USER_NOTES_START -->
-使用者與 Claude-Obsidian 的人工筆記。
-<!-- USER_NOTES_END -->
-```
-
-Bridge 只能覆寫 managed section。
+人工內容以獨立 source／inbox 項目交給 Claude-Obsidian ingest；不要把人工
+筆記混進 AI 擁有的 wiki managed section。Hermes 與互動式 Claude Code 都
+必須共用相同的 transaction、lock、preview 與 conflict recovery 邊界。
 
 ## 11. Mac Local Vault Bridge
 
@@ -1230,7 +1250,8 @@ media-vault-bridge sync --correlation-id <id>
 - 不信任 request body 的 `userId`，應由驗證身分映射。
 - Supabase service-role key 只在 backend。
 - n8n 使用專用低權限 API credential。
-- Local Bridge 只能寫入 `/Volumes/DevSSD/claude-obsidian` allowlist。
+- Local Bridge 只能寫入尚待確認的實際 Vault allowlist；
+  `/Volumes/DevSSD/claude-obsidian` 只作為工具 checkout，不是同步目標。
 - 貼文中的 shell command 永不自動執行。
 - repo 安裝、套件下載、改碼、付費 API、發文都需要 Action `accepted`。
 - log 不記錄 key、Cookie、完整 token。
@@ -1264,8 +1285,9 @@ media-vault-bridge sync --correlation-id <id>
 
 ### Phase 3：Mac Vault 基底
 
-- 在 Mac clone `AgriciDaniel/claude-obsidian`。
-- 執行安全檢查與 setup。
+- 在 Mac 將 `AgriciDaniel/claude-obsidian` clone 到
+  `/Volumes/DevSSD/claude-obsidian`，作為工具 checkout。
+- 另選實際 Vault 目錄，再針對該 Vault 執行安全檢查與 setup。
 - 選 PARA mode。
 - 建立 preview 目錄，不接正式同步。
 
@@ -1346,8 +1368,10 @@ media-vault-bridge sync --correlation-id <id>
 - 手機透過 tunnel 呼叫 n8n webhook。
 - n8n 呼叫既有 `/api/process`。
 - Supabase 保存原始資料與處理狀態。
-- Vault 使用 `AgriciDaniel/claude-obsidian`。
-- Vault 目標路徑 `/Volumes/DevSSD/claude-obsidian`。
+- Claude-Obsidian 工具 checkout 使用 `AgriciDaniel/claude-obsidian`，路徑為
+  `/Volumes/DevSSD/claude-obsidian`。
+- 實際 Obsidian Vault 必須與工具 checkout 分離，目標路徑尚待確認。
+- `~/.my-main-agent` 只管理 AGENTS／CLAUDE／GEMINI 規則與 Skills。
 - 先去重聚類，再產生行動；不一篇貼文一個任務。
 - Local Bridge 與 Vault 分離。
 
@@ -1355,6 +1379,7 @@ media-vault-bridge sync --correlation-id <id>
 
 - n8n 是 native、npm、Docker 或其他安裝方式。
 - `/Volumes/DevSSD` 實際掛載與權限。
+- 實際 Obsidian Vault 的完整路徑與權限。
 - Claude Code、Obsidian、Git、Node 版本。
 - Vault repo v1.9.2 實際 PARA mode 結構。
 - n8n Execute Command 是否能存取 Vault；若是 Docker，只掛載必要路徑。

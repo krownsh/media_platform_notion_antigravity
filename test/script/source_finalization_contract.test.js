@@ -9,6 +9,7 @@ const projectRoot = path.resolve(path.dirname(currentFile), '..', '..');
 const sql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'stage_b_source_finalization.sql'), 'utf8');
 const aggregatorSql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'schema_aggregator.sql'), 'utf8');
 const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'), 'utf8');
+const finalizationSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'captureFinalizationService.js'), 'utf8');
 const orchestratorSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'orchestrator.js'), 'utf8');
 const completeItemSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'complete-item.js'), 'utf8');
 const routeStateSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'outboxRouteStateService.js'), 'utf8');
@@ -32,9 +33,10 @@ test('outbox finalization stays service-role-only and is called after crawler da
     assert.match(sql, /security invoker/);
     assert.match(sql, /revoke all on table public\.collection_capture_outbox from public, anon, authenticated/);
     assert.match(sql, /grant execute on function public\.finalize_collection_capture[\s\S]+to service_role/);
-    assert.match(serverSource, /rpc\('finalize_collection_capture'/);
-    assert.match(serverSource, /p_correlation_id: correlationId/);
-    assert.match(serverSource, /normalizeCapturePlatform\(data\.platform\)/);
+    assert.match(finalizationSource, /rpc\('finalize_collection_capture'/);
+    assert.match(finalizationSource, /p_correlation_id: correlationId/);
+    assert.match(finalizationSource, /pipelineVersion = 'capture-v2'/);
+    assert.match(finalizationSource, /normalizeCapturePlatform\(data\.platform\)/);
     assert.doesNotMatch(orchestratorSource, /data\.dbId\s*=/);
 });
 
@@ -50,7 +52,7 @@ test('article titles use an additive deployment without mutating the deployed St
     assert.match(articleTitleSql, /title = excluded\.title/);
     assert.match(articleTitleSql, /security invoker/);
     assert.match(articleTitleSql, /grant execute on function public\.finalize_collection_capture[\s\S]+to service_role/);
-    assert.match(serverSource, /title: data\.title \|\| null/);
+    assert.match(finalizationSource, /title: data\.title \|\| null/);
     assert.doesNotMatch(sql, /add column if not exists title text/);
 });
 

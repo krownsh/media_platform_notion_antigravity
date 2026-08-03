@@ -115,6 +115,7 @@ export async function analyzeItem(outboxId, options = {}) {
             *,
             collection_posts (
                 *,
+                collection_post_media (*),
                 collection_post_analysis (*)
             )
         `)

@@ -25,10 +25,22 @@ export const HERMES_OUTBOX_SELECT = `
     collection_id,
     platform,
     original_url,
+    title,
     author_name,
     content,
     full_json,
     source_domains,
+    collection_post_media (
+      id,
+      type,
+      url,
+      storage_bucket,
+      storage_path,
+      content_type,
+      byte_size,
+      original_filename,
+      meta_data
+    ),
     collection_post_analysis (
       summary,
       tags,

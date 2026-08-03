@@ -61,6 +61,8 @@ function printHumanInbox(events, status) {
     console.log(`Platform: ${post?.platform || 'unknown'}`);
     console.log(`URL: ${post?.original_url || 'missing'}`);
     console.log(`Author: ${post?.author_name || 'Unknown'}`);
+    const media = Array.isArray(post?.collection_post_media) ? post.collection_post_media : [];
+    console.log(`Media: ${media.length} item(s)${media.some(item => item.storage_path) ? ' (private Storage source available)' : ''}`);
     console.log(`Summary: ${analysis?.summary || 'No summary available.'}`);
     console.log(`Attempts: ${event.attempt_count || 0}`);
     if (event.locked_by) console.log(`Locked by: ${event.locked_by}`);

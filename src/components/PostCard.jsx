@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText, Image as ImageIcon } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
+import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
 // Custom Threads Icon
@@ -50,6 +51,7 @@ const PostCard = ({
         if (platformName === 'facebook') return { icon: <Facebook size={14} className="text-blue-600" />, label: 'Facebook' };
         if (platformName === 'youtube') return { icon: <Youtube size={14} className="text-red-600" />, label: 'YouTube' };
         if (platformName === 'notion') return { icon: <FileText size={14} className="text-[rgba(0,0,0,0.95)]" />, label: 'Notion' };
+        if (platformName === 'image') return { icon: <ImageIcon size={14} className="text-violet-600" />, label: 'Image' };
         return { icon: <Globe size={14} className="text-[#615d59]" />, label: 'Web Link' };
     };
 
@@ -101,11 +103,7 @@ const PostCard = ({
 
             {/* Author Info */}
             <div className={`flex-shrink-0 px-3 sm:px-4 py-2 border-b notion-whisper-border flex items-center gap-2.5 bg-white ${isCompact ? 'h-[40px]' : 'h-[46px] sm:h-[50px]'}`}>
-                {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className={`${isCompact ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover border`} />
-                ) : (
-                    <div className={`${isCompact ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'} rounded-full bg-black/5 flex items-center justify-center font-bold`}>{post.author?.[0] || 'U'}</div>
-                )}
+                <AuthorInitialAvatar name={post.author} size={isCompact ? 'sm' : 'md'} />
                 <div className="min-w-0">
                     <div className={`${isCompact ? 'text-xs' : 'text-sm'} font-semibold truncate leading-tight`}>{post.author || 'Unknown'}</div>
                     <div className={`${isCompact ? 'text-[10px]' : 'text-[12px]'} text-[#615d59]/80 truncate mt-0.5`}>@{post.authorHandle || 'unknown'}</div>
@@ -137,9 +135,11 @@ const PostCard = ({
                     >
                         <Sparkles size={16} className="text-[#0075de]" />
                     </button>
-                    <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="touch-target-link inline-flex items-center justify-center rounded-full hover:bg-black/5">
-                        <ExternalLink size={16} className="text-[#615d59]" />
-                    </a>
+                    {post.originalUrl && (
+                        <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="touch-target-link inline-flex items-center justify-center rounded-full hover:bg-black/5">
+                            <ExternalLink size={16} className="text-[#615d59]" />
+                        </a>
+                    )}
                 </div>
             </div>
 

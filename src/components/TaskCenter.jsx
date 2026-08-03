@@ -1,7 +1,7 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, CheckCircle2, AlertCircle, Clock, ExternalLink, Trash2 } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertCircle, Clock, ExternalLink, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toggleTaskCenter } from '../features/uiSlice';
 import { removeTask, addPostByUrl, updateTaskStatus } from '../features/postsSlice';
 import { RotateCcw } from 'lucide-react';
@@ -22,6 +22,10 @@ const TaskCenter = () => {
     const getStatusIcon = (status) => {
         switch (status) {
             case 'pending': return <Clock size={16} className="text-[#615d59]" />;
+            case 'submitting':
+            case 'uploading':
+            case 'accepted':
+            case 'extracting':
             case 'crawling': return <Loader2 size={16} className="text-[#0075de] animate-spin" />;
             case 'analyzing': return <Loader2 size={16} className="text-primary animate-spin" />;
             case 'failed': return <AlertCircle size={16} className="text-destructive" />;
@@ -32,6 +36,10 @@ const TaskCenter = () => {
     const getStatusText = (status) => {
         switch (status) {
             case 'pending': return '排隊中...';
+            case 'submitting': return '送入佇列中...';
+            case 'uploading': return '上傳圖片中...';
+            case 'accepted': return '已儲存，等待背景處理...';
+            case 'extracting': return '整理來源資料中...';
             case 'crawling': return '抓取內容中...';
             case 'analyzing': return 'AI 分析中...';
             case 'failed': return '擷取失敗';
@@ -107,7 +115,7 @@ const TaskCenter = () => {
                                                 <div className="flex items-center justify-between gap-2 flex-wrap">
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider ${task.status === 'failed' ? 'text-destructive' : 'text-[#0075de]'
                                                         }`}>
-                                                        {task.platform || 'URL'} 擷取
+                                                        {task.inputType === 'image' ? '圖片' : (task.platform || 'URL')} 擷取
                                                     </span>
                                                     <span className="text-[10px] text-[#615d59]">
                                                         {new Date(task.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -116,16 +124,18 @@ const TaskCenter = () => {
 
                                                 <div className="mt-1 flex items-center gap-1 group">
                                                     <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] break-all sm:truncate flex-1">
-                                                        {task.url}
+                                                        {task.label || task.url}
                                                     </p>
-                                                    <a
-                                                        href={task.url}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-[#615d59] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[#0075de]"
-                                                    >
-                                                        <ExternalLink size={14} />
-                                                    </a>
+                                                    {task.url ? (
+                                                        <a
+                                                            href={task.url}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[#615d59] opacity-0 group-hover:opacity-100 transition-opacity hover:text-[#0075de]"
+                                                        >
+                                                            <ExternalLink size={14} />
+                                                        </a>
+                                                    ) : <ImageIcon size={14} className="text-[#615d59]" />}
                                                 </div>
 
                                                 <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -141,13 +151,15 @@ const TaskCenter = () => {
 
                                                     {task.status === 'failed' && (
                                                         <div className="flex items-center gap-3 flex-wrap">
-                                                            <button
-                                                                onClick={() => handleRetry(task)}
-                                                                className="text-xs text-[#0075de] hover:text-[#0075de]/80 flex items-center gap-1 transition-colors font-semibold"
-                                                            >
-                                                                <RotateCcw size={12} />
-                                                                <span>重試</span>
-                                                            </button>
+                                                            {task.inputType === 'url' && (
+                                                                <button
+                                                                    onClick={() => handleRetry(task)}
+                                                                    className="text-xs text-[#0075de] hover:text-[#0075de]/80 flex items-center gap-1 transition-colors font-semibold"
+                                                                >
+                                                                    <RotateCcw size={12} />
+                                                                    <span>重試</span>
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 onClick={() => dispatch(removeTask(task.id))}
                                                                 className="text-xs text-[#615d59] hover:text-destructive flex items-center gap-1 transition-colors"

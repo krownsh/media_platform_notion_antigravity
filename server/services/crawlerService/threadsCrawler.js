@@ -93,7 +93,6 @@ export async function scrapeThreadsPost(url) {
         let detailedData = {
             author: '',
             authorHandle: '',
-            avatar: '',
             postedAt: '',
             content: '',
             images: [],
@@ -106,7 +105,6 @@ export async function scrapeThreadsPost(url) {
                 const data = {
                     author: '',
                     authorHandle: '',
-                    avatar: '',
                     postedAt: '',
                     content: '',
                     images: [],
@@ -198,9 +196,6 @@ export async function scrapeThreadsPost(url) {
                 };
 
                 // Extract Main Post Data
-                const avatarImg = mainContainer.querySelector('img[alt*="的大頭貼照"], img[alt*="profile picture"]');
-                if (avatarImg) data.avatar = avatarImg.src;
-
                 const authorLink = mainContainer.querySelector('a[href^="/@"]:not([href*="/post/"])');
                 if (authorLink) {
                     const href = authorLink.getAttribute('href');
@@ -226,11 +221,10 @@ export async function scrapeThreadsPost(url) {
 
                 // Comments Extraction - Flat Structure (No Nesting)
                 commentContainers.forEach((container) => {
-                    const commentAvatar = container.querySelector('img[alt*="的大頭貼照"], img[alt*="profile picture"]');
                     const commentAuthorLink = container.querySelector('a[href^="/@"]:not([href*="/post/"])');
                     const commentTime = container.querySelector('time');
 
-                    if (!commentAvatar || !commentAuthorLink) return;
+                    if (!commentAuthorLink) return;
 
                     let commentAuthor = '';
                     let commentHandle = '';
@@ -276,7 +270,6 @@ export async function scrapeThreadsPost(url) {
                         handle: commentHandle,
                         text: commentContent,
                         postedAt: commentTimestamp,
-                        avatar: commentAvatar ? commentAvatar.src : '',
                         images: [...new Set(commentImages)],
                         extracted_links: commentLinks,
                         replies: [] // Keep empty array for compatibility
@@ -354,7 +347,6 @@ export async function scrapeThreadsPost(url) {
 
             author: detailedData.author || 'Unknown',
             authorHandle: detailedData.authorHandle || 'unknown',
-            avatar: detailedData.avatar || '',
             postedAt: detailedData.postedAt || '',
             posted_at: detailedData.postedAt || '',
 

@@ -93,13 +93,13 @@ class Orchestrator {
             }
         }
         
-        // Handle avatar
-        if (data.avatar) {
-            data.avatar = await this.uploadImageToBucket(data.avatar);
-            if (data.full_json && !Array.isArray(data.full_json)) data.full_json.avatar = data.avatar;
-        } else if (data.author_avatar_url) {
-            data.author_avatar_url = await this.uploadImageToBucket(data.author_avatar_url);
-            if (data.full_json && !Array.isArray(data.full_json)) data.full_json.author_avatar_url = data.author_avatar_url;
+        // Author avatars are deliberately not fetched or persisted. Remote
+        // profile URLs expire frequently; the UI uses author-name initials.
+        delete data.avatar;
+        delete data.author_avatar_url;
+        if (data.full_json && !Array.isArray(data.full_json)) {
+            delete data.full_json.avatar;
+            delete data.full_json.author_avatar_url;
         }
     }
 

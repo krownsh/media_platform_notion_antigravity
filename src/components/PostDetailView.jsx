@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library } from 'lucide-react';
+import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library, Image as ImageIcon } from 'lucide-react';
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
+import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -140,6 +141,12 @@ const PostDetailView = ({ onRemix }) => {
                 label: platformName.toUpperCase(),
             };
         }
+        if (platformName === 'image') {
+            return {
+                icon: <ImageIcon size={14} className="text-violet-600" />,
+                label: 'IMAGE',
+            };
+        }
         return {
             icon: <ThreadsIcon size={14} className="text-[rgba(0,0,0,0.95)]" />,
             label: 'Threads',
@@ -223,13 +230,7 @@ const PostDetailView = ({ onRemix }) => {
                     {/* User Header */}
                     <div className="p-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center gap-3">
-                            {post.avatar ? (
-                                <img src={proxyImage(post.avatar)} alt={post.author} className="w-10 h-10 rounded-full object-cover border notion-whisper-border" />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-sm font-bold text-neutral-600 border">
-                                    {post.author?.[0] || 'U'}
-                                </div>
-                            )}
+                            <AuthorInitialAvatar name={post.author} size="lg" />
                             <div>
                                 <p className="text-sm font-bold text-neutral-900">{post.author || 'Unknown'}</p>
                                 <p className="text-xs text-neutral-500">@{post.authorHandle || 'unknown'}</p>

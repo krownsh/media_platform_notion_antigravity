@@ -8,7 +8,7 @@ const initialState = {
     analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
     currentPost: null, // Currently viewed/processing post
-    tasks: [], // Task Queue: [{ id, url, status, timestamp }]
+    tasks: [], // Task Queue: [{ id, inputType, url, label, captureId, status, timestamp }]
 };
 
 const postsSlice = createSlice({
@@ -55,13 +55,19 @@ const postsSlice = createSlice({
             state.analyzing = true;
             state.error = null;
         },
+        monitorCapture() {
+            // Payload: { captureId, taskId }. The saga polls durable status.
+        },
         // Queue Management Reducers
         addTask(state, action) {
             // action.payload: { taskId, url }
             state.tasks.push({
                 id: action.payload.taskId,
-                url: action.payload.url,
-                status: 'pending', // pending | crawling | analyzing | failed
+                inputType: action.payload.inputType || 'url',
+                url: action.payload.url || null,
+                label: action.payload.label || action.payload.url || '擷取任務',
+                captureId: action.payload.captureId || null,
+                status: 'pending', // pending | submitting | uploading | accepted | extracting | failed
                 timestamp: Date.now()
             });
         },
@@ -70,6 +76,7 @@ const postsSlice = createSlice({
             const task = state.tasks.find(t => t.id === action.payload.taskId);
             if (task) {
                 task.status = action.payload.status;
+                if (action.payload.captureId) task.captureId = action.payload.captureId;
             }
         },
         removeTask(state, action) {
@@ -189,6 +196,7 @@ export const {
     fetchPostsSuccess,
     fetchPostsFailure,
     addPostByUrl,
+    monitorCapture,
     addTask,
     updateTaskStatus,
     removeTask,

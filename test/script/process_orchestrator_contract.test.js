@@ -14,6 +14,10 @@ const serverSource = fs.readFileSync(
     path.join(projectRoot, 'server', 'index.js'),
     'utf8'
 );
+const finalizationSource = fs.readFileSync(
+    path.join(projectRoot, 'server', 'services', 'captureFinalizationService.js'),
+    'utf8'
+);
 
 test('data acquisition is crawler-only', () => {
     assert.doesNotMatch(orchestratorSource, /socialApiService/);
@@ -35,7 +39,7 @@ test('/api/process keeps the n8n-facing route and response contract', () => {
 test('post finalization is tenant-aware and routed through the atomic database RPC', () => {
     assert.doesNotMatch(orchestratorSource, /upsertPost\(/);
     assert.doesNotMatch(orchestratorSource, /collection_posts/);
-    assert.match(serverSource, /rpc\('finalize_collection_capture'/);
+    assert.match(finalizationSource, /rpc\('finalize_collection_capture'/);
     assert.match(serverSource, /CAPTURE_FINALIZATION_FAILED/);
     assert.match(serverSource, /finalizeCapture\(userId, correlationId, 'fallback'/);
 });

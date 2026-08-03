@@ -40,5 +40,9 @@ server/keys/*
 !server/keys/.gitkeep
 
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> cafb8aea44005367cbd5256b7f53d95443e2b6b4
 # agent
 .agent

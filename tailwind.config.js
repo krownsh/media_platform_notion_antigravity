@@ -7,11 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "rgba(0, 0, 0, 0.1)",
-        input: "#dddddd",
-        ring: "#097fe8",
-        background: "#ffffff",
-        foreground: "rgba(0, 0, 0, 0.95)",
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
 
         notion: {
           black: "rgba(0, 0, 0, 0.95)",

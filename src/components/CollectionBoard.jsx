@@ -16,14 +16,14 @@ import { motion as Motion, AnimatePresence } from 'framer-motion';
 const CreateFolderInput = ({ onCreate, onCancel }) => {
     const [name, setName] = useState('');
     return (
-        <form onSubmit={(e) => { e.preventDefault(); onCreate(name); }} className="p-4 rounded-lg border border-accent/30 bg-[#0075de]/5 flex flex-col items-center justify-center gap-2 shadow-inner min-w-[80px]">
+        <form onSubmit={(e) => { e.preventDefault(); onCreate(name); }} className="flow-panel p-3 flex flex-col items-center justify-center gap-2 min-w-[132px]">
             <input
                 type="text"
                 placeholder="資料夾名稱"
                 value={name}
                 onChange={e => setName(e.target.value)}
                 autoFocus
-                className="w-full bg-transparent border-b border-accent/50 text-sm text-center outline-none pb-1 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground"
+                className="w-full bg-transparent border-b border-[var(--accent)] text-sm text-center outline-none pb-1 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground"
                 onBlur={() => !name && onCancel()}
             />
         </form>
@@ -205,9 +205,9 @@ const CollectionBoard = ({ onRemix }) => {
     const uncategorizedPostsGrid = useMemo(() => {
         if (uncategorizedPosts.length === 0 && tasks.length === 0 && !loading) {
             return (
-                <div className="flex flex-col items-center justify-center py-20 text-[#615d59]/60">
-                    <p className="text-lg font-medium">全部都看完了！</p>
-                    <p className="text-sm">所有貼文都已整理到資料夾中。</p>
+                <div className="flow-panel flex min-h-[18rem] flex-col items-center justify-center px-6 text-center text-[#615d59]">
+                    <p className="text-base font-semibold text-[rgba(0,0,0,0.95)]">收件匣已整理完成</p>
+                    <p className="mt-2 text-sm leading-6">所有貼文都已放入資料夾。可以新增來源，或從收藏夾繼續檢視。</p>
                 </div>
             );
         }
@@ -217,79 +217,48 @@ const CollectionBoard = ({ onRemix }) => {
 
         return (
             <SortableContext items={visiblePosts.map(p => p.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 px-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5 px-1">
                     {/* --- Task Queue Skeletons --- */}
                     {tasks.map((task) => (
-                        <div key={task.id} className="notion-card rounded-lg overflow-hidden w-full max-w-[420px] h-[520px] sm:h-[640px] bg-transparent border notion-whisper-border shadow-deep relative flex flex-col">
+                        <div key={task.id} className={`flow-surface flow-shimmer min-h-[13rem] overflow-hidden relative flex flex-col ${task.status === 'failed' ? 'border-destructive/30' : ''}`}>
                             {/* Shimmer Effect Overlay */}
                             {task.status !== 'failed' && (
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full" />
                             )}
 
                             {/* Header Skeleton */}
-                            <div className="h-12 border-b notion-whisper-border flex items-center px-4 gap-3 flex-shrink-0">
-                                <div className="w-8 h-8 rounded-full bg-transparent animate-pulse" />
+                            <div className="border-b notion-whisper-border flex items-center px-4 py-3 gap-3 flex-shrink-0">
+                                <div className={`w-9 h-9 rounded-[0.65rem] ${task.status === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-[var(--accent-soft)] text-[var(--accent)]'} flex items-center justify-center`}>
+                                    <Loader2 className={task.status === 'failed' ? '' : 'animate-spin'} size={18} />
+                                </div>
                                 <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                                    <div className="h-2.5 w-20 bg-transparent rounded animate-pulse" />
-                                    <div className="h-2 w-3/4 bg-transparent rounded animate-pulse truncate" title={task.url} />
+                                    <span className={`text-[10px] font-bold uppercase tracking-[0.08em] ${task.status === 'failed' ? 'text-destructive' : 'text-[var(--accent)]'}`}>{task.inputType === 'image' ? '圖片來源' : '網址來源'}</span>
+                                    <span className="text-xs text-[#615d59] truncate" title={task.url}>{task.label || task.url}</span>
                                 </div>
                             </div>
 
-                            {/* Author Skeleton */}
-                            <div className="h-[50px] border-b notion-whisper-border flex items-center px-4 gap-3 flex-shrink-0 bg-transparent">
-                                <div className="w-9 h-9 rounded-full bg-transparent animate-pulse" />
-                                <div className="flex flex-col gap-2">
-                                    <div className="h-3 w-24 bg-transparent rounded animate-pulse" />
-                                    <div className="h-2 w-16 bg-transparent rounded animate-pulse" />
-                                </div>
-                            </div>
-
-                            {/* Image Skeleton with Status */}
-                            <div className={`h-40 flex items-center justify-center flex-shrink-0 relative overflow-hidden ${task.status === 'failed' ? 'bg-destructive/10' : 'bg-transparent'}`}>
-                                {task.status !== 'failed' && <div className="absolute inset-0 bg-transparent animate-pulse" />}
-                                <div className="flex flex-col items-center gap-3 z-10 p-4 text-center">
+                            <div className={`flex-1 flex items-center justify-center relative overflow-hidden ${task.status === 'failed' ? 'bg-destructive/5' : 'bg-[var(--surface)]'}`}>
+                                <div className="flex flex-col items-center gap-3 z-10 p-5 text-center">
                                     {task.status === 'failed' ? (
                                         <>
-                                            <Loader2 className="text-destructive" size={32} />
-                                            <span className="text-xs font-semibold text-destructive uppercase tracking-widest">擷取失敗</span>
-                                            <p className="text-[10px] text-destructive/70 mt-1 line-clamp-2">系統將自動從佇列中移除</p>
+                                            <span className="text-sm font-semibold text-destructive">擷取需要處理</span>
+                                            <p className="text-xs text-destructive/80 leading-5">可從任務中心重試或清除這項任務。</p>
                                         </>
                                     ) : (
                                         <>
-                                            <Loader2 className="animate-spin text-[#0075de]" size={32} />
-                                            <span className="text-xs font-semibold text-[#0075de] uppercase tracking-widest animate-pulse">
+                                            <span className="text-sm font-semibold text-[rgba(0,0,0,0.95)]">
                                                 {task.status === 'pending' && '等待處理中...'}
                                                 {task.status === 'crawling' && '正在爬取網頁內容...'}
                                                 {task.status === 'analyzing' && 'AI 分析語義中...'}
+                                                {!['pending', 'crawling', 'analyzing'].includes(task.status) && '正在整理來源...'}
                                             </span>
+                                            <div className="flex w-28 gap-1" aria-hidden="true">
+                                                <span className="h-1 flex-1 rounded-full bg-[var(--accent)]" />
+                                                <span className="h-1 flex-1 rounded-full bg-[var(--accent)]/50" />
+                                                <span className="h-1 flex-1 rounded-full bg-black/10" />
+                                            </div>
                                         </>
                                     )}
-                                </div>
-                            </div>
-
-                            {/* Action Bar Skeleton */}
-                            <div className="h-10 border-b notion-whisper-border bg-transparent flex items-center justify-end px-4 gap-2 flex-shrink-0">
-                                <div className="w-6 h-6 rounded-full bg-transparent" />
-                                <div className="w-6 h-6 rounded-full bg-transparent" />
-                            </div>
-
-                            {/* Content Skeleton */}
-                            <div className="p-4 flex-1 flex flex-col gap-3">
-                                <div className="space-y-2">
-                                    <div className="h-3 w-full bg-transparent rounded" />
-                                    <div className="h-3 w-5/6 bg-transparent rounded" />
-                                    <div className="h-3 w-4/6 bg-transparent rounded" />
-                                </div>
-
-                                <div className="flex gap-2 mt-1">
-                                    <div className="h-6 w-14 rounded-full bg-transparent" />
-                                    <div className="h-6 w-20 rounded-full bg-transparent" />
-                                </div>
-
-                                <div className="h-24 rounded-lg bg-[#0075de]/5 border border-accent/10 mt-3 p-3 flex flex-col gap-2">
-                                    <div className="h-2.5 w-14 bg-[#0075de]/20 rounded" />
-                                    <div className="h-2.5 w-full bg-[rgba(0,117,222,0.1)] rounded" />
-                                    <div className="h-2.5 w-3/4 bg-[rgba(0,117,222,0.1)] rounded" />
                                 </div>
                             </div>
                         </div>
@@ -308,8 +277,8 @@ const CollectionBoard = ({ onRemix }) => {
 
                     {/* Infinite Scroll Trigger Element */}
                     {hasMore && (
-                        <div ref={loadMoreRef} className="col-span-full h-20 flex items-center justify-center">
-                            <Loader2 className="animate-spin text-[#615d59]/30" size={24} />
+                    <div ref={loadMoreRef} className="col-span-full h-20 flex items-center justify-center">
+                        <Loader2 className="animate-spin text-[var(--accent)]/50" size={22} />
                         </div>
                     )}
                 </div>
@@ -326,27 +295,27 @@ const CollectionBoard = ({ onRemix }) => {
             onDragEnd={handleDragEnd}
             autoScroll={false}
         >
-            <div className="flex flex-col gap-6 relative pb-20">
+            <div className="flex flex-col gap-5 relative pb-20">
                 {/* --- Top Section: Folders --- */}
                 <div
                     ref={headerRef}
-                    className="hidden md:block sticky top-0 z-[60] -mx-4 md:-mx-8 px-4 sm:px-6 pt-2 pb-1 shadow-md bg-white/95 backdrop-blur-md border-b border-[rgba(0,0,0,0.05)]"
+                    className="hidden md:block sticky top-0 z-[60] -mx-4 md:-mx-8 px-4 sm:px-6 pt-3 pb-2 bg-surface-raised backdrop-blur-md border-b notion-whisper-border"
                 >
                     <div className="w-full">
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-2">
                             <h2 className="text-sm font-semibold text-[#615d59] flex items-center gap-2">
-                                <Layers size={16} className="text-[#615d59]" />
+                                <Layers size={16} className="text-[var(--accent)]" />
                                 收藏夾
                             </h2>
                             <button
                                 onClick={() => setIsCreating(true)}
-                                className="text-sm text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)] px-3 py-1.5 rounded-sm flex items-center gap-1 transition-colors"
+                                className="notion-btn-ghost text-sm text-[#615d59] px-3 py-1.5 flex items-center gap-1"
                             >
                                 <Plus size={16} /> 新增資料夾
                             </button>
                         </div>
 
-                        <div className="flex gap-4 overflow-x-auto px-4 -mx-4 scrollbar-hide pt-2 pb-1">
+                        <div className="flex gap-4 overflow-x-auto px-4 -mx-4 scrollbar-hide pt-2 pb-2">
                             {/* Create Input */}
                             {isCreating && (
                                 <CreateFolderInput 
@@ -389,10 +358,11 @@ const CollectionBoard = ({ onRemix }) => {
                 </div>
 
                 {/* --- Bottom Section: Uncategorized Posts --- */}
-                <div className="max-w-full w-full px-2 sm:px-4">
-                    <h2 className="text-lg font-semibold text-[rgba(0,0,0,0.95)] mb-6 pl-3 border-l-4 border-accent/50">
-                        未分類貼文
-                    </h2>
+                <div className="max-w-full w-full px-1 sm:px-2">
+                    <div className="mb-5 sm:mb-6">
+                        <p className="flow-kicker mb-1.5">等待下一步</p>
+                        <h2 className="text-xl font-bold tracking-[-0.035em] text-[rgba(0,0,0,0.95)]">未分類貼文</h2>
+                    </div>
 
                     {uncategorizedPostsGrid}
                 </div>

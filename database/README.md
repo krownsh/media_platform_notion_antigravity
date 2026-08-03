@@ -14,6 +14,12 @@ does **not** execute SQL or create Supabase migration history.
   outbox deployment.
 - `deployments/stage_d_2_article_title.sql` — additive article-title column and
   a service-role-only replacement of the existing capture finalization RPC.
+- `deployments/stage_e_async_capture_requests.sql` — durable non-blocking
+  capture intake, atomic worker leases, retries, and status tracking. It does
+  not run Hermes or any other AI inside the capture request.
+- `deployments/stage_f_private_image_captures.sql` — private image Storage,
+  durable image-capture metadata, media storage references, and the
+  service-role-only image enqueue/finalization contract. Apply after Stage E.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library } from 'lucide-react';
+import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library, Image as ImageIcon } from 'lucide-react';
 import { addAnnotation, fetchPosts } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
+import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -32,13 +33,13 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
     const images = comment.images || [];
 
     return (
-        <div className={`flex flex-col ${depth === 0 ? 'bg-black/5 p-4 rounded-lg' : 'mt-2'}`}>
+        <div className={`flex flex-col ${depth === 0 ? 'bg-[var(--surface-muted)] p-4 rounded-xl border border-[var(--border)]' : 'mt-2'}`}>
             {authorName && (
                 <div className="mb-1">
-                    <span className="text-xs font-bold text-[rgba(0,0,0,0.95)]/70">{authorName}</span>
+                    <span className="text-xs font-bold text-[var(--foreground)]/70">{authorName}</span>
                 </div>
             )}
-            <p className="text-sm text-[rgba(0,0,0,0.95)]/90 leading-relaxed whitespace-pre-wrap break-words">
+            <p className="text-sm text-[var(--foreground)]/90 leading-relaxed whitespace-pre-wrap break-words">
                 {comment.text}
             </p>
 
@@ -50,7 +51,7 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
                             key={idx}
                             src={proxyImage(img)}
                             alt="Comment attachment"
-                            className="max-h-48 rounded-lg object-contain border border-[rgba(0,0,0,0.1)]/20 cursor-zoom-in hover:opacity-90 transition-opacity"
+                            className="max-h-48 rounded-xl object-contain border border-[var(--border)] cursor-zoom-in hover:opacity-90 transition-opacity"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onImageClick(img);
@@ -61,7 +62,7 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
             )}
 
             {hasReplies && (
-                <div className="border-l-2 border-[rgba(0,0,0,0.1)]/30 ml-0.5 pl-3 mt-2">
+                <div className="border-l-2 border-[var(--border)] ml-0.5 pl-3 mt-2">
                     {comment.replies.map((reply, idx) => (
                         <CommentItem key={idx} comment={reply} depth={depth + 1} onImageClick={onImageClick} />
                     ))}
@@ -111,15 +112,22 @@ const PostDetailView = ({ onRemix }) => {
     if (!post) {
         if (loading) {
             return (
-                <div className="flex items-center justify-center h-full">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
+                <div className="flex items-center justify-center h-full p-6" aria-busy="true">
+                    <div className="flow-surface w-full max-w-md p-5 space-y-3">
+                        <div className="flow-shimmer h-3 w-20 rounded-full" />
+                        <div className="flow-shimmer h-7 w-3/4 rounded-md" />
+                        <div className="flow-shimmer h-32 rounded-xl" />
+                    </div>
                 </div>
             );
         }
         return (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
-                <p className="text-lg text-[#615d59]">找不到貼文</p>
-                <button onClick={() => navigate('/')} className="text-[#0075de] hover:underline">返回首頁</button>
+            <div className="flex flex-col items-center justify-center h-full gap-4 p-6 text-center">
+                <div className="flow-surface max-w-md p-8">
+                    <p className="text-lg font-semibold text-[var(--foreground)]">找不到貼文</p>
+                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">它可能已移動、尚未同步，或目前沒有存取權。</p>
+                    <button onClick={() => navigate('/')} className="notion-btn-secondary mt-5">返回首頁</button>
+                </div>
             </div>
         );
     }
@@ -138,6 +146,12 @@ const PostDetailView = ({ onRemix }) => {
             return {
                 icon: platformName === 'github' ? <Share2 size={14} /> : <Twitter size={14} className="text-blue-400" />,
                 label: platformName.toUpperCase(),
+            };
+        }
+        if (platformName === 'image') {
+            return {
+                icon: <ImageIcon size={14} className="text-violet-600" />,
+                label: 'IMAGE',
             };
         }
         return {
@@ -185,7 +199,7 @@ const PostDetailView = ({ onRemix }) => {
             {/* --- Top Header / Navigation --- */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 sm:py-4 px-2 flex-shrink-0 gap-3 sm:gap-4">
                 <div
-                    className="flex items-center gap-1.5 sm:gap-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] cursor-pointer transition-colors group min-h-11 px-2 py-1.5 rounded-lg hover:bg-black/5"
+                    className="flex items-center gap-1.5 sm:gap-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] cursor-pointer transition-colors group min-h-11 px-2 py-1.5 rounded-lg hover:bg-[var(--surface-muted)]"
                     onClick={() => navigate(-1)}
                 >
                     <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
@@ -200,14 +214,14 @@ const PostDetailView = ({ onRemix }) => {
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                     <button
                         onClick={() => onRemix && onRemix(post)}
-                        className="notion-btn-ghost text-[#0075de] flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
+                        className="notion-btn-secondary flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
                     >
                         <Sparkles size={16} />
                         AI 改寫
                     </button>
                     <button
                         onClick={() => setIsNoteOpen(true)}
-                        className="notion-btn-primary bg-amber-500 hover:bg-amber-600 border-amber-600/20 flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
+                        className="notion-btn-primary flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
                     >
                         <Library size={16} />
                         <span>筆記 ({annotations?.length || 0})</span>
@@ -219,23 +233,17 @@ const PostDetailView = ({ onRemix }) => {
             <div className="flex-1 flex flex-col md:flex-row gap-6 md:overflow-hidden pb-4">
 
                 {/* 1. Left Section: Instagram Style (Image top, Content bottom) */}
-                <div className="flex-[3] flex flex-col bg-white rounded-2xl border notion-whisper-border shadow-soft-card overflow-hidden">
+                <div className="flex-[3] flex flex-col flow-surface overflow-hidden">
                     {/* User Header */}
-                    <div className="p-4 border-b border-neutral-100 flex items-center justify-between flex-shrink-0">
+                    <div className="p-4 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0">
                         <div className="flex items-center gap-3">
-                            {post.avatar ? (
-                                <img src={proxyImage(post.avatar)} alt={post.author} className="w-10 h-10 rounded-full object-cover border notion-whisper-border" />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center text-sm font-bold text-neutral-600 border">
-                                    {post.author?.[0] || 'U'}
-                                </div>
-                            )}
+                            <AuthorInitialAvatar name={post.author} size="lg" />
                             <div>
-                                <p className="text-sm font-bold text-neutral-900">{post.author || 'Unknown'}</p>
-                                <p className="text-xs text-neutral-500">@{post.authorHandle || 'unknown'}</p>
+                                <p className="text-sm font-bold text-[var(--foreground)]">{post.author || 'Unknown'}</p>
+                                <p className="text-xs text-[var(--muted-foreground)]">@{post.authorHandle || 'unknown'}</p>
                             </div>
                         </div>
-                        <button className="min-h-11 min-w-11 p-2 rounded-full text-neutral-400 hover:text-neutral-900 hover:bg-black/5 transition-colors flex items-center justify-center">
+                        <button aria-label="更多貼文操作" className="flow-icon-button">
                             <MoreHorizontal size={20} />
                         </button>
                     </div>
@@ -244,7 +252,7 @@ const PostDetailView = ({ onRemix }) => {
                     <div className="flex-1 md:overflow-y-auto custom-scrollbar">
                         {/* Image(s) at Top */}
                         {images.length > 0 && (
-                            <div className="relative bg-neutral-50 border-b border-neutral-50 group">
+                            <div className="relative bg-[var(--surface-muted)] border-b border-[var(--border)] group">
                                 <div className="max-w-3xl mx-auto py-2">
                                     <div className="relative aspect-auto flex items-center justify-center overflow-hidden">
                                         <Motion.div
@@ -257,7 +265,7 @@ const PostDetailView = ({ onRemix }) => {
                                                     <img
                                                         src={proxyImage(img)}
                                                         alt={`${title} - ${idx + 1}`}
-                                                        className="max-w-full max-h-[60vh] object-contain shadow-soft-card cursor-zoom-in"
+                                                        className="max-w-full max-h-[60vh] object-contain shadow-soft-card cursor-zoom-in rounded-sm"
                                                         onClick={() => setZoomedImage(img)}
                                                     />
                                                 </div>
@@ -268,14 +276,16 @@ const PostDetailView = ({ onRemix }) => {
                                             <>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); if (currentImageIndex > 0) setCurrentImageIndex(i => i - 1) }}
-                                                    className="absolute left-2 sm:left-4 min-h-11 min-w-11 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                    aria-label="上一張圖片"
+                                                    className="absolute left-2 sm:left-4 flow-icon-button bg-[var(--surface-raised)]/95 shadow-soft-card opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                                                     disabled={currentImageIndex === 0}
                                                 >
                                                     <ChevronLeft size={20} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); if (currentImageIndex < images.length - 1) setCurrentImageIndex(i => i + 1) }}
-                                                    className="absolute right-2 sm:right-4 min-h-11 min-w-11 p-2.5 rounded-full bg-white/80 backdrop-blur-md shadow-soft-card text-neutral-800 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                                    aria-label="下一張圖片"
+                                                    className="absolute right-2 sm:right-4 flow-icon-button bg-[var(--surface-raised)]/95 shadow-soft-card opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                                                     disabled={currentImageIndex === images.length - 1}
                                                 >
                                                     <ChevronRight size={20} />
@@ -295,16 +305,16 @@ const PostDetailView = ({ onRemix }) => {
                         {/* Content below Image */}
                         <div className="p-4 sm:p-6 max-w-2xl mx-auto">
                             <div className="flex items-center gap-3 sm:gap-4 mb-4">
-                                <div className="flex items-center gap-2">
-                                    <Heart size={20} className="text-neutral-600 hover:text-red-500 cursor-pointer transition-colors" />
-                                    <MessageSquare size={20} className="text-neutral-600 hover:text-blue-500 cursor-pointer transition-colors" />
-                                    <Share2 size={20} className="text-neutral-600 hover:text-green-500 cursor-pointer transition-colors" />
+                                <div className="flex items-center gap-2 text-[var(--muted-foreground)]">
+                                    <Heart size={20} />
+                                    <MessageSquare size={20} />
+                                    <Share2 size={20} />
                                 </div>
                             </div>
 
-                            <h1 className="text-lg font-bold text-neutral-900 mb-4">{title}</h1>
+                            <h1 className="text-lg font-bold text-[var(--foreground)] mb-4">{title}</h1>
 
-                            <p className="text-base text-neutral-800 leading-relaxed whitespace-pre-wrap mb-6">
+                            <p className="text-base text-[var(--foreground)]/90 leading-relaxed whitespace-pre-wrap mb-6">
                                 {(() => {
                                     const text = post.content || '';
                                     const urlRegex = /(https?:\/\/[^\s]+)/g;
@@ -318,7 +328,7 @@ const PostDetailView = ({ onRemix }) => {
                                                     href={part}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-[#0075de] hover:underline break-all"
+                                                    className="text-[var(--accent)] hover:underline break-all"
                                                 >
                                                     {part}
                                                 </a>
@@ -329,14 +339,14 @@ const PostDetailView = ({ onRemix }) => {
                                 })()}
                             </p>
 
-                            <div className="text-xs text-neutral-400 mb-8 pb-8 border-b border-neutral-100 uppercase tracking-widest">
+                            <div className="text-xs text-[var(--muted-foreground)] mb-8 pb-8 border-b border-[var(--border)] tracking-[0.16em]">
                                 {post.postedAt ? new Date(post.postedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '剛剛'}
                             </div>
 
                             {/* Comments inside the scrollable area */}
                             {comments.length > 0 && (
                                 <div className="space-y-6">
-                                    <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-4">留言回覆</h3>
+                                    <h3 className="text-xs font-bold text-[var(--muted-foreground)] tracking-[0.16em] mb-4">留言回覆</h3>
                                     {comments.map((comment, idx) => (
                                         <CommentItem key={idx} comment={comment} onImageClick={setZoomedImage} />
                                     ))}
@@ -347,10 +357,10 @@ const PostDetailView = ({ onRemix }) => {
                 </div>
 
                 {/* 2. Right Section: AI Summary */}
-                <div className="flex-1 w-full lg:min-w-[320px] lg:max-w-[400px] flex flex-col bg-neutral-50/50 rounded-2xl border notion-whisper-border overflow-hidden mt-0 lg:mt-0">
-                    <div className="p-5 border-b border-neutral-100 flex items-center gap-2 bg-white">
-                        <Sparkles size={16} className="text-[#0075de]" />
-                        <span className="text-sm font-bold text-neutral-700 uppercase tracking-wider">AI 知識摘要</span>
+                <div className="flex-1 w-full lg:min-w-[320px] lg:max-w-[400px] flex flex-col flow-surface overflow-hidden mt-0 lg:mt-0">
+                    <div className="p-5 border-b border-[var(--border)] flex items-center gap-2 bg-[var(--surface-raised)]">
+                        <Sparkles size={16} className="text-[var(--accent)]" />
+                        <span className="text-sm font-bold text-[var(--foreground)] tracking-wide">AI 知識摘要</span>
                     </div>
 
                     <div className="flex-1 md:overflow-y-auto p-5 custom-scrollbar">
@@ -376,18 +386,18 @@ const PostDetailView = ({ onRemix }) => {
                                         return (
                                             <>
                                                 {data.core_insight && (
-                                                    <div className="bg-white p-5 rounded-xl border notion-whisper-border shadow-soft-card">
-                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0075de] mb-3">核心洞察</h4>
-                                                        <p className="text-sm font-medium leading-relaxed text-neutral-800">{data.core_insight}</p>
+                                                    <div className="flow-panel p-5">
+                                                        <h4 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)] mb-3">核心洞察</h4>
+                                                        <p className="text-sm font-medium leading-relaxed text-[var(--foreground)]">{data.core_insight}</p>
                                                     </div>
                                                 )}
                                                 {data.key_points && (
-                                                    <div className="bg-white p-5 rounded-xl border notion-whisper-border shadow-soft-card">
-                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-400 mb-3">關鍵要點</h4>
+                                                    <div className="flow-panel p-5">
+                                                        <h4 className="text-[10px] tracking-[0.16em] font-bold text-[var(--muted-foreground)] mb-3">關鍵要點</h4>
                                                         <ul className="space-y-3">
                                                             {data.key_points.map((p, i) => (
-                                                                <li key={i} className="text-sm text-neutral-700 flex gap-2 leading-relaxed">
-                                                                    <span className="text-[#0075de] font-bold">•</span>
+                                                                <li key={i} className="text-sm text-[var(--foreground)]/80 flex gap-2 leading-relaxed">
+                                                                    <span className="text-[var(--accent)] font-bold">•</span>
                                                                     <span>{p}</span>
                                                                 </li>
                                                             ))}
@@ -395,26 +405,26 @@ const PostDetailView = ({ onRemix }) => {
                                                     </div>
                                                 )}
                                                 {data.actionable_knowledge && (
-                                                    <div className="bg-[#0075de]/5 p-5 rounded-xl border border-[#0075de]/10 shadow-soft-card">
-                                                        <h4 className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#0075de] mb-3">實用建議</h4>
-                                                        <p className="text-sm leading-relaxed text-neutral-800">{data.actionable_knowledge}</p>
+                                                    <div className="bg-[var(--accent-soft)] p-5 rounded-xl border border-[var(--border)]">
+                                                        <h4 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)] mb-3">實用建議</h4>
+                                                        <p className="text-sm leading-relaxed text-[var(--foreground)]">{data.actionable_knowledge}</p>
                                                     </div>
                                                 )}
                                                 {data.tags && (
                                                     <div className="flex flex-wrap gap-2 pt-2">
                                                         {data.tags.map((t, i) => (
-                                                            <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-500 border border-neutral-200 hover:bg-neutral-200 transition-colors cursor-pointer inline-flex items-center min-h-9">#{t}</span>
+                                                            <span key={i} className="text-xs px-2.5 py-1 rounded-full bg-[var(--surface-muted)] text-[var(--muted-foreground)] border border-[var(--border)] inline-flex items-center min-h-9">#{t}</span>
                                                         ))}
                                                     </div>
                                                 )}
                                             </>
                                         );
                                     }
-                                    return <p className="text-sm text-neutral-600 leading-relaxed whitespace-pre-wrap">{typeof data === 'string' ? data : JSON.stringify(data)}</p>;
+                                    return <p className="text-sm text-[var(--foreground)]/75 leading-relaxed whitespace-pre-wrap">{typeof data === 'string' ? data : JSON.stringify(data)}</p>;
                                 })()}
                             </div>
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center opacity-30 italic text-neutral-400">
+                            <div className="h-full flex flex-col items-center justify-center text-[var(--muted-foreground)]">
                                 <Sparkles size={40} className="mb-2" />
                                 <p className="text-sm">尚未產生 AI 摘要</p>
                             </div>
@@ -439,21 +449,22 @@ const PostDetailView = ({ onRemix }) => {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed right-0 top-0 h-full w-full max-w-none sm:max-w-[450px] bg-amber-50 shadow-deep rounded-none sm:rounded-l-3xl z-[110] flex flex-col overflow-hidden"
+                            className="fixed right-0 top-0 h-full w-full max-w-none sm:max-w-[450px] bg-[var(--surface)] shadow-deep rounded-none sm:rounded-l-2xl z-[110] flex flex-col overflow-hidden"
                         >
-                            <div className="p-4 sm:p-6 border-b border-amber-200/50 flex items-center justify-between flex-shrink-0 bg-white/50 backdrop-blur-md gap-3">
+                            <div className="p-4 sm:p-6 border-b border-[var(--border)] flex items-center justify-between flex-shrink-0 bg-[var(--surface-raised)]/90 backdrop-blur-md gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-xl bg-amber-100 text-amber-600">
+                                    <div className="p-2 rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
                                         <Library size={20} />
                                     </div>
                                     <div>
-                                        <h2 className="text-lg font-bold text-amber-900">學術筆記</h2>
-                                        <p className="text-xs text-amber-700/60 font-medium">整理與紀錄此貼文的個人見解</p>
+                                        <h2 className="text-lg font-bold text-[var(--foreground)]">閱讀筆記</h2>
+                                        <p className="text-xs text-[var(--muted-foreground)] font-medium">整理與紀錄這則貼文的個人見解</p>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => setIsNoteOpen(false)}
-                                    className="p-2 rounded-full hover:bg-amber-100 text-amber-800 transition-colors"
+                                    aria-label="關閉筆記"
+                                    className="flow-icon-button"
                                 >
                                     <X size={20} />
                                 </button>
@@ -462,10 +473,10 @@ const PostDetailView = ({ onRemix }) => {
                             {/* Note Content */}
                             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 custom-scrollbar">
                                 {/* New Note Input */}
-                                <div className="bg-white rounded-2xl p-4 shadow-soft-card border border-amber-200">
+                                <div className="flow-panel p-4">
                                     <textarea
                                         placeholder="輸入您的見解或筆記 (Ctrl + Enter 儲存)..."
-                                        className="w-full bg-transparent border-none text-neutral-800 placeholder-amber-900/40 text-sm leading-relaxed resize-none focus:ring-0 h-32"
+                                        className="w-full bg-transparent border-none text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] text-sm leading-relaxed resize-none focus:ring-0 h-32"
                                         value={noteInput}
                                         onChange={(e) => setNoteInput(e.target.value)}
                                         onKeyDown={(e) => {
@@ -476,7 +487,7 @@ const PostDetailView = ({ onRemix }) => {
                                         <button
                                             onClick={handleSaveNote}
                                             disabled={!noteInput.trim()}
-                                            className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all disabled:opacity-30 disabled:grayscale shadow-soft-card"
+                                            className="notion-btn-primary px-4 py-2 text-xs disabled:opacity-30 disabled:grayscale"
                                         >
                                             新增筆記
                                         </button>
@@ -485,16 +496,16 @@ const PostDetailView = ({ onRemix }) => {
 
                                 {/* Notes List */}
                                 <div className="space-y-4 pt-4">
-                                    <h3 className="text-[10px] uppercase font-bold text-amber-800/40 tracking-widest pl-2">已儲存的筆記 ({annotations?.length || 0})</h3>
+                                    <h3 className="text-[10px] font-bold text-[var(--muted-foreground)] tracking-[0.16em] pl-2">已儲存的筆記 ({annotations?.length || 0})</h3>
                                     {annotations && annotations.length > 0 ? (
                                         annotations.map((note, idx) => (
-                                            <div key={idx} className="bg-white/80 p-4 rounded-xl border border-amber-200 shadow-sm relative group">
+                                            <div key={idx} className="flow-panel p-4 relative group">
                                                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <p className="text-[8px] text-amber-500 font-bold uppercase">{idx + 1}</p>
+                                                    <p className="text-[8px] text-[var(--accent)] font-bold">{idx + 1}</p>
                                                 </div>
-                                                <p className="text-sm text-neutral-800 leading-relaxed">{note.content}</p>
+                                                <p className="text-sm text-[var(--foreground)] leading-relaxed">{note.content}</p>
                                                 <div className="mt-2 flex items-center justify-between">
-                                                    <span className="text-[10px] text-amber-700/60 font-medium">
+                                                    <span className="text-[10px] text-[var(--muted-foreground)] font-medium">
                                                         {new Date(note.created_at).toLocaleDateString(undefined, {
                                                             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                                                         })}
@@ -504,7 +515,7 @@ const PostDetailView = ({ onRemix }) => {
                                         ))
                                     ) : (
                                         <div className="text-center py-10 opacity-30">
-                                            <p className="text-sm italic text-amber-900">尚無筆記</p>
+                                            <p className="text-sm italic text-[var(--muted-foreground)]">尚無筆記</p>
                                         </div>
                                     )}
                                 </div>
@@ -528,7 +539,8 @@ const PostDetailView = ({ onRemix }) => {
                         }}
                     >
                         <button
-                            className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 rounded-full bg-transparent text-white hover:bg-transparent transition-colors"
+                            aria-label="關閉圖片預覽"
+                            className="absolute top-3 right-3 sm:top-4 sm:right-4 flow-icon-button bg-white/10 text-white hover:bg-white/20"
                             onClick={() => setZoomedImage(null)}
                         >
                             <X size={24} />

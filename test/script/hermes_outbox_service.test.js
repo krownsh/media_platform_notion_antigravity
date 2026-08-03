@@ -4,16 +4,19 @@ import test from 'node:test';
 import { buildHermesGateResult } from '../../scripts/agent-sdk/get-inbox.js';
 import {
   claimHermesOutboxItem,
+  completeHermesImageReview,
   completeHermesStoredOnlyReview,
   failHermesOutboxItem,
   formatHermesFailure,
   isOutboxLeaseAvailable,
   normalizeHermesIdentity,
   normalizeInboxLimit,
+  requireHermesImageLease,
   releaseHermesOutboxItem
 } from '../../server/services/hermesOutboxService.js';
 
 const NOW = new Date('2026-07-29T12:00:00.000Z');
+const ANALYSIS_ID = '22222222-2222-4222-8222-222222222222';
 
 function createRow(overrides = {}) {
   return {
@@ -74,9 +77,23 @@ function createSupabaseClient(initialRow) {
 
 test('Hermes pre-check stays silent when empty and wakes with bounded ids when pending', () => {
   assert.deepEqual(buildHermesGateResult([]), { wakeAgent: false });
-  assert.deepEqual(buildHermesGateResult([{ id: 'a' }, { id: 'b' }]), {
+  assert.deepEqual(buildHermesGateResult([
+    {
+      id: 'a',
+      payload: { source_type: 'image_upload' },
+      collection_posts: { platform: 'image' }
+    },
+    { id: 'b' }
+  ]), {
     wakeAgent: true,
-    context: { pending_count: 2, outbox_ids: ['a', 'b'] }
+    context: {
+      pending_count: 2,
+      outbox_ids: ['a', 'b'],
+      items: [
+        { outbox_id: 'a', source_type: 'image_upload', platform: 'image' },
+        { outbox_id: 'b', source_type: 'url_capture', platform: 'unknown' }
+      ]
+    }
   });
   assert.equal(normalizeInboxLimit(999), 100);
   assert.equal(normalizeInboxLimit('bad'), 20);
@@ -148,4 +165,43 @@ test('collect-only review becomes sent without creating an execution route', asy
   assert.equal(reviewed.payload.hermes_review.status, 'stored_only');
   assert.equal(reviewed.payload.hermes_review.reason, 'collect mode');
   assert.equal(reviewed.payload.agent_routes, undefined);
+});
+
+test('image analysis requires an owned lease and completes the outbox as sent', async () => {
+  const imageRow = createRow({
+    payload: { event_type: 'source.ingested.v1', source_type: 'image_upload' },
+    collection_posts: { platform: 'image' }
+  });
+  const client = createSupabaseClient(imageRow);
+
+  await assert.rejects(
+    () => requireHermesImageLease('event-1', 'hermes:home', client),
+    error => error.code === 'OUTBOX_LEASE_OWNER_MISMATCH'
+  );
+
+  await claimHermesOutboxItem('event-1', 'hermes:home', client, { now: NOW });
+  const leased = await requireHermesImageLease('event-1', 'hermes:home', client);
+  const completed = await completeHermesImageReview(
+    leased,
+    'hermes:home',
+    ANALYSIS_ID,
+    client,
+    { now: NOW }
+  );
+
+  assert.equal(completed.status, 'sent');
+  assert.equal(completed.locked_by, null);
+  assert.equal(completed.payload.hermes_review.status, 'analyzed');
+  assert.equal(completed.payload.hermes_review.analysis_id, ANALYSIS_ID);
+  assert.equal(completed.payload.hermes_review.reviewed_by, 'hermes:home');
+});
+
+test('image completion rejects URL outbox items', async () => {
+  const client = createSupabaseClient(createRow());
+  await claimHermesOutboxItem('event-1', 'hermes:home', client, { now: NOW });
+
+  await assert.rejects(
+    () => requireHermesImageLease('event-1', 'hermes:home', client),
+    error => error.code === 'OUTBOX_SOURCE_TYPE_MISMATCH'
+  );
 });

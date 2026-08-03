@@ -1,7 +1,7 @@
-import { all, takeLatest, takeEvery, call, put } from 'redux-saga/effects';
+import { all, takeLatest, takeEvery, call, put, delay } from 'redux-saga/effects';
 import {
   addPostByUrl,
-  fetchPostSuccess,
+  monitorCapture,
   fetchPostFailure,
   fetchPosts,
   fetchPostsSuccess,
@@ -27,6 +27,7 @@ import {
 import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
+import { getCaptureStatus, submitUrlCapture } from '../api/captureApi';
 
 
 // Worker Saga: Fetch all posts AND collections
@@ -72,62 +73,11 @@ function* handleFetchPosts() {
 function* handleFetchPost(action) {
   const { url, taskId } = action.payload;
   try {
-    // 1. Initial State: Starting crawl
-    yield put(updateTaskStatus({ taskId, status: 'crawling' }));
-
-    // 2. Get the current session. The backend derives the owner from this JWT.
-    const { data: { session } } = yield call(() => supabase.auth.getSession());
-    if (!session?.access_token) {
-      throw new Error('請先登入後再擷取貼文');
-    }
-
-    // 3. Call Backend API (Orchestrator) to get data AND save to DB
-    console.log('[Saga] Requesting backend to process & save:', url);
-    const response = yield call(fetch, `${API_BASE_URL}/api/process`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ url }),
-    });
-
-    if (!response.ok) {
-      const errorData = yield response.json();
-      throw new Error(errorData.error || 'Failed to fetch post data from backend');
-    }
-
-    const result = yield response.json();
-    const postData = result.data;
-
-    console.log('[Saga] Received processed post from backend:', postData.dbId);
-    yield put(updateTaskStatus({ taskId, status: 'analyzing' }));
-
-    // 4. Transform data for frontend display
-    const transformedPost = {
-      id: crypto.randomUUID(),
-      dbId: postData.dbId, // Backend provided ID
-      platform: postData.platform || 'threads',
-      author: postData.author || 'Unknown',
-      authorHandle: postData.authorHandle || 'unknown',
-      avatar: postData.avatar,
-      content: postData.content,
-      postedAt: postData.postedAt || postData.posted_at,
-      originalUrl: postData.originalUrl || url,
-      createdAt: new Date().toISOString(),
-      images: postData.images || [],
-      comments: postData.comments || [],
-      analysis: postData.analysis || null,
-      fullJson: postData.full_json || postData.fullJson || null,
-      collectionId: null
-    };
-
-    console.log('[Saga] Final transformed post for UI:', transformedPost);
-
-    // 5. Update Redux store for immediate display
-    yield put(fetchPostSuccess(transformedPost));
-    yield put(addNotification({ message: '貼文已成功擷取並存入資料庫', type: 'success' }));
-    yield put(removeTask(taskId));
+    yield put(updateTaskStatus({ taskId, status: 'submitting' }));
+    const capture = yield call(submitUrlCapture, url);
+    yield put(updateTaskStatus({ taskId, status: 'accepted', captureId: capture.capture_id }));
+    yield put(monitorCapture({ captureId: capture.capture_id, taskId }));
+    yield put(addNotification({ message: '網址已加入擷取佇列，可以繼續新增', type: 'success' }));
 
   } catch (error) {
     console.error('[Saga] Error in handleFetchPost:', error);
@@ -137,6 +87,43 @@ function* handleFetchPost(action) {
     }));
     yield put(fetchPostFailure(error.message));
     yield put(updateTaskStatus({ taskId, status: 'failed' }));
+  }
+}
+
+function mapCaptureStatus(status) {
+  if (status === 'accepted') return 'accepted';
+  if (status === 'extracting') return 'extracting';
+  return status;
+}
+
+function* handleMonitorCapture(action) {
+  const { captureId, taskId } = action.payload;
+  try {
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      const capture = yield call(getCaptureStatus, captureId);
+      yield put(updateTaskStatus({ taskId, status: mapCaptureStatus(capture.status), captureId }));
+
+      if (capture.status === 'finalized' || capture.status === 'degraded') {
+        yield put(fetchPosts());
+        yield put(removeTask(taskId));
+        yield put(addNotification({
+          message: capture.input_type === 'image'
+            ? '圖片已儲存，已交給 Hermes 分析佇列'
+            : '貼文已擷取並存入資料庫',
+          type: 'success'
+        }));
+        return;
+      }
+      if (capture.status === 'failed') {
+        throw new Error(capture.error_message || '擷取任務失敗');
+      }
+      yield delay(2000);
+    }
+    throw new Error('擷取等待逾時，任務仍保留在伺服器佇列');
+  } catch (error) {
+    console.error('[Saga] Capture monitor failed:', error);
+    yield put(updateTaskStatus({ taskId, status: 'failed', captureId }));
+    yield put(addNotification({ message: `擷取失敗: ${error.message}`, type: 'error' }));
   }
 }
 
@@ -304,6 +291,7 @@ function* handleUpdateCollectionName(action) {
 // Watcher Saga
 function* watchPosts() {
   yield takeEvery(addPostByUrl.type, handleFetchPost);
+  yield takeEvery(monitorCapture.type, handleMonitorCapture);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);

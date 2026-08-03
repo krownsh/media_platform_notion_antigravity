@@ -29,7 +29,12 @@ export function buildHermesGateResult(events) {
     wakeAgent: true,
     context: {
       pending_count: events.length,
-      outbox_ids: events.map(event => event.id)
+      outbox_ids: events.map(event => event.id),
+      items: events.map(event => ({
+        outbox_id: event.id,
+        source_type: event?.payload?.source_type || 'url_capture',
+        platform: postFromEvent(event)?.platform || 'unknown'
+      }))
     }
   };
 }
@@ -58,16 +63,19 @@ function printHumanInbox(events, status) {
     const analysis = analysisFromPost(post);
     console.log(`\n[Item ${index + 1}] Outbox ID: ${event.id}`);
     console.log(`Status: ${event.status}`);
+    console.log(`Source type: ${event?.payload?.source_type || 'url_capture'}`);
     console.log(`Platform: ${post?.platform || 'unknown'}`);
     console.log(`URL: ${post?.original_url || 'missing'}`);
     console.log(`Author: ${post?.author_name || 'Unknown'}`);
+    const media = Array.isArray(post?.collection_post_media) ? post.collection_post_media : [];
+    console.log(`Media: ${media.length} item(s)${media.some(item => item.storage_path) ? ' (private Storage source available)' : ''}`);
     console.log(`Summary: ${analysis?.summary || 'No summary available.'}`);
     console.log(`Attempts: ${event.attempt_count || 0}`);
     if (event.locked_by) console.log(`Locked by: ${event.locked_by}`);
     if (event.last_error) console.log(`Last error: ${event.last_error}`);
   });
   console.log('\n' + '='.repeat(60));
-  console.log('Next: npm run agent:analyze -- <outbox-id> --agent <hermes-identity>');
+  console.log('Next: use agent:media for image_upload; use agent:analyze for URL captures.');
 }
 
 async function main() {

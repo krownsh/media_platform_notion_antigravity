@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE public.collection_posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    platform VARCHAR(50) NOT NULL CHECK (platform IN ('instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github')),
+    platform VARCHAR(50) NOT NULL CHECK (platform IN ('instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github', 'image')),
     original_url TEXT NOT NULL,
     title TEXT,
     platform_post_id VARCHAR(255), -- ID from the original platform
@@ -27,8 +27,9 @@ CREATE TABLE public.collection_posts (
 );
 
 COMMENT ON TABLE public.collection_posts IS 'Core table storing social media posts.';
-COMMENT ON COLUMN public.collection_posts.platform IS 'Source platform: instagram, facebook, twitter, threads';
+COMMENT ON COLUMN public.collection_posts.platform IS 'Source platform, including image for a direct private upload.';
 COMMENT ON COLUMN public.collection_posts.original_url IS 'The original URL input by the user';
+COMMENT ON COLUMN public.collection_posts.author_avatar_url IS 'Legacy field retained for compatibility; new capture flows store null and render a text initial.';
 COMMENT ON COLUMN public.collection_posts.title IS 'Normalized source title for articles, repositories, videos, and social posts when available.';
 COMMENT ON COLUMN public.collection_posts.source_domains IS 'Normalized source hostnames discovered during capture; empty when none are found.';
 
@@ -61,12 +62,22 @@ CREATE TABLE public.collection_post_media (
     thumbnail_url TEXT,
     "order" INTEGER DEFAULT 0, -- For ordering in a carousel
     meta_data JSONB DEFAULT '{}'::jsonb, -- Extra info like width, height, duration
+    storage_bucket TEXT,
+    storage_path TEXT,
+    content_type TEXT,
+    byte_size BIGINT CHECK (byte_size IS NULL OR byte_size > 0),
+    original_filename TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT collection_post_media_storage_pair_check CHECK (
+        (storage_bucket IS NULL AND storage_path IS NULL)
+        OR (NULLIF(BTRIM(storage_bucket), '') IS NOT NULL AND NULLIF(BTRIM(storage_path), '') IS NOT NULL)
+    )
 );
 
 COMMENT ON TABLE public.collection_post_media IS 'Stores media attachments for posts.';
 COMMENT ON COLUMN public.collection_post_media.meta_data IS 'JSONB for extra properties: width, height, duration, etc.';
+COMMENT ON COLUMN public.collection_post_media.storage_path IS 'Stable private Storage reference; signed display URLs are generated on read.';
 
 -- RLS for collection_post_media
 ALTER TABLE public.collection_post_media ENABLE ROW LEVEL SECURITY;

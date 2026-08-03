@@ -1,4 +1,4 @@
 interface:
-  display_name: "My MediaCrawl Skill"
-  short_description: "Process captured links with approval-gated POCs"
-  default_prompt: "Inspect my new captures and help me decide the next action."
+  display_name: "MediaCrawl Inbox"
+  short_description: "Route captured URLs and analyze private images"
+  default_prompt: "Use $my-mediacrawl-skill to process the oldest available media capture safely."

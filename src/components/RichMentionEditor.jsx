@@ -166,8 +166,8 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
         <div className="relative w-full">
             <style>{`
                 .mention-badge {
-                    background-color: #e0f2fe; /* light blue */
-                    color: #0284c7; /* dark blue */
+                    background-color: var(--accent-soft);
+                    color: var(--accent);
                     padding: 2px 6px;
                     border-radius: 9999px;
                     font-weight: 500;
@@ -175,12 +175,7 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
                     margin: 0 2px;
                     display: inline-block;
                     user-select: none;
-                    border: 1px solid #bae6fd;
-                }
-                .dark .mention-badge {
-                    background-color: #0c4a6e;
-                    color: #7dd3fc;
-                    border-color: #075985;
+                    border: 1px solid var(--border-subtle);
                 }
                 .rich-editor:empty:before {
                     content: attr(placeholder);
@@ -192,7 +187,7 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
                 ref={editorRef}
                 contentEditable
                 className={twMerge(
-                    "rich-editor w-full bg-transparent border notion-whisper-border rounded-lg p-3 sm:p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 overflow-y-auto font-mono whitespace-pre-wrap",
+                    "rich-editor w-full bg-surface-raised border notion-whisper-border rounded-[0.75rem] p-3 sm:p-4 text-sm focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_3px_var(--accent-soft)] overflow-y-auto font-mono whitespace-pre-wrap transition-[border-color,box-shadow] duration-200",
                     className
                 )}
                 style={{ minHeight: minHeight }}
@@ -203,13 +198,13 @@ const RichMentionEditor = ({ value, onChange, variables, placeholder, minHeight 
 
             {showMenu && filteredVariables.length > 0 && (
                 <div
-                    className="absolute z-50 bg-background border border-[rgba(0,0,0,0.1)] rounded-lg shadow-deep overflow-hidden min-w-[150px] max-w-[calc(100vw-1rem)]"
+                    className="absolute z-50 bg-surface-raised border notion-whisper-border rounded-[0.75rem] shadow-deep overflow-hidden min-w-[150px] max-w-[calc(100vw-1rem)]"
                     style={{ top: menuPosition.top, left: menuPosition.left, maxWidth: 'calc(100vw - 1rem)' }}
                 >
                     {filteredVariables.map((v, i) => (
                         <div
                             key={v.value}
-                            className={`px-3 py-2 text-sm cursor-pointer hover:bg-[#0075de] hover:text-[#0075de]-foreground ${i === selectedIndex ? 'bg-[#0075de] text-[#0075de]-foreground' : ''}`}
+                            className={`px-3 py-2 text-sm cursor-pointer transition-colors ${i === selectedIndex ? 'bg-[var(--accent)] text-white' : 'hover:bg-[var(--accent-soft)] hover:text-[var(--accent)]'}`}
                             onClick={() => insertVariable(v)}
                         >
                             {v.label}

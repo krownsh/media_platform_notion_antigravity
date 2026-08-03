@@ -15,6 +15,11 @@ Hermes Agent periodically checks the inbox. A pre-check wakes the LLM only when
 an unlocked `pending` row exists. Hermes claims one row, reviews it, persists a
 proposal or a stored-only decision, reports errors, and releases the lease.
 
+For a direct image upload, the outbox contains stable private Storage
+`storage_bucket`/`storage_path` metadata. Hermes must materialize that specific
+outbox item's image before visual analysis; temporary signed URLs are never
+persisted in the event or post record.
+
 This workflow deliberately does not write `source_routes`. The existing
 `collection_capture_outbox.payload.agent_routes` is the single route-plan record
 for the current MVP. `agent_jobs` are created only after a human approves a
@@ -57,12 +62,14 @@ Read without changing state:
 # Windows PowerShell
 node scripts/agent-sdk/get-inbox.js --json --limit 10
 node scripts/agent-sdk/get-inbox.js --status failed --json --limit 10
+npm run agent:media -- <image-outbox-id>
 ```
 
 ```bash
 # macOS
 node scripts/agent-sdk/get-inbox.js --json --limit 10
 node scripts/agent-sdk/get-inbox.js --status failed --json --limit 10
+npm run agent:media -- <image-outbox-id>
 ```
 
 Hermes-safe proposal run:
@@ -77,8 +84,22 @@ node scripts/agent-sdk/analyze-item.js <outbox-id> --agent hermes:cron:media-inb
 node scripts/agent-sdk/analyze-item.js <outbox-id> --agent hermes:cron:media-inbox
 ```
 
-The default command must not include `--execute-poc`. That flag is reserved for
-an explicit user-approved POC action.
+`agent:media` validates that the event belongs to the same tenant as an
+`image` post, permits only `CAPTURE_IMAGE_BUCKET` paths under that user's
+`captures/` prefix, and writes mode-0600 files below the operating system temp
+directory. Hermes inspects the returned `local_path`, creates a JSON object with
+`summary` and optional `description`, `ocr_text`, `tags`, `topics`,
+`primary_category`, and `sentiment`, then persists it with:
+
+```bash
+npm run agent:image-analysis -- <outbox-id> --agent hermes:cron:media-inbox --file <analysis.json>
+```
+
+The write-back RPC derives tenant and post identity from the outbox ID and only
+accepts direct image captures. It replaces the same outbox's prior image insight
+instead of appending duplicates. The default analysis command must not
+include `--execute-poc`; that flag is reserved for an explicit user-approved
+POC action.
 
 Manual lease diagnostics:
 
@@ -126,7 +147,7 @@ Example scheduled agent job:
 
 ```bash
 hermes cron create "every 30m" \
-  "Use MEDIA_PLATFORM_PROJECT_ROOT. Read at most 10 pending items with node scripts/agent-sdk/get-inbox.js --json --limit 10. Process only the oldest item with node scripts/agent-sdk/analyze-item.js <outbox-id> --agent hermes:cron:media-inbox. Never use --execute-poc. Never publish, install packages, or modify a project. Report the proposal or the recorded error; respond [SILENT] only when no item exists." \
+  "Use MEDIA_PLATFORM_PROJECT_ROOT. Read at most 10 pending items with node scripts/agent-sdk/get-inbox.js --json --limit 10. Process only the oldest item. If it has private image media, run npm run agent:media -- <outbox-id>, inspect every returned local_path, create the bounded image-analysis JSON, and persist it with npm run agent:image-analysis -- <outbox-id> --agent hermes:cron:media-inbox --file <analysis.json>. Then run node scripts/agent-sdk/analyze-item.js <outbox-id> --agent hermes:cron:media-inbox. Never use --execute-poc. Never publish, install packages, or modify a project. Report the image description or proposal, or the recorded error; respond [SILENT] only when no item exists." \
   --script media-inbox-gate.py \
   --workdir "/absolute/path/to/media_platform_notion_antigravity" \
   --deliver all \

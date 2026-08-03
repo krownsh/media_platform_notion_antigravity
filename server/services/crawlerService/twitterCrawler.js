@@ -54,7 +54,6 @@ export async function scrapeTwitterPost(url) {
 
         const author = userLegacy.name || userCore.name || 'Unknown User';
         const authorHandle = userLegacy.screen_name || userCore.screen_name || 'unknown';
-        const avatar = userLegacy.profile_image_url_https || userLegacy.profile_image_url || '';
         const postedAt = legacy.created_at;
 
         // Extract images/media
@@ -119,7 +118,6 @@ export async function scrapeTwitterPost(url) {
 
             author: author,
             authorHandle: authorHandle,
-            avatar: avatar,
             postedAt: postedAt,
             posted_at: postedAt,
 

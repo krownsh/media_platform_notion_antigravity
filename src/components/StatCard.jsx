@@ -9,23 +9,21 @@ import { motion as Motion } from 'framer-motion';
  * @param {React.ReactNode} icon - 圖示
  * @param {string} colorClass - Tailwind 顏色 class（用於強調色）
  */
-const StatCard = ({ label, value, subtext, icon, colorClass = 'text-violet-400' }) => {
+const StatCard = ({ label, value, subtext, icon, colorClass = 'text-[var(--accent)]' }) => {
     return (
         <Motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="relative bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-4 sm:p-5 flex flex-col gap-2 overflow-hidden"
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="flow-surface p-4 sm:p-5 flex flex-col gap-3 overflow-hidden"
         >
-            {/* 背景裝飾光暈 */}
-            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-current opacity-5 blur-xl" style={{ color: 'currentColor' }} />
-
             <div className="flex items-start justify-between">
-                <span className="text-xs font-semibold text-[#615d59] uppercase tracking-wider">{label}</span>
-                {icon && <span className={`${colorClass} opacity-80`}>{icon}</span>}
+                <span className="flow-kicker normal-case tracking-[0.06em]">{label}</span>
+                {icon && <span className={`${colorClass} flex h-8 w-8 items-center justify-center rounded-[0.6rem] bg-[var(--accent-soft)]`}>{icon}</span>}
             </div>
 
-            <div className={`text-2xl sm:text-3xl font-bold tracking-tight ${colorClass}`}>
-                {value !== undefined && value !== null ? value : '—'}
+            <div className={`text-2xl sm:text-3xl font-bold tracking-[-0.045em] ${colorClass}`}>
+                {value !== undefined && value !== null ? value : '無資料'}
             </div>
 
             {subtext && (

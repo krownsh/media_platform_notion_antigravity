@@ -9,18 +9,7 @@ import { motion as Motion } from 'framer-motion';
  * @param {number} maxValue - 最大值（預設取 data 最大值）
  * @param {string} colorClass - 主色
  */
-const CATEGORY_COLORS = {
-    ai: 'bg-violet-400',
-    tool: 'bg-blue-400',
-    market: 'bg-emerald-400',
-    security: 'bg-red-400',
-    research: 'bg-amber-400',
-    launch: 'bg-cyan-400',
-    opinion: 'bg-pink-400',
-    other: 'bg-gray-400',
-};
-
-const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0075de]' }) => {
+const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[var(--accent)]' }) => {
     if (!data || data.length === 0) {
         return (
             <div className="flex items-center justify-center h-24 text-[#615d59]/50 text-sm">
@@ -35,14 +24,14 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
         <div className="space-y-3">
             {data.map((item, idx) => {
                 const pct = Math.round((item.value / max) * 100);
-                const barColor = CATEGORY_COLORS[item.label] || colorClass;
+                const barColor = colorClass;
 
                 return (
                     <Motion.div
                         key={item.label}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: idx * 0.05 }}
+                        transition={{ delay: idx * 0.05, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                         className="flex items-center gap-2 sm:gap-3"
                     >
                         {/* Label */}
@@ -51,11 +40,11 @@ const BarChart = ({ data = [], maxValue, showValues = true, colorClass = 'bg-[#0
                         </span>
 
                         {/* Bar Track */}
-                        <div className="flex-1 h-5 bg-black/5 rounded-full overflow-hidden">
+                        <div className="flex-1 h-1.5 bg-black/5 rounded-full overflow-hidden">
                             <Motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${pct}%` }}
-                                transition={{ duration: 0.6, ease: 'easeOut', delay: idx * 0.05 }}
+                                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: idx * 0.05 }}
                                 className={`h-full rounded-full ${barColor}`}
                             />
                         </div>

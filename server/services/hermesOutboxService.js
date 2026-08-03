@@ -3,6 +3,7 @@ const DEFAULT_INBOX_LIMIT = 20;
 const MAX_INBOX_LIMIT = 100;
 const DEFAULT_LEASE_MINUTES = 15;
 const MAX_ERROR_LENGTH = 4_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const HERMES_OUTBOX_SELECT = `
   id,
@@ -25,10 +26,22 @@ export const HERMES_OUTBOX_SELECT = `
     collection_id,
     platform,
     original_url,
+    title,
     author_name,
     content,
     full_json,
     source_domains,
+    collection_post_media (
+      id,
+      type,
+      url,
+      storage_bucket,
+      storage_path,
+      content_type,
+      byte_size,
+      original_filename,
+      meta_data
+    ),
     collection_post_analysis (
       summary,
       tags,
@@ -141,6 +154,23 @@ async function loadOutboxEvent(outboxId, supabaseClient) {
   return data;
 }
 
+function postFromEvent(event) {
+  return Array.isArray(event?.collection_posts) ? event.collection_posts[0] : event?.collection_posts;
+}
+
+function assertHermesImageLease(event, identity) {
+  const post = postFromEvent(event);
+  if (event?.payload?.source_type !== 'image_upload' || post?.platform !== 'image') {
+    throw outboxError('OUTBOX_SOURCE_TYPE_MISMATCH', `Outbox event ${event?.id || 'unknown'} is not an image capture`);
+  }
+  if (event.status !== 'pending') {
+    throw outboxError('OUTBOX_NOT_AVAILABLE', `Outbox event ${event.id} is not pending (status=${event.status})`);
+  }
+  if (event.locked_by !== identity || !event.locked_at) {
+    throw outboxError('OUTBOX_LEASE_OWNER_MISMATCH', `Outbox event ${event.id} is not leased by ${identity}`);
+  }
+}
+
 function addLeaseVersionFilter(query, event) {
   let nextQuery = query
     .eq('id', event.id)
@@ -186,6 +216,14 @@ export async function claimHermesOutboxItem(outboxId, agentIdentity, supabaseCli
     );
   }
   return data;
+}
+
+export async function requireHermesImageLease(outboxId, agentIdentity, supabaseClient) {
+  if (!supabaseClient) throw new Error('Supabase client is required');
+  const identity = normalizeHermesIdentity(agentIdentity);
+  const event = await loadOutboxEvent(outboxId, supabaseClient);
+  assertHermesImageLease(event, identity);
+  return event;
 }
 
 export async function releaseHermesOutboxItem(eventInput, agentIdentity, supabaseClient, options = {}) {
@@ -286,6 +324,56 @@ export async function completeHermesStoredOnlyReview(eventInput, agentIdentity, 
     throw outboxError(
       'OUTBOX_REVIEW_CONFLICT',
       `Unable to complete stored-only review for outbox event ${event.id}${error ? `: ${error.message}` : ''}`
+    );
+  }
+  return data;
+}
+
+export async function completeHermesImageReview(
+  eventInput,
+  agentIdentity,
+  analysisId,
+  supabaseClient,
+  options = {}
+) {
+  if (!supabaseClient) throw new Error('Supabase client is required');
+  const event = eventInput?.id ? eventInput : await loadOutboxEvent(eventInput, supabaseClient);
+  const identity = normalizeHermesIdentity(agentIdentity);
+  const normalizedAnalysisId = String(analysisId || '').trim();
+  if (!UUID_PATTERN.test(normalizedAnalysisId)) {
+    throw new Error('Image analysis id must be a UUID');
+  }
+  assertHermesImageLease(event, identity);
+
+  const reviewedAt = toDate(options.now || new Date(), 'now').toISOString();
+  const payload = {
+    ...(event.payload || {}),
+    hermes_review: {
+      schema_version: 1,
+      status: 'analyzed',
+      reviewed_at: reviewedAt,
+      reviewed_by: identity,
+      analysis_id: normalizedAnalysisId
+    }
+  };
+
+  let query = supabaseClient
+    .from('collection_capture_outbox')
+    .update({
+      status: 'sent',
+      payload,
+      locked_at: null,
+      locked_by: null,
+      last_error: null
+    });
+  query = addLeaseVersionFilter(query, event).eq('locked_by', identity);
+  const { data, error } = await query
+    .select(HERMES_OUTBOX_SELECT)
+    .maybeSingle();
+  if (error || !data) {
+    throw outboxError(
+      'OUTBOX_IMAGE_REVIEW_CONFLICT',
+      `Unable to complete image review for outbox event ${event.id}${error ? `: ${error.message}` : ''}`
     );
   }
   return data;

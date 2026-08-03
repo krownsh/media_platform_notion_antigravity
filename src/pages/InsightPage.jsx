@@ -162,32 +162,33 @@ const InsightPage = () => {
         <Motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full max-w-5xl mx-auto px-4 pb-20"
+            className="flow-page max-w-6xl px-1 sm:px-2"
         >
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pt-6 sm:pt-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 mb-7 sm:mb-9 pt-5 sm:pt-8 md:pt-12">
                 <div className="min-w-0">
-                    <h2 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] flex items-center gap-3 break-words">
-                        <BarChart3 className="text-[#0075de]" size={28} />
+                    <p className="flow-kicker mb-2">洞察</p>
+                    <h2 className="text-3xl sm:text-[2.25rem] font-bold tracking-[-0.05em] text-[rgba(0,0,0,0.95)] break-words">
                         情報趨勢看板
                     </h2>
-                    <p className="text-[#615d59] text-sm mt-1">
-                        分析你收藏的內容分佈，發現知識盲區與資訊熱點
+                    <p className="text-[#615d59] text-sm leading-6 mt-3">
+                        從收藏分佈、來源與主題，找出下一個值得處理的方向。
                     </p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                     <button
                         onClick={handleBatchClassify}
                         disabled={batchStatus === 'running'}
-                        className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-transparent border notion-whisper-border text-sm font-medium text-[rgba(0,0,0,0.95)] hover:bg-[rgba(0,117,222,0.1)] hover:border-accent/30 transition-all shadow-soft-card disabled:opacity-50 w-full sm:w-auto"
+                        className="notion-btn-secondary flex items-center justify-center gap-2 px-4 py-2 text-sm w-full sm:w-auto disabled:opacity-50"
                     >
-                        <Sparkles size={14} className="text-[#0075de]" />
+                        <Sparkles size={14} className="text-[var(--accent)]" />
                         {batchStatus === 'running' ? '分類中...' : batchStatus || '一鍵自動分類'}
                     </button>
                     <button
                         onClick={loadStats}
                         disabled={loading}
-                        className="p-2 rounded-lg bg-transparent border notion-whisper-border text-[#615d59] hover:text-[#0075de] transition-colors shadow-soft-card self-start sm:self-auto"
+                        className="flow-icon-button border notion-whisper-border self-start sm:self-auto"
+                        aria-label="重新整理洞察資料"
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     </button>
@@ -196,7 +197,7 @@ const InsightPage = () => {
 
             {/* Error Banner */}
             {error && (
-                <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-3 text-red-700">
+                <div className="mb-6 p-4 rounded-[0.75rem] bg-destructive/10 border border-destructive/25 flex items-center gap-3 text-destructive">
                     <AlertCircle size={16} />
                     <span className="text-sm">{error}</span>
                 </div>
@@ -206,30 +207,30 @@ const InsightPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
                 <StatCard
                     label="總收藏貼文"
-                    value={overview?.total_posts ?? '—'}
+                    value={overview?.total_posts ?? '無資料'}
                     icon={<BookOpen size={18} />}
-                    colorClass="text-violet-500"
+                    colorClass="text-[var(--accent)]"
                     subtext="已採集的貼文總數"
                 />
                 <StatCard
                     label="已分析貼文"
-                    value={overview?.total_analyzed ?? '—'}
+                    value={overview?.total_analyzed ?? '無資料'}
                     icon={<Sparkles size={18} />}
-                    colorClass="text-amber-500"
+                    colorClass="text-[var(--accent)]"
                     subtext="已取得主分類標籤"
                 />
                 <StatCard
                     label="最熱門分類"
-                    value={overview?.top_category ? CATEGORY_LABELS[overview.top_category.primary_category] || overview.top_category.primary_category : '—'}
+                    value={overview?.top_category ? CATEGORY_LABELS[overview.top_category.primary_category] || overview.top_category.primary_category : '無資料'}
                     icon={<Tag size={18} />}
-                    colorClass="text-emerald-500"
+                    colorClass="text-[var(--accent)]"
                     subtext={overview?.top_category ? `共 ${overview.top_category.count} 篇` : ''}
                 />
                 <StatCard
                     label="熱門來源"
-                    value={domains[0]?.domain || '—'}
+                    value={domains[0]?.domain || '無資料'}
                     icon={<Globe size={18} />}
-                    colorClass="text-blue-500"
+                    colorClass="text-[var(--accent)]"
                     subtext={domains[0] ? `被引用 ${domains[0].count} 次` : ''}
                 />
             </div>
@@ -237,10 +238,10 @@ const InsightPage = () => {
             {/* ── 中間：類別分佈 + 時間趨勢 ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* 類別分佈 */}
-                <div className="bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-6">
+                <div className="flow-surface p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-5">
-                        <BarChart3 size={16} className="text-[#0075de]" />
-                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)] uppercase tracking-wider">主題分佈</h3>
+                        <BarChart3 size={16} className="text-[var(--accent)]" />
+                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">主題分佈</h3>
                     </div>
                     {categories.length > 0
                         ? <BarChart data={categories.map(c => ({ ...c, label: c.label || 'other' }))} />
@@ -249,10 +250,10 @@ const InsightPage = () => {
                 </div>
 
                 {/* 時間趨勢 Sparkline */}
-                <div className="bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-6">
+                <div className="flow-surface p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-5">
-                        <TrendingUp size={16} className="text-[#0075de]" />
-                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)] uppercase tracking-wider">近 30 天採集趨勢</h3>
+                        <TrendingUp size={16} className="text-[var(--accent)]" />
+                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">近 30 天採集趨勢</h3>
                     </div>
                     {trend.length > 0 ? (
                         <div>
@@ -269,12 +270,12 @@ const InsightPage = () => {
                                     fillOpacity="0.3"
                                 />
                                 {/* Line */}
-                                <path d={sparklinePath} fill="none" stroke="#7c6ef5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d={sparklinePath} fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                                 {/* Gradient def */}
                                 <defs>
                                     <linearGradient id="sparkGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#7c6ef5" />
-                                        <stop offset="100%" stopColor="#7c6ef5" stopOpacity="0" />
+                                        <stop offset="0%" stopColor="var(--accent)" />
+                                        <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
                                     </linearGradient>
                                 </defs>
                             </svg>
@@ -292,10 +293,10 @@ const InsightPage = () => {
             {/* ── 下排：Domain 排行 + Rising Voices ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* Domain 排行 */}
-                <div className="bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-6">
+                <div className="flow-surface p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-5">
-                        <Globe size={16} className="text-[#0075de]" />
-                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)] uppercase tracking-wider">熱門來源 Domain</h3>
+                        <Globe size={16} className="text-[var(--accent)]" />
+                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">熱門來源 Domain</h3>
                     </div>
                     {domains.length > 0 ? (
                         <div className="space-y-2">
@@ -304,11 +305,11 @@ const InsightPage = () => {
                                     <div className="flex items-center gap-3 min-w-0">
                                         <span className="text-xs text-[#615d59]/60 w-5 text-right">{idx + 1}</span>
                                         <a href={`https://${d.domain}`} target="_blank" rel="noopener noreferrer"
-                                            className="touch-target-link text-sm font-medium text-[rgba(0,0,0,0.95)] hover:text-[#0075de] transition-colors break-all sm:break-normal">
+                                            className="touch-target-link text-sm font-medium text-[rgba(0,0,0,0.95)] hover:text-[var(--accent)] transition-colors break-all sm:break-normal">
                                             {d.domain}
                                         </a>
                                     </div>
-                                    <span className="text-xs font-bold text-[#0075de] bg-[rgba(0,117,222,0.1)] px-2 py-0.5 rounded-full">
+                                    <span className="notion-badge text-xs">
                                         ×{d.count}
                                     </span>
                                 </div>
@@ -320,25 +321,25 @@ const InsightPage = () => {
                 </div>
 
                 {/* Rising Voices */}
-                <div className="bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-6">
+                <div className="flow-surface p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-5">
-                        <Users size={16} className="text-[#0075de]" />
-                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)] uppercase tracking-wider">常看作者（Rising Voices）</h3>
+                        <Users size={16} className="text-[var(--accent)]" />
+                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">常看作者</h3>
                     </div>
                     {authors.length > 0 ? (
                         <div className="space-y-3">
                             {authors.slice(0, 8).map((a) => (
                                 <div key={a.authorHandle} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-violet-400 to-blue-400 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                        <div className="w-8 h-8 rounded-[0.65rem] bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center text-xs font-bold shrink-0">
                                             {(a.author?.[0] || '?').toUpperCase()}
                                         </div>
                                         <div>
                                             <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] leading-none">{a.author || 'Unknown'}</p>
-                                            <p className="text-xs text-[#615d59] mt-0.5 break-all sm:break-normal">@{a.authorHandle} · {a.platform}</p>
+                                            <p className="text-xs text-[#615d59] mt-0.5 break-all sm:break-normal">@{a.authorHandle}, {a.platform}</p>
                                         </div>
                                     </div>
-                                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full self-start sm:self-auto">
+                                    <span className="notion-badge text-xs self-start sm:self-auto">
                                         {a.count} 篇
                                     </span>
                                 </div>
@@ -352,10 +353,10 @@ const InsightPage = () => {
 
             {/* ── Tag Cloud ── */}
             {tags.length > 0 && (
-                <div className="bg-transparent backdrop-blur-xl rounded-lg border notion-whisper-border shadow-soft-card p-6">
+                <div className="flow-surface p-5 sm:p-6">
                     <div className="flex items-center gap-2 mb-5">
-                        <Tag size={16} className="text-[#0075de]" />
-                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)] uppercase tracking-wider">熱門標籤</h3>
+                        <Tag size={16} className="text-[var(--accent)]" />
+                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">熱門標籤</h3>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         {tags.map((t) => {
@@ -364,7 +365,7 @@ const InsightPage = () => {
                             return (
                                 <span
                                     key={t.tag}
-                                    className="px-3 py-1 rounded-full bg-[rgba(0,117,222,0.1)] text-[#0075de] font-medium border border-accent/20 cursor-default hover:bg-[#0075de]/20 transition-colors"
+                                    className="notion-badge px-3 py-1 font-medium cursor-default hover:bg-[var(--accent-soft)] transition-colors"
                                     style={{ fontSize: `${size}rem` }}
                                     title={`${t.count} 次`}
                                 >

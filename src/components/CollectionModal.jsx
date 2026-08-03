@@ -12,13 +12,13 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
     });
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-transparent backdrop-blur-md p-0 sm:p-4">
-            <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-[95vw] bg-transparent border notion-whisper-border rounded-none sm:rounded-lg flex flex-col overflow-hidden shadow-2xl backdrop-blur-2xl">
+        <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-[#17201d]/25 backdrop-blur-[3px] p-0 sm:p-4">
+            <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-[95vw] bg-surface-raised border notion-whisper-border rounded-none sm:rounded-[1rem] flex flex-col overflow-hidden shadow-deep">
 
                 {/* Header */}
-                <div className="py-2.5 px-4 sm:py-3 sm:px-6 border-b border-[rgba(0,0,0,0.1)]/20 flex items-center justify-between bg-transparent z-10 gap-3">
+                <div className="py-3 px-4 sm:py-4 sm:px-6 border-b notion-whisper-border flex items-center justify-between bg-surface-raised z-10 gap-3">
                     <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="p-1.5 sm:p-2 bg-[#0075de]/20 rounded-lg text-[#0075de]">
+                        <div className="p-2 bg-[var(--accent-soft)] rounded-[0.65rem] text-[var(--accent)]">
                             <FolderOpen size={20} className="sm:w-5 sm:h-5" />
                         </div>
                         <div className="min-w-0 flex flex-row items-baseline gap-2">
@@ -28,21 +28,23 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-1.5 hover:bg-black/5 rounded-full transition-colors"
+                        className="flow-icon-button"
+                        aria-label="關閉收藏夾"
                     >
                         <X size={20} className="text-[#615d59] hover:text-[rgba(0,0,0,0.95)]" />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-secondary/5 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[var(--surface)] custom-scrollbar">
                     {posts.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-[#615d59]/60">
-                            <p className="text-lg">此資料夾是空的</p>
+                        <div className="h-full flex flex-col items-center justify-center text-center text-[#615d59] px-6">
+                            <p className="text-lg font-semibold text-[rgba(0,0,0,0.95)]">此資料夾目前是空的</p>
+                            <p className="mt-2 text-sm">從收件匣拖曳貼文進來，就能在這裡持續整理。</p>
                         </div>
                     ) : (
                         <SortableContext items={posts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(200px,300px))] gap-3 sm:gap-6 justify-center">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                                 {posts.map(post => (
                                     <SortablePostCard
                                         key={post.id}
@@ -64,10 +66,10 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                 <div
                     ref={setRemoveRef}
                     className={`
-                        py-3 px-4 sm:py-4 sm:px-6 transition-all duration-300 text-center border-dashed border-2 mx-4 mb-4 mt-2 sm:mx-6 sm:mb-6 sm:mt-2 rounded-lg
+                        py-3 px-4 sm:py-4 sm:px-6 transition-all duration-300 text-center border-dashed border mx-4 mb-4 mt-2 sm:mx-6 sm:mb-6 sm:mt-2 rounded-[0.75rem]
                         ${isOverRemove
-                            ? 'bg-destructive/10 border-destructive text-destructive scale-[1.02] shadow-inner'
-                            : 'bg-transparent border-[rgba(0,0,0,0.1)]/30 text-[#615d59] hover:bg-transparent hover:border-[rgba(0,0,0,0.1)]/50'}
+                            ? 'bg-destructive/10 border-destructive text-destructive scale-[1.01] shadow-inner'
+                            : 'bg-[var(--surface-muted)] border-[var(--border-subtle)] text-[#615d59] hover:border-[var(--destructive)]'}
                     `}
                 >
                     <p className="font-medium text-sm">拖曳項目到此處以從資料夾移除</p>

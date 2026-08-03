@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Sparkles, ChevronLeft, ChevronRight, Instagram, Twitter, Trash2, FolderInput, FolderMinus, Globe, Facebook, Youtube, FileText, Image as ImageIcon } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
+import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
 // Custom Threads Icon
@@ -50,6 +51,7 @@ const PostCard = ({
         if (platformName === 'facebook') return { icon: <Facebook size={14} className="text-blue-600" />, label: 'Facebook' };
         if (platformName === 'youtube') return { icon: <Youtube size={14} className="text-red-600" />, label: 'YouTube' };
         if (platformName === 'notion') return { icon: <FileText size={14} className="text-[rgba(0,0,0,0.95)]" />, label: 'Notion' };
+        if (platformName === 'image') return { icon: <ImageIcon size={14} className="text-violet-600" />, label: 'Image' };
         return { icon: <Globe size={14} className="text-[#615d59]" />, label: 'Web Link' };
     };
 
@@ -76,36 +78,34 @@ const PostCard = ({
             }}
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }}
             onClick={onClick}
-            className={`notion-card rounded-lg group relative mx-auto w-full flex-shrink-0 flex flex-col cursor-pointer border notion-whisper-border shadow-soft-card hover:shadow-deep hover:-translate-y-1 transition-all duration-500 overflow-hidden ${isCompact ? 'max-w-[280px] sm:max-w-[320px] h-[400px] sm:h-[460px]' : 'max-w-[420px] h-[480px] sm:h-[520px]'}`}
+            className={`notion-card group relative mx-auto w-full flex-shrink-0 flex flex-col cursor-pointer overflow-hidden hover:-translate-y-0.5 ${isCompact ? 'max-w-[320px] min-h-[390px]' : 'max-w-[440px] min-h-[430px]'}`}
             onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }}
         >
             {/* Platform Header */}
-            <div className={`flex-shrink-0 w-full px-3 sm:px-4 flex items-center justify-between bg-white border-b notion-whisper-border ${isCompact ? 'h-8' : 'h-10'}`}>
+            <div className="flex-shrink-0 w-full px-3 sm:px-4 py-2.5 flex items-center justify-between bg-surface-raised border-b notion-whisper-border">
                 <div className="flex items-center gap-2">
                     {platformStyle.icon}
-                    <span className={`${isCompact ? 'text-[9px]' : 'text-[11px] sm:text-[11px]'} font-bold uppercase tracking-wider text-[#615d59] leading-none`}>{platformStyle.label}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30" />
-                    <span className={`${isCompact ? 'text-[9px] max-w-[80px]' : 'text-[11px] sm:text-[11px] max-w-[120px] sm:max-w-[160px]'} text-[#615d59]/80 font-medium leading-none truncate`} title={topFolderSuggestion ? `建議放入：${topFolderSuggestion.collection.name}` : undefined}>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#615d59] leading-none">{platformStyle.label}</span>
+                    <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
+                    <span className="text-[10px] sm:text-[11px] max-w-[140px] text-[#615d59]/80 font-medium leading-none truncate" title={topFolderSuggestion ? `建議放入：${topFolderSuggestion.collection.name}` : undefined}>
                         {post.collectionId
                             ? collections.find(c => c.id === post.collectionId)?.name || '未分類'
                             : topFolderSuggestion ? `建議：${topFolderSuggestion.collection.name}` : '未分類'}
                     </span>
                 </div>
                 <button
-                    className="p-2 rounded-full hover:bg-black/5 text-[#615d59]"
+                    className="flow-icon-button min-h-8 min-w-8"
                     onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                    aria-label="開啟貼文選項"
+                    aria-expanded={showMenu}
                 >
                     <MoreHorizontal size={16} />
                 </button>
             </div>
 
             {/* Author Info */}
-            <div className={`flex-shrink-0 px-3 sm:px-4 py-2 border-b notion-whisper-border flex items-center gap-2.5 bg-white ${isCompact ? 'h-[40px]' : 'h-[46px] sm:h-[50px]'}`}>
-                {post.avatar ? (
-                    <img src={proxyImage(post.avatar)} alt={post.author} className={`${isCompact ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover border`} />
-                ) : (
-                    <div className={`${isCompact ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-xs'} rounded-full bg-black/5 flex items-center justify-center font-bold`}>{post.author?.[0] || 'U'}</div>
-                )}
+            <div className="flex-shrink-0 px-3 sm:px-4 py-2.5 border-b notion-whisper-border flex items-center gap-2.5 bg-surface-raised">
+                <AuthorInitialAvatar name={post.author} size={isCompact ? 'sm' : 'md'} />
                 <div className="min-w-0">
                     <div className={`${isCompact ? 'text-xs' : 'text-sm'} font-semibold truncate leading-tight`}>{post.author || 'Unknown'}</div>
                     <div className={`${isCompact ? 'text-[10px]' : 'text-[12px]'} text-[#615d59]/80 truncate mt-0.5`}>@{post.authorHandle || 'unknown'}</div>
@@ -113,65 +113,69 @@ const PostCard = ({
             </div>
 
             {/* Image */}
-            <div className={`flex-shrink-0 w-full bg-black/5 overflow-hidden flex items-center justify-center relative border-b notion-whisper-border ${isCompact ? 'h-[120px] sm:h-[130px]' : 'h-[140px] sm:h-[160px]'}`}>
+            <div className={`flex-shrink-0 w-full bg-[var(--surface-muted)] overflow-hidden flex items-center justify-center relative border-b notion-whisper-border ${isCompact ? 'aspect-[16/8]' : 'aspect-[16/7.5]'}`}>
                 {images.length > 0 ? (
-                    <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover" alt="Post content" />
+                    <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]" alt="Post content" />
                 ) : (
-                    <span className="text-[#615d59] text-sm">無圖片</span>
+                    <div className="flex items-center gap-2 text-xs text-[#615d59]">
+                        <ImageIcon size={16} />
+                        <span>沒有可預覽的圖片</span>
+                    </div>
                 )}
                 {hasMultipleImages && (
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-full bg-black/20 text-[9px] text-white">
+                    <div className="absolute top-2 right-2 px-1.5 py-1 rounded-md bg-black/45 text-[9px] text-white tabular-nums">
                         {currentImageIndex + 1} / {images.length}
                     </div>
                 )}
             </div>
 
             {/* Action Bar */}
-            <div className={`flex-shrink-0 px-3 sm:px-4 flex items-center justify-end border-b notion-whisper-border bg-white ${isCompact ? 'h-8' : 'h-10'}`}>
+            <div className="flex-shrink-0 px-3 sm:px-4 py-1 flex items-center justify-end border-b notion-whisper-border bg-surface-raised">
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        className="p-2 rounded-full hover:bg-black/5"
+                        className="flow-icon-button min-h-8 min-w-8"
                         onClick={(e) => { e.stopPropagation(); onRemix && onRemix(post); }}
                         aria-label="AI 改寫"
                     >
-                        <Sparkles size={16} className="text-[#0075de]" />
+                        <Sparkles size={16} className="text-[var(--accent)]" />
                     </button>
-                    <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="touch-target-link inline-flex items-center justify-center rounded-full hover:bg-black/5">
-                        <ExternalLink size={16} className="text-[#615d59]" />
-                    </a>
+                    {post.originalUrl && (
+                        <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="flow-icon-button min-h-8 min-w-8" aria-label="在新分頁開啟原始貼文">
+                            <ExternalLink size={16} className="text-[#615d59]" />
+                        </a>
+                    )}
                 </div>
             </div>
 
             {/* --- Content Area --- */}
-            <div className="flex-1 flex flex-col bg-white overflow-hidden">
+            <div className="flex-1 flex flex-col bg-surface-raised overflow-hidden">
 
                 {/* 1. Main Content Container */}
-                <div className={`flex-shrink-0 px-3 sm:px-4 overflow-hidden ${isCompact ? 'h-[140px] sm:h-[160px] py-2' : 'h-[140px] sm:h-[160px] py-3 sm:py-4'}`}>
-                    <div className={`font-bold text-[rgba(0,0,0,0.95)] mb-1.5 leading-tight ${isCompact ? 'text-xs' : 'text-sm'}`}>{post.author}</div>
+                <div className={`flex-1 px-3 sm:px-4 overflow-hidden ${isCompact ? 'py-2.5' : 'py-3 sm:py-4'}`}>
                     <div
-                        className={`text-[rgba(0,0,0,0.95)]/80 leading-snug whitespace-pre-wrap font-medium ${isCompact ? 'text-[12px] sm:text-[12px]' : 'text-[15px] sm:text-[14px]'}`}
-                        style={{ display: '-webkit-box', WebkitLineClamp: isCompact ? 5 : 5, WebkitBoxOrient: 'vertical' }}
+                        className={`text-[rgba(0,0,0,0.95)]/80 leading-6 whitespace-pre-wrap font-medium ${isCompact ? 'text-xs' : 'text-sm'}`}
+                        style={{ display: '-webkit-box', WebkitLineClamp: isCompact ? 5 : 6, WebkitBoxOrient: 'vertical' }}
                     >
                         {(post.content || title || '').replace(/\n\s*\n/g, '\n').trim()}
                     </div>
                 </div>
 
                 {/* 2. Footer Container */}
-                <div className={`mt-auto flex-shrink-0 px-3 sm:px-4 flex flex-col bg-white border-t notion-whisper-border ${isCompact ? 'min-h-[50px] py-1.5 gap-1' : 'min-h-[64px] sm:min-h-[70px] py-2 gap-1.5'}`}>
+                <div className={`mt-auto flex-shrink-0 px-3 sm:px-4 flex flex-col bg-surface border-t notion-whisper-border ${isCompact ? 'py-2 gap-1.5' : 'py-2.5 gap-2'}`}>
                     {/* Tags Area */}
                     <div className="min-h-5 overflow-hidden flex flex-wrap items-center gap-1 flex-shrink-0">
                         {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
-                            <span key={i} className={`px-1.5 py-0.5 rounded-full bg-black/5 font-bold text-[rgba(0,0,0,0.95)]/70 border border-black/5 leading-none ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>#{tag}</span>
+                            <span key={i} className={`notion-badge leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>#{tag}</span>
                         ))}
                     </div>
 
                     {/* AI Info / Summary Area */}
-                    <div className={`${showSummary && analysis?.summary ? (isCompact ? 'h-[24px]' : 'h-[28px]') : 'h-0'} overflow-hidden flex-shrink-0`}>
+                    <div className={`${showSummary && analysis?.summary ? 'max-h-10' : 'max-h-0'} overflow-hidden flex-shrink-0 transition-[max-height] duration-200`}>
                         {showSummary && analysis?.summary && (
-                            <div className="bg-[#0075de]/3 rounded-md p-1 h-full flex flex-col justify-center border border-[#0075de]/5">
-                                <div className={`${isCompact ? 'text-[9px]' : 'text-[11px]'} text-[#615d59] leading-tight line-clamp-1 font-medium italic`}>
-                                    <Sparkles size={8} className="inline mr-1 text-[#0075de]" />
+                            <div className="bg-[var(--accent-soft)] rounded-md px-2 py-1.5 flex flex-col justify-center border border-[rgba(45,111,115,0.1)]">
+                                <div className={`${isCompact ? 'text-[9px]' : 'text-[11px]'} text-[#615d59] leading-tight line-clamp-1 font-medium`}>
+                                    <Sparkles size={8} className="inline mr-1 text-[var(--accent)]" />
                                     {(typeof analysis.summary === 'string' ? analysis.summary : (analysis.summary.core_insight || "點擊查看")).replace(/##\s*|\*\*/g, '')}
                                 </div>
                             </div>
@@ -179,9 +183,9 @@ const PostCard = ({
                     </div>
 
                     {/* Final Bottom Row */}
-                    <div className={`${isCompact ? 'h-[14px]' : 'h-[18px]'} flex items-center justify-between flex-shrink-0`}>
-                        <span className={`text-[#0075de] font-bold uppercase tracking-tight leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysis?.primary_category || ''}</span>
-                        <div className={`text-[#615d59] opacity-70 font-bold leading-none ${isCompact ? 'text-[9px]' : 'text-[11px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
+                    <div className="flex items-center justify-between flex-shrink-0 gap-3">
+                        <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysis?.primary_category || '尚未分類'}</span>
+                        <div className={`text-[#615d59] opacity-80 font-medium leading-none tabular-nums ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>
                 </div>
             </div>
@@ -191,19 +195,21 @@ const PostCard = ({
                 {showMenu && (
                     <Motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-white/95 flex flex-col p-3 sm:p-4"
+                        className="absolute inset-0 z-50 bg-surface-raised backdrop-blur-sm flex flex-col p-3 sm:p-4"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex justify-between items-center mb-4 gap-3">
                             <span className="font-bold">更多選項</span>
-                            <MoreHorizontal className="cursor-pointer" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} />
+                            <button type="button" className="flow-icon-button min-h-8 min-w-8" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} aria-label="關閉貼文選項">
+                                <MoreHorizontal size={16} />
+                            </button>
                         </div>
                         
                         {!showMoveMenu ? (
                             <>
                                 {topFolderSuggestion && (
                                     <button
-                                        className="flex flex-col gap-1 p-3 mb-1 rounded-lg bg-[#0075de]/5 text-[#0075de] hover:bg-[#0075de]/10 w-full text-left"
+                                        className="flex flex-col gap-1 p-3 mb-1 rounded-lg bg-[var(--accent-soft)] text-[var(--accent)] hover:bg-[var(--accent-soft)] w-full text-left transition-transform duration-150 active:scale-[0.98]"
                                         onClick={(e) => handleMoveToCollection(e, topFolderSuggestion.collection.id)}
                                     >
                                         <span className="flex items-center gap-2 font-medium"><FolderInput size={16} /> 建議移至「{topFolderSuggestion.collection.name}」</span>

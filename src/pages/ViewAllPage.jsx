@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchPosts } from '../features/postsSlice';
 import PostCard from '../components/PostCard';
-import { Layers, Search, Filter } from 'lucide-react';
+import { Search, Filter, SearchX } from 'lucide-react';
 
 const CATEGORIES = [
     { value: 'all', label: '全部類別' },
@@ -70,39 +70,42 @@ const ViewAllPage = ({ onRemix }) => {
     displayedPosts = [...displayedPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return (
-        <div className="w-full mx-auto px-2 sm:px-4 pb-20">
-            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-8 sm:mb-10 pt-6 sm:pt-8 pl-2">
-                <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-[rgba(0,117,222,0.1)] rounded-lg">
-                        <Layers className="text-[#0075de]" size={24} />
+        <div className="flow-page px-1 sm:px-2">
+            <div className="flex flex-col xl:flex-row items-start xl:items-end justify-between gap-5 mb-7 sm:mb-9 pt-5 sm:pt-8 md:pt-12">
+                <div>
+                    <p className="flow-kicker mb-2">知識庫</p>
+                    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                        <h1 className="text-3xl sm:text-[2.25rem] font-bold tracking-[-0.05em] text-[rgba(0,0,0,0.95)] break-words">{title}</h1>
+                        <span className="text-[#615d59] text-sm font-medium tabular-nums">
+                            {displayedPosts.length} 篇貼文
+                        </span>
                     </div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-[rgba(0,0,0,0.95)] break-words">{title}</h1>
-                    <span className="text-[#615d59] text-sm ml-0 sm:ml-2 font-medium">
-                        {displayedPosts.length} 篇貼文
-                    </span>
+                    <p className="mt-3 max-w-xl text-sm leading-6 text-[#615d59]">用來源、分類與摘要快速定位，進一步整理成主題、內容或實作線索。</p>
                 </div>
 
                 {/* 檢索與過濾區塊 */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                <div className="flow-surface flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full xl:w-auto p-2">
                     {/* Search Bar */}
-                    <div className="relative group flex-1 sm:w-64 min-w-0">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[#0075de] transition-colors" size={16} />
+                    <div className="relative group flex-1 sm:w-72 min-w-0">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 group-focus-within:text-[var(--accent)] transition-colors" size={16} />
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="全文搜尋 (作者/內容/總結)"
-                            className="w-full bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-4 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all"
+                            className="w-full bg-transparent border border-transparent hover:bg-black/[0.025] focus:border-[var(--accent)] focus:bg-surface-raised rounded-md pl-9 pr-4 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
+                            aria-label="搜尋貼文"
                         />
                     </div>
 
                     {/* Category Filter */}
-                    <div className="relative flex-shrink-0 w-full sm:w-auto">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]/70 pointer-events-none" size={14} />
+                    <div className="relative flex-shrink-0 w-full sm:w-auto border-t sm:border-t-0 sm:border-l notion-whisper-border pt-2 sm:pt-0 sm:pl-2">
+                        <Filter className="absolute left-3 sm:left-5 top-[calc(50%+0.25rem)] sm:top-1/2 -translate-y-1/2 text-[#615d59]/70 pointer-events-none" size={14} />
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="appearance-none bg-transparent border border-[rgba(0,0,0,0.1)] focus:border-accent/50 focus:bg-white rounded-full pl-9 pr-10 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-all font-medium cursor-pointer w-full sm:w-auto"
+                            className="appearance-none bg-transparent border border-transparent hover:bg-black/[0.025] focus:border-[var(--accent)] focus:bg-surface-raised rounded-md pl-9 sm:pl-10 pr-10 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:shadow-[0_0_0_3px_var(--accent-soft)] font-medium cursor-pointer w-full sm:w-auto"
+                            aria-label="依類別篩選貼文"
                         >
                             {CATEGORIES.map(c => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -113,17 +116,21 @@ const ViewAllPage = ({ onRemix }) => {
             </div>
 
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4 sm:gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                     {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="notion-card rounded-lg overflow-hidden animate-pulse w-full max-w-[420px] h-[520px] sm:h-[640px] bg-transparent" />
+                        <div key={i} className="flow-surface flow-shimmer h-[27rem] w-full" />
                     ))}
                 </div>
             ) : displayedPosts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-[#615d59]/60">
-                    <p className="text-lg font-medium">未找到貼文</p>
+                <div className="flow-panel flex min-h-[22rem] flex-col items-center justify-center px-6 py-16 text-center text-[#615d59]">
+                    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[1rem] bg-[var(--accent-soft)] text-[var(--accent)]">
+                        <SearchX size={26} />
+                    </div>
+                    <p className="text-base font-semibold text-[rgba(0,0,0,0.95)]">沒有符合條件的貼文</p>
+                    <p className="mt-2 max-w-sm text-sm leading-6">調整搜尋字詞或篩選條件，也可以清除限制後重新查看全部收藏。</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3 sm:gap-6 md:gap-8 justify-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
                     {displayedPosts.map((post) => (
                         <PostCard
                             key={post.id}

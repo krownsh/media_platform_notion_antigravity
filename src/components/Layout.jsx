@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -13,15 +13,18 @@ import { Activity } from 'lucide-react';
 import { createCollection } from '../features/postsSlice';
 
 const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
-    <div
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-sm cursor-pointer transition-colors group ${active
-            ? 'bg-black/5 text-[rgba(0,0,0,0.95)] font-semibold'
+    <Motion.button
+        type="button"
+        layout
+        onClick={onClick}
+        aria-current={active ? 'page' : undefined}
+        className={`relative flex w-full items-center gap-2 px-3 py-2 text-left rounded-md cursor-pointer group ${active
+            ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold shadow-[inset_0_0_0_1px_rgba(45,111,115,0.08)]'
             : 'text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)]'
             } ${collapsed ? 'justify-center px-1' : ''}`}
-        onClick={onClick}
         title={collapsed ? label : ''}
     >
-        <_Icon size={16} className={`transition-colors ${active ? 'text-[rgba(0,0,0,0.95)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
+        <_Icon size={16} strokeWidth={1.8} className={`transition-colors ${active ? 'text-[var(--accent)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
         {!collapsed && (
             <span className="flex-1 whitespace-nowrap overflow-hidden text-sm">{label}</span>
         )}
@@ -30,7 +33,7 @@ const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu, expanded
                 {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
             </div>
         )}
-    </div>
+    </Motion.button>
 );
 
 const Layout = ({ children }) => {
@@ -109,13 +112,15 @@ const Layout = ({ children }) => {
     return (
         <div className="flex flex-col md:flex-row h-[100dvh] overflow-hidden text-[rgba(0,0,0,0.95)] bg-background overflow-x-hidden">
             {/* Mobile Header (Sticky at top) */}
-            <header className="md:hidden flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 bg-white border-b border-[rgba(0,0,0,0.1)] z-[60] sticky top-0">
+            <header className="md:hidden flex items-center justify-between px-4 sm:px-6 py-3 bg-surface-raised border-b notion-whisper-border z-[60] sticky top-0 shadow-[0_1px_0_rgba(23,31,26,0.03)]">
                 <div className="cursor-pointer" onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}>
-                    <h1 className="text-lg font-bold tracking-tight text-[rgba(0,0,0,0.95)]/80 font-serif">社群筆記</h1>
+                    <h1 className="text-lg font-bold tracking-[-0.03em] text-[rgba(0,0,0,0.95)]">社群筆記</h1>
                 </div>
                 <button
                     onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="p-2 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] rounded-lg hover:bg-black/5 transition-colors"
+                    className="flow-icon-button"
+                    aria-label={isMobileMenuOpen ? '關閉選單' : '開啟選單'}
+                    aria-expanded={isMobileMenuOpen}
                 >
                     {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
@@ -129,7 +134,7 @@ const Layout = ({ children }) => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.2 }}
-                        className="md:hidden fixed inset-x-0 top-[60px] bg-white z-50 border-b border-[rgba(0,0,0,0.1)] shadow-deep overflow-y-auto max-h-[calc(100dvh-60px)] pb-[env(safe-area-inset-bottom)]"
+                        className="md:hidden fixed inset-x-3 top-[60px] bg-surface-raised z-50 border notion-whisper-border rounded-b-[1rem] shadow-deep overflow-y-auto max-h-[calc(100dvh-72px)] pb-[env(safe-area-inset-bottom)]"
                     >
                         <div className="p-4 space-y-4">
                             <SidebarSearch
@@ -156,6 +161,12 @@ const Layout = ({ children }) => {
                                     label="趨勢看板"
                                     active={location.pathname === '/insight'}
                                     onClick={() => { navigate('/insight'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
+                                    icon={Target}
+                                    label="主題工作區"
+                                    active={location.pathname === '/topics'}
+                                    onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
                                 />
                                 <SidebarItem
                                     icon={Library}
@@ -249,17 +260,18 @@ const Layout = ({ children }) => {
             </AnimatePresence>
 
             {/* Sidebar (Tablet & Desktop) */}
-            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} hidden md:flex flex-shrink-0 bg-white notion-whisper-border shadow-soft-card flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-all duration-300 ease-in-out`}>
-                <div className={`p-6 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
+            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-[17.5rem]'} hidden md:flex flex-shrink-0 bg-surface notion-whisper-border flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`}>
+                <div className={`px-5 pt-6 pb-4 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
                     {!isSidebarCollapsed && (
                         <div className="cursor-pointer overflow-hidden" onClick={() => navigate('/')}>
-                            <h1 className="text-xl font-bold tracking-tight text-[rgba(0,0,0,0.95)]/80 font-serif whitespace-nowrap">社群筆記</h1>
-                            <p className="text-[10px] text-[#615d59] mt-0.5 tracking-widest uppercase opacity-70 whitespace-nowrap">Social Knowledge</p>
+                            <h1 className="text-xl font-bold tracking-[-0.04em] text-[rgba(0,0,0,0.95)] whitespace-nowrap">社群筆記</h1>
+                            <p className="text-[10px] text-[#615d59] mt-1 tracking-[0.12em] uppercase opacity-80 whitespace-nowrap">Knowledge current</p>
                         </div>
                     )}
                     <button
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className="p-1.5 text-[#615d59] hover:text-[rgba(0,0,0,0.95)] rounded-lg hover:bg-black/5 transition-colors"
+                        className="flow-icon-button"
+                        aria-label={isSidebarCollapsed ? '展開側邊欄' : '收合側邊欄'}
                     >
                         {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
                     </button>
@@ -289,6 +301,14 @@ const Layout = ({ children }) => {
                         label="趨勢看板"
                         active={location.pathname === '/insight'}
                         onClick={() => navigate('/insight')}
+                        collapsed={isSidebarCollapsed}
+                    />
+
+                    <SidebarItem
+                        icon={Target}
+                        label="主題工作區"
+                        active={location.pathname === '/topics'}
+                        onClick={() => navigate('/topics')}
                         collapsed={isSidebarCollapsed}
                     />
 
@@ -355,7 +375,7 @@ const Layout = ({ children }) => {
 
                 <div className="p-4 mt-auto">
                     {user ? (
-                        <div className={`bg-white border notion-whisper-border rounded-lg p-2 shadow-soft-card flex items-center gap-2 group hover:bg-black/5 transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}>
+                        <div className={`flow-panel p-2 flex items-center gap-2 group ${isSidebarCollapsed ? 'justify-center' : ''}`}>
                             <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#615d59] border border-black/10 flex-shrink-0">
                                 <UserIcon size={16} />
                             </div>
@@ -382,7 +402,7 @@ const Layout = ({ children }) => {
                     ) : (
                         <button
                             onClick={() => navigate('/login')}
-                            className={`w-full flex items-center justify-center gap-2 bg-[rgba(0,0,0,0.95)] text-white py-2 rounded-md font-medium hover:bg-black transition-colors shadow-soft-card ${isSidebarCollapsed ? 'px-0' : ''}`}
+                            className={`notion-btn-primary w-full flex items-center justify-center gap-2 py-2 ${isSidebarCollapsed ? 'px-0' : ''}`}
                             title={isSidebarCollapsed ? "登入" : ""}
                         >
                             <LogIn size={16} />
@@ -394,14 +414,24 @@ const Layout = ({ children }) => {
 
             {/* Main Content */}
             <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background pb-[env(safe-area-inset-bottom)]">
-                <div className="w-full p-3 sm:p-4 md:p-8">
-                    {children}
-                </div>
+                <AnimatePresence mode="wait" initial={false}>
+                    <Motion.div
+                        key={location.pathname}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                        className="w-full p-3 sm:p-5 md:p-8"
+                    >
+                        {children}
+                    </Motion.div>
+                </AnimatePresence>
 
                 {/* Floating Task Center Toggle */}
                 <button
                     onClick={() => dispatch(toggleTaskCenter())}
-                    className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-11 h-11 sm:w-12 sm:h-12 bg-white text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-full shadow-deep flex items-center justify-center z-[60] hover:bg-black/5 transition-colors group"
+                    className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-12 h-12 bg-surface-raised text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-[0.9rem] shadow-deep flex items-center justify-center z-[60] group transition-transform duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 active:translate-y-0 active:scale-95"
+                    aria-label={tasks.length > 0 ? `${tasks.length} 個任務處理中` : '開啟任務中心'}
                 >
                     <Activity size={20} className={tasks.length > 0 ? 'animate-pulse text-[#dd5b00]' : 'text-[#615d59]'} />
 

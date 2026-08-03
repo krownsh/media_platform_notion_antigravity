@@ -67,25 +67,23 @@ const SignupPage = () => {
 
     return (
         <div className="min-h-[100dvh] flex items-start sm:items-center justify-center bg-background relative overflow-hidden px-4 py-8 sm:py-0">
-            {/* Background Elements */}
-            <div className="absolute inset-0 bg-noise opacity-[0.03] pointer-events-none"></div>
-            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#0075de]/20 rounded-full blur-[120px] pointer-events-none" />
-            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-black/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-40 bg-[var(--accent-soft)] opacity-50 pointer-events-none" />
 
             <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.25, 0.8, 0.3, 1] }}
+                transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full max-w-md p-0 sm:p-6 relative z-10"
             >
-                <div className="bg-transparent backdrop-blur-xl border notion-whisper-border rounded-lg p-6 sm:p-10 shadow-deep">
-                    <div className="text-center mb-8 sm:mb-10">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-[rgba(0,0,0,0.95)] mb-3 tracking-tight">建立帳號</h1>
-                        <p className="text-[#615d59]">加入我們，開始您的旅程</p>
+                <div className="flow-surface p-6 sm:p-9 shadow-deep">
+                    <div className="mb-8 sm:mb-10">
+                        <p className="flow-kicker mb-2">私人工作區</p>
+                        <h1 className="text-3xl font-bold text-[rgba(0,0,0,0.95)] tracking-[-0.05em]">建立帳號</h1>
+                        <p className="mt-3 text-sm leading-6 text-[#615d59]">開始建立可以持續回應你需求的知識脈絡。</p>
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-destructive/5 border border-destructive/20 rounded-lg flex items-start gap-3 text-destructive text-sm">
+                        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/25 rounded-[0.75rem] flex items-start gap-3 text-destructive text-sm">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <span>{error}</span>
                         </div>
@@ -93,8 +91,8 @@ const SignupPage = () => {
 
                     {success ? (
                         <div className="text-center py-8">
-                            <div className="w-16 h-16 bg-[rgba(0,117,222,0.1)] rounded-full flex items-center justify-center mx-auto mb-4">
-                                <CheckCircle2 className="w-8 h-8 text-[#0075de]" />
+                                <div className="w-16 h-16 bg-[var(--accent-soft)] rounded-[1rem] flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle2 className="w-8 h-8 text-[var(--accent)]" />
                             </div>
                             <h3 className="text-xl font-semibold text-[rgba(0,0,0,0.95)] mb-2">檢查您的電子郵件</h3>
                             <p className="text-[#615d59] mb-6">
@@ -103,7 +101,7 @@ const SignupPage = () => {
                             </p>
                             <Link
                                 to="/login"
-                                className="touch-target-link inline-flex items-center justify-center px-6 py-3 bg-black/5 hover:bg-black/5 text-[rgba(0,0,0,0.95)] rounded-lg transition-colors font-medium"
+                                className="notion-btn-secondary touch-target-link inline-flex items-center justify-center px-6 py-3 font-medium"
                             >
                                 返回登入
                             </Link>
@@ -113,12 +111,12 @@ const SignupPage = () => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">電子郵件</label>
                                 <div className="relative group">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
+                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
+                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="name@example.com"
                                         required
                                     />
@@ -128,12 +126,12 @@ const SignupPage = () => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">密碼</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
                                     <input
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
+                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="建立密碼"
                                         required
                                     />
@@ -143,12 +141,12 @@ const SignupPage = () => {
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">確認密碼</label>
                                 <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[#0075de] transition-colors" />
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
                                     <input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70 focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all shadow-soft-card"
+                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="確認您的密碼"
                                         required
                                     />
@@ -158,7 +156,7 @@ const SignupPage = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-[#0075de] hover:bg-[#0075de]/90 text-white font-medium py-3.5 rounded-lg transition-all transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-deep shadow-accent/20 mt-4"
+                                className="notion-btn-primary w-full font-medium py-3.5 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                             >
                                 {loading ? (
                                     <>
@@ -175,7 +173,7 @@ const SignupPage = () => {
                     {!success && (
                         <div className="mt-8 text-center text-[#615d59] text-sm">
                             已經有帳號了嗎？{' '}
-                            <Link to="/login" className="touch-target-link text-[#0075de] hover:text-[#0075de]/80 font-medium transition-colors">
+                            <Link to="/login" className="touch-target-link text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors">
                                 登入
                             </Link>
                         </div>

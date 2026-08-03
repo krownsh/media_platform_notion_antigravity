@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
-import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
+import { MoreVertical, Trash2, Edit2, Folder } from 'lucide-react';
 import { useDispatch } from 'react-redux';
 import { deleteCollection, updateCollectionName } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
@@ -58,23 +58,23 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
         <div
             ref={setNodeRef}
             onClick={onClick}
-            className="group relative flex flex-col items-center w-[96px] gap-1.5"
+            className="group relative flex flex-col items-center w-[112px] gap-2"
         >
             {/* Folder Icon Container */}
             <div className={`
-                relative w-full aspect-[16/9] transition-all duration-150 ease-out
-                ${isOver ? 'scale-110' : 'hover:scale-105'}
+                relative w-full aspect-[16/9] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]
+                ${isOver ? 'scale-[1.04]' : 'hover:scale-[1.02]'}
             `}>
                 {/* Folder Tab */}
                 <div className={`
-                    absolute top-0 left-0 w-2/5 h-3.5 rounded-t-lg border-t border-l border-r transition-colors duration-150 ease-out
-                    ${isOver ? 'bg-[#0075de]/30 border-accent' : 'bg-black/5 notion-whisper-border'}
+                    absolute top-0 left-0 w-2/5 h-3.5 rounded-t-md border-t border-l border-r transition-colors duration-200 ease-out
+                    ${isOver ? 'bg-[var(--accent-soft)] border-[var(--accent)]' : 'bg-[var(--surface-muted)] notion-whisper-border'}
                 `} />
 
                 {/* Folder Body */}
                 <div className={`
-                    absolute top-3 inset-x-0 bottom-0 rounded-b-2xl rounded-tr-2xl border transition-all duration-150 ease-out
-                    ${isOver ? 'bg-[#0075de]/20 border-accent shadow-[0_0_20px_rgba(127,155,137,0.3)]' : 'bg-[#f4f2f0] border-[#e6e2de] group-hover:bg-[#ebe8e4] group-hover:border-[#dcd8d3]'}
+                    absolute top-3 inset-x-0 bottom-0 rounded-b-[0.9rem] rounded-tr-[0.9rem] border transition-[background-color,border-color,box-shadow] duration-200 ease-out
+                    ${isOver ? 'bg-[var(--accent-soft)] border-[var(--accent)] shadow-[inset_0_0_0_1px_rgba(45,111,115,0.12)]' : 'bg-[var(--surface-muted)] border-[var(--border-subtle)] group-hover:bg-[var(--surface)] group-hover:border-[var(--accent)]'}
                     flex items-center justify-center overflow-hidden
                 `}>
                     {/* Content Previews */}
@@ -92,9 +92,8 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                         </div>
                     ) : (
                         // Empty State
-                        <div className="flex flex-col items-center justify-center text-[#615d59]/50">
-                            <div className="w-12 h-1 bg-current rounded-full mb-1 opacity-50" />
-                            <div className="w-8 h-1 bg-current rounded-full opacity-50" />
+                        <div className="flex flex-col items-center justify-center text-[#615d59]/55">
+                            <Folder size={22} strokeWidth={1.6} />
                         </div>
                     )}
                 </div>
@@ -103,7 +102,9 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 <button
                     ref={buttonRef}
                     onClick={handleMenuClick}
-                    className={`absolute -top-1 -right-1 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/80 shadow-sm border border-[rgba(0,0,0,0.05)] text-[#615d59] hover:text-[rgba(0,0,0,0.95)] hover:bg-black/5 transition-all z-20 flex items-center justify-center backdrop-blur-sm ${isMenuOpen ? 'opacity-100 bg-white' : 'opacity-100'}`}
+                    className={`flow-icon-button absolute -top-1 -right-1 min-h-7 min-w-7 z-20 bg-surface-raised shadow-[0_1px_3px_rgba(23,31,26,0.1)] ${isMenuOpen ? 'text-[var(--accent)] border-[var(--accent)]' : ''}`}
+                    aria-label={`開啟「${collection.name}」選項`}
+                    aria-expanded={isMenuOpen}
                 >
                     <MoreVertical size={14} />
                 </button>
@@ -118,7 +119,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                         onChange={(e) => setNewName(e.target.value)}
                         onBlur={() => setIsEditing(false)}
                         autoFocus
-                        className="bg-transparent border border-accent rounded-lg px-2 py-1 text-xs text-center w-full outline-none text-[rgba(0,0,0,0.95)]"
+                        className="notion-input bg-surface-raised border-[var(--accent)] px-2 py-1 text-xs text-center w-full outline-none text-[rgba(0,0,0,0.95)]"
                     />
                 </form>
             ) : (
@@ -140,7 +141,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                         onClick={(e) => { e.stopPropagation(); onMenuToggle(); }}
                     />
                     <div 
-                        className="fixed bg-white/95 border notion-whisper-border rounded-lg shadow-deep z-[10000] w-36 py-1 overflow-hidden backdrop-blur-xl"
+                        className="fixed bg-surface-raised border notion-whisper-border rounded-[0.75rem] shadow-deep z-[10000] w-36 py-1 overflow-hidden"
                         style={{ top: menuPos.top, left: menuPos.left }}
                     >
                         <button

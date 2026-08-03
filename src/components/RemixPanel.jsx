@@ -211,42 +211,42 @@ const RemixPanel = ({ post, onClose }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-transparent backdrop-blur-md p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm p-4"
         >
             <Motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
                 transition={{ duration: 0.4, ease: [0.25, 0.8, 0.3, 1] }}
-                className="w-full h-[100vh] lg:h-[90vh] max-w-[100vw] lg:max-w-[95vw] bg-transparent border notion-whisper-border rounded-none lg:rounded-lg flex flex-col overflow-hidden shadow-2xl backdrop-blur-2xl"
+                className="w-full h-[100vh] lg:h-[90vh] max-w-[100vw] lg:max-w-[95vw] bg-[var(--surface)] border border-[var(--border)] rounded-none lg:rounded-2xl flex flex-col overflow-hidden shadow-deep"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[rgba(0,0,0,0.1)]/20 bg-transparent">
+                <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--surface-raised)]">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-black/5 rounded-lg text-[rgba(0,0,0,0.95)] flex-shrink-0">
+                        <div className="p-2 bg-[var(--accent-soft)] rounded-xl text-[var(--accent)] flex-shrink-0">
                             <Wand2 size={20} />
                         </div>
                         <div className="min-w-0">
-                            <h2 className="text-lg sm:text-xl font-bold text-[rgba(0,0,0,0.95)] truncate">內容改寫</h2>
-                            <p className="text-[10px] sm:text-xs text-[#615d59] uppercase tracking-wider truncate">內化與重構引擎</p>
+                            <h2 className="text-lg sm:text-xl font-bold text-[var(--foreground)] truncate">內容改寫</h2>
+                            <p className="text-[10px] sm:text-xs text-[var(--muted-foreground)] tracking-wider truncate">內化與重構引擎</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="text-[#615d59] hover:text-[rgba(0,0,0,0.95)] transition-colors p-2 hover:bg-black/5 rounded-full">
+                    <button onClick={onClose} aria-label="關閉內容改寫" className="flow-icon-button">
                         <X size={24} />
                     </button>
                 </div>
 
                 {/* Body - Flex Layout (37% - 26% - 37%) */}
-                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-border/20">
+                <div className="flex-1 flex flex-col lg:flex-row overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-[var(--border)]">
 
                     {/* Column 1: Source Material (37%) */}
-                    <div className="w-full lg:w-[37%] flex flex-col bg-secondary/5 overflow-hidden min-h-0">
-                        <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/20 flex items-center justify-between shrink-0">
-                            <h3 className="font-semibold text-[rgba(0,0,0,0.95)] flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-black/5 text-[rgba(0,0,0,0.95)] text-xs flex items-center justify-center border border-secondary/50">1</span>
+                    <div className="w-full lg:w-[37%] flex flex-col bg-[var(--surface-muted)]/45 overflow-hidden min-h-0">
+                        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+                            <h3 className="font-semibold text-[var(--foreground)] flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-[var(--surface-raised)] text-[var(--foreground)] text-xs flex items-center justify-center border border-[var(--border)]">1</span>
                                 來源素材
                             </h3>
-                            <span className="text-xs text-[#615d59]">JSON + 圖片</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">JSON + 圖片</span>
                         </div>
 
                         <div className="flex-1 flex flex-col p-5 space-y-5 overflow-hidden">
@@ -285,7 +285,7 @@ const RemixPanel = ({ post, onClose }) => {
                                                     initial={{ opacity: 0, x: 20 }}
                                                     animate={{ opacity: 1, x: 0 }}
                                                     exit={{ opacity: 0, x: -20 }}
-                                                    className="w-1/3 aspect-square rounded-lg overflow-hidden border border-[rgba(0,0,0,0.1)]/20 bg-transparent relative group flex-shrink-0 shadow-soft-card"
+                                                    className="w-1/3 aspect-square rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface-raised)] relative group flex-shrink-0 shadow-soft-card"
                                                 >
                                                     <img src={img} alt={`Source ${imgStartIndex + idx}`} className="w-full h-full object-cover" />
                                                     <div className="absolute inset-0 bg-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
@@ -314,7 +314,7 @@ const RemixPanel = ({ post, onClose }) => {
                                 <textarea
                                     value={editableJson}
                                     onChange={(e) => setEditableJson(e.target.value)}
-                                    className="w-full flex-1 bg-transparent rounded-lg p-4 border border-[rgba(0,0,0,0.1)]/20 font-mono text-xs text-[rgba(0,0,0,0.95)]/80 resize-none focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all custom-scrollbar shadow-inner"
+                                    className="w-full flex-1 bg-[var(--surface-raised)] rounded-xl p-4 border border-[var(--border)] font-mono text-xs text-[var(--foreground)]/80 resize-none focus:outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_4px_var(--accent-soft)] transition-all custom-scrollbar shadow-inner"
                                     spellCheck="false"
                                 />
                             </div>
@@ -322,10 +322,10 @@ const RemixPanel = ({ post, onClose }) => {
                     </div>
 
                     {/* Column 2: Configuration (26%) - Fixed Ratio Layout */}
-                    <div className="w-full lg:w-[26%] flex flex-col bg-transparent overflow-hidden">
-                        <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/20 flex items-center justify-between shrink-0">
-                            <h3 className="font-semibold text-[rgba(0,0,0,0.95)] flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-[#0075de]/20 text-[#0075de] text-xs flex items-center justify-center border border-accent/30">2</span>
+                    <div className="w-full lg:w-[26%] flex flex-col bg-[var(--surface)] overflow-hidden">
+                        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between shrink-0">
+                            <h3 className="font-semibold text-[var(--foreground)] flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] text-xs flex items-center justify-center border border-[var(--border)]">2</span>
                                 設定
                             </h3>
                         </div>
@@ -334,7 +334,7 @@ const RemixPanel = ({ post, onClose }) => {
                         <div className="flex-1 flex flex-col overflow-hidden">
 
                             {/* Top 10%: Model Selection */}
-                            <div className="lg:h-[10%] px-4 sm:px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0 py-3 lg:py-0">
+                            <div className="lg:h-[10%] px-4 sm:px-5 border-b border-[var(--border)] flex flex-col justify-center shrink-0 py-3 lg:py-0">
                                 <div className="flex items-center gap-3">
                                     <label className="flex items-center gap-2 text-xs font-medium text-[#615d59] shrink-0">
                                         <Brain size={14} className="text-[#0075de]" />
@@ -344,7 +344,7 @@ const RemixPanel = ({ post, onClose }) => {
                                         <select
                                             value={selectedModel}
                                             onChange={(e) => setSelectedModel(e.target.value)}
-                                            className="w-full bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded-lg px-2 py-1.5 text-xs text-[rgba(0,0,0,0.95)] focus:outline-none focus:border-accent/50 appearance-none cursor-pointer hover:bg-transparent transition-colors shadow-soft-card"
+                                            className="w-full bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] appearance-none cursor-pointer transition-colors shadow-soft-card"
                                         >
                                             {MODELS.map(model => (
                                                 <option key={model.id} value={model.id} className="bg-white text-[rgba(0,0,0,0.95)]">
@@ -361,7 +361,7 @@ const RemixPanel = ({ post, onClose }) => {
                             </div>
 
                             {/* Middle 25%: Parameters */}
-                            <div className="lg:h-[25%] px-4 sm:px-5 border-b border-[rgba(0,0,0,0.1)]/10 flex flex-col justify-center shrink-0 overflow-hidden py-3 lg:py-0">
+                            <div className="lg:h-[25%] px-4 sm:px-5 border-b border-[var(--border)] flex flex-col justify-center shrink-0 overflow-hidden py-3 lg:py-0">
                                 <div className="flex items-center gap-2 text-xs font-medium text-[#615d59] mb-3 shrink-0">
                                     <Sparkles size={14} className="text-[#0075de]" />
                                     參數
@@ -375,7 +375,7 @@ const RemixPanel = ({ post, onClose }) => {
                                             placeholder="輕鬆..."
                                             value={params.style}
                                             onChange={(e) => setParams({ ...params, style: e.target.value })}
-                                            className="flex-1 bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded px-2 py-1.5 text-xs text-[rgba(0,0,0,0.95)] focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all"
+                                            className="flex-1 notion-input rounded-lg px-2 py-1.5 text-xs"
                                         />
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -385,7 +385,7 @@ const RemixPanel = ({ post, onClose }) => {
                                             placeholder="自動..."
                                             value={params.focus}
                                             onChange={(e) => setParams({ ...params, focus: e.target.value })}
-                                            className="flex-1 bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded px-2 py-1.5 text-xs text-[rgba(0,0,0,0.95)] focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all"
+                                            className="flex-1 notion-input rounded-lg px-2 py-1.5 text-xs"
                                         />
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -395,7 +395,7 @@ const RemixPanel = ({ post, onClose }) => {
                                             placeholder="觀察者..."
                                             value={params.perspective}
                                             onChange={(e) => setParams({ ...params, perspective: e.target.value })}
-                                            className="flex-1 bg-transparent border border-[rgba(0,0,0,0.1)]/20 rounded px-2 py-1.5 text-xs text-[rgba(0,0,0,0.95)] focus:outline-none focus:border-accent/50 focus:bg-transparent transition-all"
+                                            className="flex-1 notion-input rounded-lg px-2 py-1.5 text-xs"
                                         />
                                     </div>
                                 </div>
@@ -406,18 +406,18 @@ const RemixPanel = ({ post, onClose }) => {
                                 <div className="text-[10px] font-mono text-[#615d59] flex items-center gap-2 mb-2 shrink-0">
                                     <Zap size={10} /> 提示詞預覽
                                 </div>
-                                <div className="flex-1 bg-transparent rounded-lg p-3 border border-[rgba(0,0,0,0.1)]/20 text-[10px] font-mono text-[rgba(0,0,0,0.95)]/70 whitespace-pre-wrap overflow-y-auto custom-scrollbar shadow-inner">
+                                <div className="flex-1 bg-[var(--surface-muted)] rounded-xl p-3 border border-[var(--border)] text-[10px] font-mono text-[var(--foreground)]/70 whitespace-pre-wrap overflow-y-auto custom-scrollbar shadow-inner">
                                     {promptPreview}
                                 </div>
                             </div>
                         </div>
 
                         {/* Action Bar */}
-                        <div className="p-5 border-t border-[rgba(0,0,0,0.1)]/20 bg-transparent shrink-0">
+                        <div className="p-5 border-t border-[var(--border)] bg-[var(--surface-raised)] shrink-0">
                             <button
                                 onClick={handleRemix}
                                 disabled={loading}
-                                className="w-full py-3 rounded-lg bg-[#0075de] text-white text-sm font-bold hover:bg-[#0075de]/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-soft-card hover:shadow-deep hover:-translate-y-0.5"
+                                className="notion-btn-primary w-full py-3 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                             >
                                 {loading ? <RefreshCw className="animate-spin" size={16} /> : <Wand2 size={16} />}
                                 {loading ? '...' : '改寫'}
@@ -426,22 +426,26 @@ const RemixPanel = ({ post, onClose }) => {
                     </div>
 
                     {/* Column 3: Output (37%) - Split into Top (Text) and Bottom (Images) */}
-                    <div className="w-full lg:w-[37%] flex flex-col bg-secondary/5 overflow-hidden min-h-0">
+                    <div className="w-full lg:w-[37%] flex flex-col bg-[var(--surface-muted)]/45 overflow-hidden min-h-0">
 
                         {/* Section 3: Text Output (Flex 1) */}
-                        <div className="flex-1 flex flex-col min-h-0 border-b border-[rgba(0,0,0,0.1)]/20">
-                            <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/10 flex items-center justify-between shrink-0 bg-transparent">
+                        <div className="flex-1 flex flex-col min-h-0 border-b border-[var(--border)]">
+                            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface-raised)]/65">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-[rgba(0,117,222,0.1)] flex items-center justify-center text-[#0075de] text-xs font-bold">3</div>
-                                    <h3 className="font-medium text-[rgba(0,0,0,0.95)]">最終產出 (文字)</h3>
+                                    <div className="w-6 h-6 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)] text-xs font-bold">3</div>
+                                    <h3 className="font-medium text-[var(--foreground)]">最終產出 (文字)</h3>
                                 </div>
                             </div>
 
                             <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                                 {loading ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-[#615d59] gap-3">
-                                        <RefreshCw className="w-8 h-8 animate-spin text-[#0075de]" />
-                                        <p className="text-sm animate-pulse">AI 正在思考與改寫中...</p>
+                                    <div className="h-full flex flex-col items-center justify-center text-[var(--muted-foreground)] gap-3" aria-live="polite">
+                                        <div className="w-full max-w-[17rem] space-y-3">
+                                            <div className="flow-shimmer h-3 w-20 rounded-full" />
+                                            <div className="flow-shimmer h-4 w-full rounded-md" />
+                                            <div className="flow-shimmer h-4 w-4/5 rounded-md" />
+                                        </div>
+                                        <p className="text-sm">AI 正在思考與改寫中...</p>
                                     </div>
                                 ) : result ? (
                                     <div className="space-y-6 animate-in fade-in duration-500">
@@ -451,14 +455,14 @@ const RemixPanel = ({ post, onClose }) => {
                                         <div className="flex gap-2 pt-2">
                                             <button
                                                 onClick={() => navigator.clipboard.writeText(result.remixed_content)}
-                                                className="flex-1 py-2 rounded-lg bg-transparent hover:bg-transparent text-[rgba(0,0,0,0.95)] text-xs font-medium flex items-center justify-center gap-2 transition-colors border border-[rgba(0,0,0,0.1)]/20"
+                                                className="notion-btn-secondary flex-1 py-2 text-xs flex items-center justify-center gap-2"
                                             >
                                                 <Copy size={14} /> 複製
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-[#615d59]/50">
+                                    <div className="h-full flex flex-col items-center justify-center text-[var(--muted-foreground)]">
                                         <Sparkles className="w-12 h-12 mb-2 opacity-20" />
                                         <p className="text-sm">點擊「改寫」生成內容</p>
                                     </div>
@@ -467,11 +471,11 @@ const RemixPanel = ({ post, onClose }) => {
                         </div>
 
                         {/* Section 4: Image Generation (Fixed Height or Flex) */}
-                        <div className="lg:h-[40%] flex flex-col min-h-0 bg-transparent">
-                            <div className="p-4 border-b border-[rgba(0,0,0,0.1)]/10 flex items-center justify-between shrink-0 bg-transparent">
+                        <div className="lg:h-[40%] flex flex-col min-h-0 bg-[var(--surface)]/50">
+                            <div className="p-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface-raised)]/65">
                                 <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-[rgba(0,117,222,0.1)] flex items-center justify-center text-[#0075de] text-xs font-bold">4</div>
-                                    <h3 className="font-medium text-[rgba(0,0,0,0.95)]">配圖生成</h3>
+                                    <div className="w-6 h-6 rounded-full bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent)] text-xs font-bold">4</div>
+                                    <h3 className="font-medium text-[var(--foreground)]">配圖生成</h3>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button

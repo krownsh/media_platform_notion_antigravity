@@ -29,7 +29,12 @@ export function buildHermesGateResult(events) {
     wakeAgent: true,
     context: {
       pending_count: events.length,
-      outbox_ids: events.map(event => event.id)
+      outbox_ids: events.map(event => event.id),
+      items: events.map(event => ({
+        outbox_id: event.id,
+        source_type: event?.payload?.source_type || 'url_capture',
+        platform: postFromEvent(event)?.platform || 'unknown'
+      }))
     }
   };
 }
@@ -58,6 +63,7 @@ function printHumanInbox(events, status) {
     const analysis = analysisFromPost(post);
     console.log(`\n[Item ${index + 1}] Outbox ID: ${event.id}`);
     console.log(`Status: ${event.status}`);
+    console.log(`Source type: ${event?.payload?.source_type || 'url_capture'}`);
     console.log(`Platform: ${post?.platform || 'unknown'}`);
     console.log(`URL: ${post?.original_url || 'missing'}`);
     console.log(`Author: ${post?.author_name || 'Unknown'}`);
@@ -69,7 +75,7 @@ function printHumanInbox(events, status) {
     if (event.last_error) console.log(`Last error: ${event.last_error}`);
   });
   console.log('\n' + '='.repeat(60));
-  console.log('Next: npm run agent:analyze -- <outbox-id> --agent <hermes-identity>');
+  console.log('Next: use agent:media for image_upload; use agent:analyze for URL captures.');
 }
 
 async function main() {

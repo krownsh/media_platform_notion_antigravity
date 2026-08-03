@@ -8,6 +8,8 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const deployment = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'stage_f_private_image_captures.sql'), 'utf8');
 const finalizer = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'captureFinalizationService.js'), 'utf8');
 const orchestrator = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'orchestrator.js'), 'utf8');
+const imageAnalysisCli = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'record-image-analysis.js'), 'utf8');
+const mediaCrawlSkill = fs.readFileSync(path.join(projectRoot, 'hermes', 'skills', 'my-mediacrawl-skill', 'SKILL.md'), 'utf8');
 
 test('image captures use private Storage and a service-role-only enqueue RPC', () => {
     assert.match(deployment, /alter table public\.collection_posts enable row level security/);
@@ -30,6 +32,16 @@ test('Hermes handoff receives stable Storage references, not temporary signed UR
     assert.match(deployment, /storage_path/);
     assert.match(deployment, /create or replace function public\.record_collection_image_analysis/);
     assert.match(deployment, /grant execute on function public\.record_collection_image_analysis\(uuid, text, jsonb\)[\s\S]+to service_role/);
+});
+
+test('Hermes image write-back requires a lease and completes the outbox', () => {
+    assert.match(imageAnalysisCli, /requireHermesImageLease/);
+    assert.match(imageAnalysisCli, /completeHermesImageReview/);
+    assert.match(imageAnalysisCli, /status: completedEvent\.status/);
+    assert.match(mediaCrawlSkill, /agent:claim/);
+    assert.match(mediaCrawlSkill, /agent:media/);
+    assert.match(mediaCrawlSkill, /agent:image-analysis/);
+    assert.match(mediaCrawlSkill, /status.*sent/i);
 });
 
 test('new capture finalization discards remote author avatars', () => {

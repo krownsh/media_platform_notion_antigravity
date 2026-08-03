@@ -45,9 +45,11 @@ this endpoint.
 
 Stored bucket/path values are stable; browser-facing URLs are signed only while
 reading `/api/posts`. Hermes can materialize an outbox item's private media into
-a permission-restricted OS temporary directory with:
+a permission-restricted OS temporary directory. Claim the item first and keep
+one identity for the whole operation:
 
 ```bash
+npm run agent:claim -- <outbox-id> --agent hermes:cron:media-inbox
 npm run agent:media -- <outbox-id>
 ```
 
@@ -61,3 +63,9 @@ npm run agent:image-analysis -- <outbox-id> --agent hermes:cron:media-inbox --fi
 The JSON requires `summary` and may include `description`, `ocr_text`, `tags`,
 `topics`, `primary_category`, and `sentiment`. The RPC updates only the image
 post and its existing analysis row, and records an idempotent audit insight.
+The CLI then marks the owned outbox item `sent` and clears its lease. Accept
+success only when the command returns `ok: true` and `status: "sent"`.
+
+If materialization, visual inspection, or write-back fails after the claim,
+record the error and clear the lease with `agent:fail`. Use `agent:release` only
+when a transient problem should be retried later.

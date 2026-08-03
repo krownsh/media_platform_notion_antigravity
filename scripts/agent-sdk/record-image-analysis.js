@@ -3,6 +3,10 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { recordHermesImageAnalysis } from '../../server/services/hermesImageAnalysisService.js';
+import {
+    completeHermesImageReview,
+    requireHermesImageLease
+} from '../../server/services/hermesOutboxService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,8 +31,20 @@ async function main() {
     process.env.SUPABASE_CLIENT_QUIET = '1';
     const { supabase, isSupabaseConfigured } = await import('../../server/supabaseClient.js');
     if (!isSupabaseConfigured) throw new Error('Supabase service client is not configured');
+    const claimedEvent = await requireHermesImageLease(outboxId, agentIdentity, supabase);
     const analysis = await recordHermesImageAnalysis({ outboxId, agentIdentity, result }, supabase);
-    process.stdout.write(`${JSON.stringify({ ok: true, analysis_id: analysis.id, outbox_id: outboxId })}\n`);
+    const completedEvent = await completeHermesImageReview(
+        claimedEvent,
+        agentIdentity,
+        analysis.id,
+        supabase
+    );
+    process.stdout.write(`${JSON.stringify({
+        ok: true,
+        analysis_id: analysis.id,
+        outbox_id: outboxId,
+        status: completedEvent.status
+    })}\n`);
 }
 
 const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;

@@ -1,0 +1,9 @@
+{
+  "summary": "本機圖片上傳流程測試。",
+  "description": "已確認 Hermes 只能取得這一張已授權的私有圖片。",
+  "ocr_text": "grid 01",
+  "tags": ["測試", "圖片"],
+  "topics": ["圖片上傳"],
+  "primary_category": "other",
+  "sentiment": "neutral"
+}

@@ -38,3 +38,7 @@ coverage/
 # Server secrets
 server/keys/*
 !server/keys/.gitkeep
+
+
+# agent
+.agent

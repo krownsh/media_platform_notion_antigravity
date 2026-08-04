@@ -10,8 +10,9 @@ const request = {
     correlation_id: 'capture-test-1'
 };
 
-test('async capture finalizes extracted source data without invoking AI', async () => {
+test('async capture restores URL base analysis before finalization', async () => {
     let finalizedInput;
+    let workflowInput;
     const result = await processCaptureRequest(request, {
         acquisition: {
             processUrl: async () => ({
@@ -22,7 +23,12 @@ test('async capture finalizes extracted source data without invoking AI', async 
         finalizer: async (...args) => {
             finalizedInput = args;
             return { post_id: 'post-1', outbox_event_id: 'event-1' };
-        }
+        },
+        analyzer: async data => ({
+            data: { ...data, analysis: { primary_category: 'tool', summary: '摘要', tags: ['sdk'], topics: ['tooling'] } },
+            baseAnalysis: { status: 'completed', source: 'capture_ai', errors: [] }
+        }),
+        workflowUpdater: async input => { workflowInput = input; }
     });
 
     assert.deepEqual(result, {
@@ -33,8 +39,13 @@ test('async capture finalizes extracted source data without invoking AI', async 
     });
     assert.equal(finalizedInput[0], request.user_id);
     assert.equal(finalizedInput[1], request.correlation_id);
-    assert.deepEqual(finalizedInput[3].analysis, { primary_category: 'other' });
+    assert.deepEqual(finalizedInput[3].analysis, { primary_category: 'tool', summary: '摘要', tags: ['sdk'], topics: ['tooling'] });
     assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v3-async' });
+    assert.deepEqual(workflowInput, {
+        outboxEventId: 'event-1',
+        sourceType: 'url_capture',
+        baseAnalysis: { status: 'completed', source: 'capture_ai', errors: [] }
+    });
 });
 
 test('generic extraction failure becomes a degraded link record', async () => {
@@ -70,7 +81,8 @@ test('image capture finalizes persisted media without crawler or AI work', async
         finalizer: async (...args) => {
             finalizedInput = args;
             return { post_id: 'post-image', outbox_event_id: 'event-image' };
-        }
+        },
+        workflowUpdater: async () => {}
     });
 
     assert.equal(acquisitionCalls, 0);

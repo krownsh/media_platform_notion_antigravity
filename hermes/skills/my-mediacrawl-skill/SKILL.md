@@ -1,109 +1,175 @@
 ---
 name: my-mediacrawl-skill
-description: Operate this project's Supabase capture outbox for interactive requests and the approved Hermes media-inbox schedule. Use when inspecting new captures, routing captured URLs, materializing and analyzing private image uploads, recording image analysis, matching a capture to the local project, or running an approval-gated isolated POC.
+description: Operate this project's resumable media workflow. Use when a user asks Hermes to process a captured post, continue a failed post, inspect a private uploaded image, discuss research or POC strategy, or create a source-only or research-backed draft.
 ---
 
-# MediaCrawl Inbox
+# Media workflow
 
-Use the repository's `agent:*` commands as the only execution layer. Run every
-command from the repository root.
+Use only the repository's `agent:*` commands from the repository root. Let the
+scripts load `server/.env`; never read, print, copy, or request secrets.
 
-## Preconditions
+The API Server and Capture Worker are separate always-on PM2 processes. The
+Capture Worker is not a Cron job: an upload creates a durable request and the
+worker takes it as soon as it is available.
 
-- Require `package.json`, `scripts/agent-sdk/`, and `server/.env` in the project.
-- Let the scripts load `server/.env`; never read, print, copy, commit, or ask the
-  user to paste its secrets.
-- Confirm Hermes can discover this skill. Configure the project
-  `hermes/skills` directory as a Hermes `skills.external_dirs` entry, then verify
-  `/skills` lists `my-mediacrawl-skill` before enabling the Cron.
-- Use one stable identity such as `hermes:cron:media-inbox` for claim, write-back,
-  release, and failure commands in the same run.
-- Do not use raw SQL, a database console, or ad-hoc Supabase commands.
+## Lifecycle and vocabulary
 
-## Authorization modes
+There are three independent states. Never collapse them into one word.
 
-- Process an item when the user explicitly requests it, or when the approved
-  media-inbox gate returns `wakeAgent=true` with bounded item IDs.
-- In a scheduled run, process only the oldest available item. Do not batch all
-  pending items in one agent turn.
-- A scheduled run may inspect, classify, and analyze an image. It must not run a
-  POC, publish, install packages, deploy, or modify project source.
-- A `pending` event is never permission to execute a POC or publish content.
+1. **Capture request**: `accepted`, `extracting`, `finalized`, `degraded`, or
+   `failed`. `finalized` only means the source was stored.
+2. **Technical outbox**: `pending`, `processing`, `sent`, or `failed`.
+   `sent` means Hermes consumed the delivery event. It never means all work on
+   the post is finished.
+3. **Post workflow**: a user-visible `stage` plus `status`.
 
-## Route by source type
+   - `base_analysis`: source analysis is pending, processing, completed, or failed.
+   - `triage`: classify and understand the source.
+   - `strategy`: show the source and discuss what to do; normally `awaiting_user`.
+   - `actions`: execute only actions the user explicitly approved.
+   - `complete`: every requested action is terminal.
 
-1. Read the gate's `context.items`. If source metadata is absent, run:
+Do not mark a workflow complete merely because it has no folder yet. Folder
+placement is organisation, not authorization.
 
-   ```bash
-   npm run agent:inbox -- --json --limit 10
-   ```
+## Source handling
 
-2. Select the oldest requested item and inspect `payload.source_type`.
-3. For `image_upload`, follow **Analyze a private image**.
-4. For `url_capture`, follow **Analyze a captured URL**.
-5. For an unknown source type, do not claim it. Report the unsupported value.
+- **URL**: Capture Worker extracts content and runs the existing capture-time
+  category/summary/tags analysis. Hermes then performs triage.
+- **Image**: Capture Worker stores private media only. Hermes must materialize
+  and inspect it, record OCR/description/summary/tags, then triage it.
+
+## Selection rule: “處理一篇貼文”
+
+When the user says “處理一篇貼文”, “繼續處理”, or equivalent, do not ask for an
+Outbox ID. Run:
+
+```bash
+npm run agent:next -- --interactive
+```
+
+The result selects one workflow in this order:
+
+1. A retryable failure from the previous run.
+2. The latest workflow waiting for the user's strategy decision.
+3. The latest incomplete workflow.
+
+Show the selected source before discussing or acting: title, URL or image,
+summary, category, completed stages, failed stage/error, and current action
+plan. Resume only the failed step; do not redo completed work.
+
+For a scheduled run, omit `--interactive`. It may safely finish base analysis
+and triage for one item. It must stop at `strategy/awaiting_user`; it must not
+invent a user decision, publish, install packages, modify the formal project,
+or execute a POC.
+
+After selection, follow the selected stage exactly: for `base_analysis` image
+work, perform the image steps below; for `triage/pending`, run `agent:triage`;
+for `strategy/awaiting_user`, stop and ask the user. Do not run a second item
+in the same scheduled invocation.
 
 ## Command map
 
 | Purpose | Command |
 | --- | --- |
-| Read inbox | `npm run agent:inbox -- --json --limit 10` |
-| Claim an image | `npm run agent:claim -- <outbox-id> --agent <identity>` |
+| Select one resumable workflow | `npm run agent:next -- --interactive` |
+| Select one safe scheduled workflow | `npm run agent:next` |
+| Read legacy technical outbox diagnostics | `npm run agent:inbox -- --json --limit 10` |
+| Claim private image delivery | `npm run agent:claim -- <outbox-id> --agent <identity>` |
 | Materialize private image media | `npm run agent:media -- <outbox-id>` |
-| Write image analysis and finish outbox | `npm run agent:image-analysis -- <outbox-id> --agent <identity> --file <analysis.json>` |
-| Release a transiently blocked item | `npm run agent:release -- <outbox-id> --agent <identity> --available-at <ISO-8601>` |
-| Record a terminal processing failure | `npm run agent:fail -- <outbox-id> --agent <identity> --stage <stage> --error <safe-message>` |
-| Analyze a URL capture | `npm run agent:analyze -- <outbox-id> --agent <identity>` |
-| Run an approved isolated POC | `npm run agent:analyze -- <outbox-id> --agent <identity> --execute-poc` |
+| Record image analysis and advance to triage | `npm run agent:image-analysis -- <outbox-id> --agent <identity> --file <analysis.json>` |
+| Triage a workflow | `npm run agent:triage -- <workflow-id> --agent <identity>` |
+| Persist the user-approved action plan | `npm run agent:decide -- <workflow-id> --agent <identity> --file <action-plan.json>` |
+| Record an action result | `npm run agent:complete-action -- <workflow-id> <action-type> --agent <identity> --status completed --file <outcome.json>` |
+| Create an approved draft without publishing | `npm run agent:create-draft -- <workflow-id> <fast_rewrite|content_synthesis> --agent <identity>` |
+| Release a transient technical outbox lease | `npm run agent:release -- <outbox-id> --agent <identity> --available-at <ISO-8601>` |
+| Record a technical delivery failure | `npm run agent:fail -- <outbox-id> --agent <identity> --stage <stage> --error <safe-message>` |
 
-## Analyze a private image
+Use one stable identity, for example `hermes:cron:media-inbox`, for every
+claim/write/release operation in the same run.
 
-Load [references/image-analysis.md](references/image-analysis.md) before creating
-the result JSON.
+## Image base analysis
 
-1. Claim exactly one image outbox ID with `agent:claim`.
-2. Run `agent:media` for that ID. Use only the returned `local_path` files.
-3. Visually inspect every returned file. Do not infer text that is not legible.
-4. Write one JSON file matching the reference contract. Keep it at or below
-   128 KB and do not include secrets or unrelated local data.
-5. Run `agent:image-analysis` with the same identity that owns the lease.
-6. Treat the operation as successful only when it returns `ok: true` and
-   `status: "sent"`. This command records the analysis, clears the lease, and
-   completes the outbox; do not run `agent:complete` afterward.
+Load [references/image-analysis.md](references/image-analysis.md) before
+creating image analysis JSON.
 
-If any step after claim fails, record a bounded, secret-free failure with
-`agent:fail`. Use stages `image.materialize`, `image.inspect`, or
-`image.writeback`. Use `agent:release` only for a genuinely transient condition
-that should be retried later; never create an immediate retry loop.
+1. Claim exactly one image outbox item.
+2. Materialize it with `agent:media`; use only returned local paths.
+3. Inspect every materialized image. Do not infer unreadable text.
+4. Write analysis JSON under 128 KB.
+5. Run `agent:image-analysis`.
+6. Its success means **image base analysis** is complete and the workflow is
+   now `triage/pending`. It does not mean the whole post is complete.
 
-## Analyze a captured URL
+If the materialization, inspection, or writeback fails, record a bounded,
+secret-free failure. Do not create an immediate retry loop.
 
-1. Require a concrete outbox ID.
-2. Run `agent:analyze` with the scheduled or interactive Hermes identity. This
-   command owns its URL claim/release/failure lifecycle.
-3. Report routes, repository audit findings, and application matches.
-4. Do not add `--execute-poc` unless the user explicitly approves an isolated
-   POC for that exact item.
+## Triage and strategy
 
-## Run an isolated POC
+For a workflow at `triage/pending`, run `agent:triage`. It records the current
+category/summary and investigation candidates, then moves the post to
+`strategy/awaiting_user`.
 
-1. Require an explicit instruction such as “執行 POC”, “做隔離測試”, or
-   “run the isolated POC”.
-2. State the selected capture and that execution is limited to
-   `sandbox/jobs/<outbox-id>`.
-3. Run `agent:analyze` with `--execute-poc`.
-4. Report the job ID, pass/fail result, timeout state, and bounded stdout/stderr.
-5. Do not modify the formal project, install production dependencies, commit,
-   deploy, publish, or change Supabase schema.
+At this point discuss the post with the user. Typical response structure:
 
-## Safety and verification
+```text
+這篇是什麼／為何值得注意
+目前分類與尚未確認的地方
+建議研究或專案比對方向
+是否值得最後整理成內容草稿
+```
 
-- Never expose the service-role key. Private media must remain in the
-  permission-restricted temporary directory returned by `agent:media`.
-- Never substitute a browser signed URL, arbitrary Storage path, or unrelated
-  local image for the returned materialized file.
-- Never process an image without first owning its lease.
-- On success, verify the image command returns `status: "sent"` so the Cron will
-  not repeatedly process the same outbox item.
-- If configuration, claim, media validation, or write-back fails, show the real
-  bounded error. Do not fabricate success or silently skip the item.
+Do not treat a folder as a command. `collection_topic_scopes` is optional
+background (folder objective and possible projects); it cannot bypass this
+discussion.
+
+After the user decides, save an action plan JSON such as:
+
+```json
+{
+  "actions": [
+    { "type": "research", "notes": "確認 claims、限制與替代方案" },
+    { "type": "poc_proposal", "notes": "針對目前專案評估可行性" }
+  ]
+}
+```
+
+Valid action types are `research`, `poc_proposal`, `poc_execute`,
+`fast_rewrite`, and `content_synthesis`. An empty `actions` array means the
+user chose to keep the classified bookmark only.
+
+## Content output
+
+Rewrite is an output stage, not a default triage route.
+
+- `content_synthesis`: after research, project comparison, or a test, create a
+  new draft based on the source plus our conclusions. Preserve source
+  attribution and distinguish verified facts from our opinion.
+- `fast_rewrite`: only when the user explicitly asks to quickly adapt or
+  recreate the source. Mark its outcome `content_basis: "source_only"`.
+
+Neither action publishes automatically. If research or validation informed the
+draft, record `content_basis: "researched"` or `"validated"` in the outcome.
+
+For an approved `fast_rewrite` or `content_synthesis`, use
+`agent:create-draft`; it persists a content asset and marks only that action
+completed. `content_synthesis` requires a completed research or POC-related
+action first. The command never publishes.
+
+## POC and project safety
+
+`poc_proposal` may analyse fit and prepare a proposal. `poc_execute` requires
+an explicit user instruction for this exact workflow. Before executing, state
+the selected workflow, project, and isolated scope. Never alter the formal
+project, deploy, publish, or install production dependencies without a new
+explicit approval.
+
+## Completion and failures
+
+A post reaches `complete/completed` only when every user-approved action is
+`completed` or `skipped`. If an action fails, store its bounded error and keep
+the workflow retryable. If attempts are exhausted or manual information is
+needed, mark it `blocked` and explain the blocker to the user.
+
+Private media remains private. Never substitute a signed URL, arbitrary
+Storage path, or unrelated local file for a materialized image.

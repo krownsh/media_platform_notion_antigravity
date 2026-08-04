@@ -53,7 +53,7 @@ export function applyTopicScopeToClassification(classificationResult, options = 
     routes.sort((left, right) => Number(right.priority || 0) - Number(left.priority || 0));
     return {
         ...classificationResult,
-        primary_intent: routes[0]?.type || classificationResult?.primary_intent || 'quick_rewrite',
+        primary_intent: routes[0]?.type || classificationResult?.primary_intent || 'analysis_only',
         routes,
         reasons: [...new Set(reasons)]
     };
@@ -82,7 +82,10 @@ async function findMatches(postData, classificationResult, workspaceTarget) {
 
 export async function analyzeItem(outboxId, options = {}) {
     if (!outboxId) {
-        throw new Error('Please provide an Outbox ID. Usage: node analyze-item.js <outbox_id> [--execute-poc]');
+        throw new Error('Please provide an Outbox ID. Usage: node analyze-item.js <outbox_id> --legacy-poc [--execute-poc]');
+    }
+    if (options.legacyPocMode !== true) {
+        throw new Error('agent:analyze is retired because folder scopes must not decide a post workflow. Use agent:next, agent:triage, and agent:decide instead. Pass --legacy-poc only to resume an already-created legacy POC route.');
     }
 
     const executePoc = options.executePoc === true;
@@ -311,6 +314,7 @@ if (isMainModule) {
     const agentIndex = args.indexOf('--agent');
     const leaseIndex = args.indexOf('--lease-minutes');
     analyzeItem(outboxId, {
+        legacyPocMode: args.includes('--legacy-poc'),
         executePoc: args.includes('--execute-poc'),
         agentIdentity: agentIndex >= 0 ? args[agentIndex + 1] : null,
         leaseMinutes: leaseIndex >= 0 ? args[leaseIndex + 1] : 15

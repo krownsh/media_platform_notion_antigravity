@@ -1,5 +1,13 @@
 import { supabase } from '../supabaseClient.js';
 
+const CAPTURE_SELECT = 'id, input_type, url, original_filename, media_content_type, media_size_bytes, status, attempt_count, max_attempts, capture_quality, post_id, outbox_event_id, error_code, error_message, correlation_id, created_at, updated_at, started_at, finalized_at, failed_at';
+
+function normalizeHistoryLimit(value) {
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed <= 0) return 20;
+    return Math.min(parsed, 100);
+}
+
 export function validateCaptureUrl(value) {
     if (typeof value !== 'string' || !value.trim() || value.length > 4096) {
         throw new Error('url must be a non-empty HTTP(S) URL up to 4096 characters');
@@ -67,13 +75,25 @@ export async function enqueueImageCaptureRequest(input, supabaseClient = supabas
 export async function getCaptureRequest(requestId, userId, supabaseClient = supabase) {
     const { data, error } = await supabaseClient
         .from('collection_capture_requests')
-        .select('id, input_type, url, original_filename, media_content_type, media_size_bytes, status, attempt_count, max_attempts, capture_quality, post_id, outbox_event_id, error_code, error_message, correlation_id, created_at, updated_at, started_at, finalized_at, failed_at')
+        .select(CAPTURE_SELECT)
         .eq('id', requestId)
         .eq('user_id', userId)
         .maybeSingle();
 
     if (error) throw new Error(`Capture lookup failed: ${error.message}`);
     return data || null;
+}
+
+export async function listCaptureRequests(userId, options = {}, supabaseClient = supabase) {
+    if (!userId) throw new Error('userId is required');
+    const { data, error } = await supabaseClient
+        .from('collection_capture_requests')
+        .select(CAPTURE_SELECT)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(normalizeHistoryLimit(options.limit));
+    if (error) throw new Error(`Capture history lookup failed: ${error.message}`);
+    return data || [];
 }
 
 export async function claimCaptureRequest(workerId, leaseSeconds = 900, supabaseClient = supabase) {

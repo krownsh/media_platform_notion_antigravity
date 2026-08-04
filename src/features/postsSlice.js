@@ -9,6 +9,8 @@ const initialState = {
     error: null,
     currentPost: null, // Currently viewed/processing post
     tasks: [], // Task Queue: [{ id, inputType, url, label, captureId, status, timestamp }]
+    captureHistory: [], // Durable recent capture requests from the API
+    captureHistoryError: null,
 };
 
 const postsSlice = createSlice({
@@ -57,6 +59,16 @@ const postsSlice = createSlice({
         },
         monitorCapture() {
             // Payload: { captureId, taskId }. The saga polls durable status.
+        },
+        fetchCaptureHistory() {
+            // Load persisted capture state after a browser refresh.
+        },
+        fetchCaptureHistorySuccess(state, action) {
+            state.captureHistory = Array.isArray(action.payload) ? action.payload : [];
+            state.captureHistoryError = null;
+        },
+        fetchCaptureHistoryFailure(state, action) {
+            state.captureHistoryError = action.payload;
         },
         // Queue Management Reducers
         addTask(state, action) {
@@ -217,6 +229,9 @@ export const {
     movePostToCollectionSuccess,
     movePostToCollectionFailure,
     updateCollectionName,
-    updateCollectionNameSuccess
+    updateCollectionNameSuccess,
+    fetchCaptureHistory,
+    fetchCaptureHistorySuccess,
+    fetchCaptureHistoryFailure
 } = postsSlice.actions;
 export default postsSlice.reducer;

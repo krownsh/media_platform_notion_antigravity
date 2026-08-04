@@ -8,21 +8,20 @@ import { generateContentJSON } from './aiService.js';
 const SYSTEM_PROMPT = `You are the Route Agent for the Knowledge-Action Vault system.
 Your job is to analyze a captured social media post, bookmark, or article and determine its target execution routes.
 
-Available Routes:
-- quick_rewrite: Directly rewrite as a short social post (X thread, LinkedIn, short tip).
-- translate_localize: Translate into Traditional Chinese and adapt tone for local audience.
-- research_content: Requires fact-checking, additional references, or counter-arguments before creation.
-- apply_poc: Contains a tool, library, GitHub repo, skill, or workflow that should be matched against project needs and tested in a POC.
+Available investigation routes:
+- research_content: Requires fact-checking, additional references, or counter-arguments before a conclusion.
+- apply_poc: Contains a tool, library, GitHub repo, skill, or workflow that may be matched against project needs and tested in a POC.
 
-Rule: A post CAN have MULTIPLE routes (e.g. quick_rewrite AND apply_poc simultaneously).
+Content rewriting is intentionally not an initial route. It is either an explicit
+fast-rewrite request or a final synthesis after research/validation.
 
 Output MUST be a single valid JSON object with the following schema:
 {
-  "primary_intent": "quick_rewrite" | "translate_localize" | "research_content" | "apply_poc",
+  "primary_intent": "analysis_only" | "research_content" | "apply_poc",
   "urgency": "low" | "normal" | "high" | "critical",
   "routes": [
     {
-      "type": "quick_rewrite" | "translate_localize" | "research_content" | "apply_poc",
+      "type": "research_content" | "apply_poc",
       "priority": number (1-100),
       "reason": "explanation string"
     }
@@ -53,26 +52,19 @@ export function classifyRoutesByRules(postData) {
     reasons.push('Detected developer tool/library keywords');
   }
 
-  const translateKeywords = ['english', 'en:', 'translate', 'original:', 'source:'];
-  if (translateKeywords.some(kw => text.includes(kw)) || /[a-zA-Z]{30,}/.test(text)) {
+  const researchKeywords = ['paper', 'benchmark', 'research', 'study', 'whitepaper', 'case study', '論文', '研究', '比較', '限制'];
+  if (researchKeywords.some(kw => text.includes(kw))) {
     routes.push({
-      type: 'translate_localize',
+      type: 'research_content',
       priority: 75,
-      reason: 'Content appears to be non-Chinese or references foreign source.'
+      reason: 'Contains claims or material that benefits from additional verification and context.'
     });
-    reasons.push('Detected foreign language or translation candidate');
+    reasons.push('Detected research or comparison keywords');
   }
-
-  // Every item is eligible for quick rewrite draft
-  routes.push({
-    type: 'quick_rewrite',
-    priority: 60,
-    reason: 'Standard post suitable for fast-track social media rewrite.'
-  });
 
   // Pick primary intent
   routes.sort((a, b) => b.priority - a.priority);
-  const primary_intent = routes[0].type;
+  const primary_intent = routes[0]?.type || 'analysis_only';
   const urgency = isToolCandidate ? 'high' : 'normal';
 
   return {
@@ -102,7 +94,7 @@ Hashtags: ${(postData.tags || []).join(', ')}`;
     const aiResult = await generateContentJSON(SYSTEM_PROMPT, userPrompt);
     if (aiResult && aiResult.routes && Array.isArray(aiResult.routes) && aiResult.routes.length > 0) {
       return {
-        primary_intent: aiResult.primary_intent || aiResult.routes[0].type || 'quick_rewrite',
+    primary_intent: aiResult.primary_intent || aiResult.routes[0]?.type || 'analysis_only',
         urgency: aiResult.urgency || 'normal',
         routes: aiResult.routes,
         reasons: aiResult.reasons || ['LLM intent routing']

@@ -75,7 +75,7 @@ function printHumanInbox(events, status) {
     if (event.last_error) console.log(`Last error: ${event.last_error}`);
   });
   console.log('\n' + '='.repeat(60));
-  console.log('Next: use agent:media for image_upload; use agent:analyze for URL captures.');
+  console.log('Next: use agent:next to select the user-visible workflow; use agent:media only after claiming an image delivery.');
 }
 
 async function main() {

@@ -1,5 +1,7 @@
 import { orchestrator } from './orchestrator.js';
 import { finalizeCapture } from './captureFinalizationService.js';
+import { analyzeCapturedUrl } from './captureAnalysisService.js';
+import { updateWorkflowAfterCapture } from './postWorkflowService.js';
 
 export function isCoreCaptureUrl(url) {
     return /(^|\.)threads\.(net|com)$|(^|\.)(twitter\.com|x\.com)$/i.test(new URL(url).hostname);
@@ -56,7 +58,13 @@ export function buildImageCapture(request) {
 
 export async function processCaptureRequest(
     request,
-    { acquisition = orchestrator, finalizer = finalizeCapture } = {}
+    {
+        acquisition = orchestrator,
+        finalizer = finalizeCapture,
+        analyzer = analyzeCapturedUrl,
+        workflowUpdater = updateWorkflowAfterCapture,
+        logger = console
+    } = {}
 ) {
     if (request.input_type === 'image') {
         const imageCapture = buildImageCapture(request);
@@ -67,6 +75,19 @@ export async function processCaptureRequest(
             imageCapture,
             { pipelineVersion: 'capture-v4-image-async' }
         );
+
+        // Workflow persistence is additive. A deployment that has not yet run
+        // Stage G must not turn a successfully stored image into a failed
+        // capture request.
+        try {
+            await workflowUpdater({
+                outboxEventId: finalization.outbox_event_id,
+                sourceType: 'image_upload',
+                baseAnalysis: { status: 'pending', source: 'hermes_image', errors: [] }
+            });
+        } catch (error) {
+            logger.warn?.('[CaptureProcessing] Workflow initialization deferred:', error.message);
+        }
 
         return {
             status: 'finalized',
@@ -100,15 +121,27 @@ export async function processCaptureRequest(
         };
     }
 
-    // Hermes owns AI triage. The capture worker only persists source data.
-    result.data.analysis = result.data.analysis || { primary_category: 'other' };
+    // Preserve the original URL contract: the worker performs capture-time
+    // classification and summary generation. Hermes later performs the
+    // deeper triage and discussion workflow.
+    const analyzed = await analyzer(result.data);
     const finalization = await finalizer(
         request.user_id,
         request.correlation_id,
         result.source,
-        result.data,
+        analyzed.data,
         { pipelineVersion: 'capture-v3-async' }
     );
+
+    try {
+        await workflowUpdater({
+            outboxEventId: finalization.outbox_event_id,
+            sourceType: 'url_capture',
+            baseAnalysis: analyzed.baseAnalysis
+        });
+    } catch (error) {
+        logger.warn?.('[CaptureProcessing] Workflow initialization deferred:', error.message);
+    }
 
     return {
         status: 'finalized',

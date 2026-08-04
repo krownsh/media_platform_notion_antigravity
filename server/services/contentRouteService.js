@@ -7,6 +7,10 @@ const ROUTE_CONFIG = {
     format: 'x_thread',
     instruction: 'Write a concise, platform-native Traditional Chinese X thread. Keep attribution and separate verified facts from opinion.'
   },
+  content_synthesis: {
+    format: 'linkedin_post',
+    instruction: 'Write a Traditional Chinese draft that synthesizes the source with the supplied research or validation notes. Attribute the source, distinguish evidence from our conclusions, and do not claim work that the notes do not support.'
+  },
   translate_localize: {
     format: 'linkedin_post',
     instruction: 'Adapt the source for a Traditional Chinese professional developer audience. Preserve technical meaning and source attribution; do not invent claims.'
@@ -20,7 +24,11 @@ function requireString(value, label) {
 }
 
 function extractPocRunId(routeState) {
-  const pocRoute = routeState?.routes?.find(route => route.type === 'apply_poc' && route.status === 'completed');
+  const actions = Array.isArray(routeState?.actions) ? routeState.actions : routeState?.routes;
+  const pocRoute = actions?.find(route => (
+    (route.type === 'apply_poc' || route.type === 'poc_execute')
+    && route.status === 'completed'
+  ));
   const runId = pocRoute?.outcome?.run_id || pocRoute?.outcome?.reused_run_id;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId || '')
     ? runId
@@ -43,7 +51,7 @@ export function buildContentRouteIdempotencyKey(postData, routeType) {
 }
 
 export async function createAndStoreContentRoute(input, options = {}) {
-  const { postData, routeType, routeState = null } = input || {};
+  const { postData, routeType, routeState = null, workflowContext = null } = input || {};
   const supabaseClient = options.supabaseClient;
   const draftGenerator = options.draftGenerator || createFastTrackDraft;
   if (!supabaseClient) throw new Error('Supabase client is required');
@@ -54,7 +62,8 @@ export async function createAndStoreContentRoute(input, options = {}) {
   const config = getContentRouteConfig(routeType);
   const draft = await draftGenerator(postData, config.format, {
     routeType,
-    instruction: config.instruction
+    instruction: config.instruction,
+    workflowContext
   });
   if (!draft?.body) throw new Error('Content draft generator returned an empty body');
 
@@ -66,7 +75,8 @@ export async function createAndStoreContentRoute(input, options = {}) {
     attribution: draft.metadata?.attribution || sourceUrl,
     key_takeaways: Array.isArray(draft.metadata?.key_takeaways) ? draft.metadata.key_takeaways.slice(0, 10) : [],
     generator: 'content_studio_v1',
-    poc_run_id: pocRunId
+    poc_run_id: pocRunId,
+    content_basis: routeType === 'quick_rewrite' ? 'source_only' : 'researched'
   };
   const idempotencyKey = buildContentRouteIdempotencyKey(postData, routeType);
   const { data, error } = await supabaseClient.rpc('store_content_draft', {

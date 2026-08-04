@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import express from 'express';
-import { enqueueCaptureRequest, getCaptureRequest } from '../services/captureRequestService.js';
+import { enqueueCaptureRequest, getCaptureRequest, listCaptureRequests } from '../services/captureRequestService.js';
 import { decodeUploadFilename, MAX_IMAGE_BYTES, uploadAndEnqueueImageCapture } from '../services/imageCaptureService.js';
 
 function normalizeHeaderToken(value, fallback) {
@@ -12,7 +12,8 @@ function normalizeHeaderToken(value, fallback) {
 export function createCaptureRouter({
     enqueue = enqueueCaptureRequest,
     enqueueImage = uploadAndEnqueueImageCapture,
-    lookup = getCaptureRequest
+    lookup = getCaptureRequest,
+    list = listCaptureRequests
 } = {}) {
     const router = express.Router();
 
@@ -26,6 +27,17 @@ export function createCaptureRouter({
             status_url: `/api/captures/${capture.id}`
         });
     };
+
+    router.get('/', async (req, res) => {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
+        try {
+            const captures = await list(userId, { limit: req.query.limit });
+            return res.json({ captures });
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    });
 
     router.post('/', async (req, res) => {
         const userId = req.auth?.userId;

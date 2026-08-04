@@ -22,7 +22,7 @@ test('Route Agent - Rule Classification', () => {
   assert.equal(result.primary_intent, 'apply_poc');
   assert.equal(result.urgency, 'high');
   assert.ok(result.routes.some(r => r.type === 'apply_poc'));
-  assert.ok(result.routes.some(r => r.type === 'quick_rewrite'));
+  assert.ok(!result.routes.some(r => r.type === 'quick_rewrite'));
 });
 
 test('Project Auditor - Local Directory Dry-Run Scan', async () => {

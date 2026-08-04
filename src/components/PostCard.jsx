@@ -25,6 +25,7 @@ const PostCard = ({
     isCompact = false,
 }) => {
     const { platform, title, screenshot, analysis } = post;
+    const analysisPending = analysis?.analysis_status === 'pending';
     const [currentImageIndex] = useState(0);
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
@@ -33,6 +34,21 @@ const PostCard = ({
     const { collections } = useSelector(state => state.posts);
     const folderSuggestions = suggestFolders(post, collections);
     const topFolderSuggestion = folderSuggestions[0] || null;
+
+    const workflowLabel = (workflow) => {
+        if (!workflow) return null;
+        const labels = {
+            base_analysis: '待內容分析',
+            triage: '待 Hermes 分類',
+            strategy: workflow.status === 'awaiting_user' ? '待討論策略' : '整理策略中',
+            actions: '執行後續工作中',
+            complete: '處理完成'
+        };
+        if (workflow.status === 'failed') return `待重試：${labels[workflow.stage] || '處理失敗'}`;
+        if (workflow.status === 'blocked') return '需要你協助處理';
+        return labels[workflow.stage] || '背景處理中';
+    };
+    const workflowText = workflowLabel(post.workflow);
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -92,6 +108,14 @@ const PostCard = ({
                             ? collections.find(c => c.id === post.collectionId)?.name || '未分類'
                             : topFolderSuggestion ? `建議：${topFolderSuggestion.collection.name}` : '未分類'}
                     </span>
+                    {workflowText && (
+                        <>
+                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
+                            <span className="max-w-[120px] truncate text-[10px] sm:text-[11px] font-medium leading-none text-[var(--accent)]" title={post.workflow?.last_error || workflowText}>
+                                {workflowText}
+                            </span>
+                        </>
+                    )}
                 </div>
                 <button
                     className="flow-icon-button min-h-8 min-w-8"
@@ -165,14 +189,14 @@ const PostCard = ({
                 <div className={`mt-auto flex-shrink-0 px-3 sm:px-4 flex flex-col bg-surface border-t notion-whisper-border ${isCompact ? 'py-2 gap-1.5' : 'py-2.5 gap-2'}`}>
                     {/* Tags Area */}
                     <div className="min-h-5 overflow-hidden flex flex-wrap items-center gap-1 flex-shrink-0">
-                        {analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
+                        {!analysisPending && analysis?.tags && analysis.tags.slice(0, 3).map((tag, i) => (
                             <span key={i} className={`notion-badge leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>#{tag}</span>
                         ))}
                     </div>
 
                     {/* AI Info / Summary Area */}
                     <div className={`${showSummary && analysis?.summary ? 'max-h-10' : 'max-h-0'} overflow-hidden flex-shrink-0 transition-[max-height] duration-200`}>
-                        {showSummary && analysis?.summary && (
+                        {showSummary && !analysisPending && analysis?.summary && (
                             <div className="bg-[var(--accent-soft)] rounded-md px-2 py-1.5 flex flex-col justify-center border border-[rgba(45,111,115,0.1)]">
                                 <div className={`${isCompact ? 'text-[9px]' : 'text-[11px]'} text-[#615d59] leading-tight line-clamp-1 font-medium`}>
                                     <Sparkles size={8} className="inline mr-1 text-[var(--accent)]" />
@@ -184,7 +208,7 @@ const PostCard = ({
 
                     {/* Final Bottom Row */}
                     <div className="flex items-center justify-between flex-shrink-0 gap-3">
-                        <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysis?.primary_category || '尚未分類'}</span>
+                        <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysisPending ? '待分析' : (analysis?.primary_category || '尚未分類')}</span>
                         <div className={`text-[#615d59] opacity-80 font-medium leading-none tabular-nums ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>
                 </div>

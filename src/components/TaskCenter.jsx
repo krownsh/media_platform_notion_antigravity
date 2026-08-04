@@ -3,13 +3,13 @@ import { useSelector, useDispatch } from 'react-redux';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, CheckCircle2, AlertCircle, Clock, ExternalLink, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toggleTaskCenter } from '../features/uiSlice';
-import { removeTask, addPostByUrl, updateTaskStatus } from '../features/postsSlice';
+import { addPostByUrl, addTask, removeTask, updateTaskStatus } from '../features/postsSlice';
 import { RotateCcw } from 'lucide-react';
 
 const TaskCenter = () => {
     const dispatch = useDispatch();
     const { taskCenterOpen } = useSelector((state) => state.ui);
-    const { tasks } = useSelector((state) => state.posts);
+    const { tasks, captureHistory } = useSelector((state) => state.posts);
 
     const activeTasksCount = tasks.filter(t => t.status !== 'failed').length;
     const failedTasksCount = tasks.filter(t => t.status === 'failed').length;
@@ -17,6 +17,13 @@ const TaskCenter = () => {
     const handleRetry = (task) => {
         dispatch(updateTaskStatus({ taskId: task.id, status: 'pending' }));
         dispatch(addPostByUrl({ url: task.url, taskId: task.id }));
+    };
+
+    const handleHistoryRetry = (capture) => {
+        if (!capture.url) return;
+        const taskId = crypto.randomUUID();
+        dispatch(addTask({ taskId, inputType: 'url', url: capture.url, label: capture.url }));
+        dispatch(addPostByUrl({ url: capture.url, taskId }));
     };
 
     const getStatusIcon = (status) => {
@@ -43,6 +50,8 @@ const TaskCenter = () => {
             case 'crawling': return '抓取內容中...';
             case 'analyzing': return 'AI 分析中...';
             case 'failed': return '擷取失敗';
+            case 'finalized': return '已完成擷取與初步分析';
+            case 'degraded': return '已存成連結（內容擷取降級）';
             default: return '處理中';
         }
     };
@@ -64,6 +73,10 @@ const TaskCenter = () => {
     const getTaskTone = (status) => (
         status === 'failed' ? 'text-destructive' : 'text-[var(--accent)]'
     );
+
+    const durableCaptures = captureHistory
+        .filter(capture => !tasks.some(task => task.captureId === capture.id))
+        .slice(0, 12);
 
     return (
         <AnimatePresence>
@@ -107,7 +120,7 @@ const TaskCenter = () => {
                         {/* Task List */}
                         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3" aria-live="polite">
                             {tasks.length === 0 ? (
-                                <div className="h-full min-h-[18rem] flex flex-col items-center justify-center text-[#615d59] gap-4 text-center px-8">
+                                <div className={`${durableCaptures.length > 0 ? 'py-5' : 'h-full min-h-[18rem]'} flex flex-col items-center justify-center text-[#615d59] gap-4 text-center px-8`}>
                                     <div className="w-14 h-14 rounded-[1rem] bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
                                         <CheckCircle2 size={28} />
                                     </div>
@@ -208,12 +221,56 @@ const TaskCenter = () => {
                                     </Motion.div>
                                 ))
                             )}
+
+                            <div className="mt-7 border-t notion-whisper-border pt-5">
+                                <div className="mb-3 flex items-baseline justify-between gap-3">
+                                    <div>
+                                        <p className="flow-kicker mb-1">可持久查看</p>
+                                        <h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">最近擷取任務</h3>
+                                    </div>
+                                    <span className="text-xs text-[#615d59]">最近 {durableCaptures.length} 筆</span>
+                                </div>
+                                <div className="space-y-2">
+                                    {durableCaptures.length === 0 ? (
+                                        <p className="rounded-lg border notion-whisper-border bg-black/[0.02] px-3 py-3 text-xs text-[#615d59]">重新整理後的任務紀錄會顯示在這裡。</p>
+                                    ) : durableCaptures.map((capture) => {
+                                        const isFailed = capture.status === 'failed';
+                                        const label = capture.input_type === 'image'
+                                            ? (capture.original_filename || '圖片上傳')
+                                            : capture.url;
+                                        return (
+                                            <div key={capture.id} className={`rounded-lg border px-3 py-3 ${isFailed ? 'border-destructive/25 bg-destructive/5' : 'border-black/8 bg-black/[0.015]'}`}>
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                        <p className={`text-[10px] font-bold uppercase tracking-[0.08em] ${getTaskTone(capture.status)}`}>{capture.input_type === 'image' ? '圖片' : 'URL'} · {getStatusText(capture.status)}</p>
+                                                        <p className="mt-1 break-all text-xs font-medium text-[rgba(0,0,0,0.95)]">{label}</p>
+                                                    </div>
+                                                    <span className="shrink-0 text-[10px] tabular-nums text-[#615d59]">{new Date(capture.updated_at || capture.created_at).toLocaleString()}</span>
+                                                </div>
+                                                <p className="mt-2 text-[11px] text-[#615d59]">嘗試 {capture.attempt_count || 0}/{capture.max_attempts || 3}{capture.capture_quality === 'degraded' ? ' · 已降級保存' : ''}</p>
+                                                {isFailed && (
+                                                    <div className="mt-2 rounded-md bg-white/70 px-2.5 py-2 text-xs text-destructive">
+                                                        <p className="font-semibold">{capture.error_code || 'CAPTURE_FAILED'}</p>
+                                                        <p className="mt-0.5 break-words">{capture.error_message || '未提供錯誤說明'}</p>
+                                                        {capture.url && (
+                                                            <button type="button" onClick={() => handleHistoryRetry(capture)} className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent)] hover:underline">
+                                                                <RotateCcw size={12} /> 重新提交此網址
+                                                            </button>
+                                                        )}
+                                                        {capture.input_type === 'image' && <p className="mt-2 text-[#615d59]">圖片失敗請重新選擇檔案上傳。</p>}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Footer (Optional info) */}
                         <div className="px-5 py-4 sm:px-6 border-t notion-whisper-border bg-[var(--surface)]">
                             <p className="text-xs leading-5 text-[#615d59]">
-                                任務會在背景持續處理。若失敗，可在此直接重試或清除。
+                                任務紀錄保存在伺服器；重新整理頁面後仍可在此查看狀態、重試次數與失敗原因。
                             </p>
                         </div>
                     </Motion.div>

@@ -20,7 +20,7 @@
 - `research`：保留作研究題材；不會比對專案或產生 POC。
 - `poc_proposal`：可針對 `project_targets` 中明確指定的 GitHub repo（格式 `github:owner/repository`），做本機唯讀盤點與 POC 提案。
 
-`poc_proposal` 絕不表示自動執行。預設 `agent:analyze` 只會產生提案，不呼叫 MiniMax、Tavily 或 Docker。
+這是舊版 Stage D 的行為說明。自 Stage G 起，資料夾 scope 僅提供背景；Hermes 必須先完成貼文 triage、和使用者討論，再由 per-post action plan 決定是否提出或執行 POC。
 
 ## 操作
 
@@ -33,13 +33,13 @@
 先產生提案：
 
 ```powershell
-npm run agent:analyze -- <outbox_id>
+npm run agent:next -- --interactive
 ```
 
 只有你明確決定要執行時才用：
 
 ```powershell
-npm run agent:analyze -- <outbox_id> --execute-poc
+請依 `hermes/skills/my-mediacrawl-skill/SKILL.md` 先建立使用者明確批准的 `poc_execute` action；不可由資料夾模式直接執行。
 ```
 
 後者才可能呼叫 MiniMax、Tavily 與 Docker sandbox。

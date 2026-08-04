@@ -3,6 +3,7 @@ import { readFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { recordHermesImageAnalysis } from '../../server/services/hermesImageAnalysisService.js';
+import { markAnalysisProvenance, markImageWorkflowAnalyzed } from '../../server/services/postWorkflowService.js';
 import {
     completeHermesImageReview,
     requireHermesImageLease
@@ -33,6 +34,12 @@ async function main() {
     if (!isSupabaseConfigured) throw new Error('Supabase service client is not configured');
     const claimedEvent = await requireHermesImageLease(outboxId, agentIdentity, supabase);
     const analysis = await recordHermesImageAnalysis({ outboxId, agentIdentity, result }, supabase);
+    await markAnalysisProvenance({ analysisId: analysis.id, source: 'hermes_image' }, supabase);
+    const workflow = await markImageWorkflowAnalyzed({
+        outboxEventId: outboxId,
+        agentIdentity,
+        analysisId: analysis.id
+    }, supabase);
     const completedEvent = await completeHermesImageReview(
         claimedEvent,
         agentIdentity,
@@ -43,7 +50,9 @@ async function main() {
         ok: true,
         analysis_id: analysis.id,
         outbox_id: outboxId,
-        status: completedEvent.status
+        outbox_status: completedEvent.status,
+        workflow_stage: workflow.stage,
+        workflow_status: workflow.status
     })}\n`);
 }
 

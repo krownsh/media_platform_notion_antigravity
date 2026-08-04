@@ -24,6 +24,8 @@ import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
 import { finalizeCapture } from './services/captureFinalizationService.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
+import { analyzeCapturedUrl } from './services/captureAnalysisService.js';
+import { updateWorkflowAfterCapture } from './services/postWorkflowService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -326,58 +328,9 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
     try {
         const result = await orchestrator.processUrl(url);
 
-        // Run AI Analysis based on platform
         if (result.data) {
-            const platform = result.data.platform;
-            const isSocial = platform === 'threads' || platform === 'twitter';
-            const isGeneric = platform === 'generic' || platform === 'unknown' || platform === 'github' || platform === 'notion' || platform === 'youtube';
-
-            // 1) 取得主要分類。分類失敗不可阻止原始來源 finalization。
-            result.data.analysis = { primary_category: 'other' };
-            try {
-                const { categoryProcessor } = await import('./services/categoryProcessor.js');
-                result.data.analysis.primary_category = await categoryProcessor.classify(result.data.content || '');
-            } catch (categoryError) {
-                console.warn('[Server] Category classification failed:', categoryError.message);
-                result.data.analysis.error = categoryError.message;
-            }
-
-            // 2) 擷取 AI Summary
-            if (isSocial && result.data.full_json) {
-                console.log(`[Server] Running AI analysis for ${platform} post...`);
-                try {
-                    const aiResult = await aiService.analyzeThreadsPost(result.data.full_json);
-                    if (aiResult) {
-                        result.data.analysis.summary = aiResult.summary;
-                        result.data.analysis.raw = aiResult.raw;
-                        result.data.analysis.tags = aiResult.structured?.tags || [];
-                        result.data.analysis.topics = aiResult.structured?.topics || [];
-                        console.log('[Server] Social AI analysis completed');
-                    } else {
-                        throw new Error('AI analysis returned no results');
-                    }
-                } catch (aiError) {
-                    console.warn('[Server] Social AI analysis failed:', aiError.message);
-                    result.data.analysis.error = aiError.message;
-                }
-            } else if (isGeneric && result.data.content) {
-                console.log(`[Server] Running Generic AI analysis for ${platform} URL...`);
-                try {
-                    const aiResult = await aiService.analyzeGenericPost(result.data);
-                    if (aiResult) {
-                        result.data.analysis.summary = aiResult.summary;
-                        result.data.analysis.raw = aiResult.raw;
-                        result.data.analysis.tags = aiResult.structured?.tags || [];
-                        result.data.analysis.topics = aiResult.structured?.topics || [];
-                        console.log('[Server] Generic AI analysis completed');
-                    } else {
-                        throw new Error('Generic AI analysis returned no results');
-                    }
-                } catch (aiError) {
-                    console.warn('[Server] Generic AI analysis failed:', aiError.message);
-                    result.data.analysis.error = aiError.message;
-                }
-            }
+            const analyzed = await analyzeCapturedUrl(result.data);
+            result.data = analyzed.data;
 
             // 3) A database RPC atomically upserts the source, replaces its
             // child rows, and creates the source.ingested.v1 outbox event.
@@ -385,6 +338,15 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
                 const finalization = await finalizeCapture(userId, correlationId, result.source, result.data);
                 result.data.dbId = finalization.post_id;
                 result.data.outboxEventId = finalization.outbox_event_id;
+                try {
+                    await updateWorkflowAfterCapture({
+                        outboxEventId: finalization.outbox_event_id,
+                        sourceType: 'url_capture',
+                        baseAnalysis: analyzed.baseAnalysis
+                    });
+                } catch (workflowError) {
+                    console.warn('[Server] Workflow initialization deferred:', workflowError.message);
+                }
                 console.log('[Server] Capture finalized with outbox event');
             } catch (error) {
                 console.error('[Capture] finalization failed', {
@@ -605,18 +567,36 @@ app.get('/api/posts', async (req, res) => {
     }
 
     try {
-        // Fetch posts
-        const { data: posts, error: postsError } = await supabase
+        const postSelection = `
+            *,
+            collection_post_media (*),
+            collection_post_comments (*),
+            collection_post_analysis (*),
+            collection_post_workflows (*),
+            collection_user_annotations (*)
+        `;
+        // Fetch posts. The workflow relation is deployed in Stage G; the
+        // fallback keeps existing environments readable until that deployment
+        // has been applied.
+        let { data: posts, error: postsError } = await supabase
             .from('collection_posts')
-            .select(`
-                *,
-                collection_post_media (*),
-                collection_post_comments (*),
-                collection_post_analysis (*),
-                collection_user_annotations (*)
-            `)
+            .select(postSelection)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
+
+        if (postsError && /collection_post_workflows/i.test(postsError.message || '')) {
+            ({ data: posts, error: postsError } = await supabase
+                .from('collection_posts')
+                .select(`
+                    *,
+                    collection_post_media (*),
+                    collection_post_comments (*),
+                    collection_post_analysis (*),
+                    collection_user_annotations (*)
+                `)
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false }));
+        }
 
         if (postsError) throw postsError;
 
@@ -652,7 +632,8 @@ app.get('/api/posts', async (req, res) => {
                 postedAt: c.commented_at
             })) || [],
             annotations: post.collection_user_annotations || [],
-            analysis: post.collection_post_analysis?.[0] || null
+            analysis: post.collection_post_analysis?.[0] || null,
+            workflow: post.collection_post_workflows?.[0] || null
         }));
 
         res.json({ posts: formattedPosts, collections: collections || [] });

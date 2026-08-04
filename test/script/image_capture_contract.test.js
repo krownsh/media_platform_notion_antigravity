@@ -34,14 +34,16 @@ test('Hermes handoff receives stable Storage references, not temporary signed UR
     assert.match(deployment, /grant execute on function public\.record_collection_image_analysis\(uuid, text, jsonb\)[\s\S]+to service_role/);
 });
 
-test('Hermes image write-back requires a lease and completes the outbox', () => {
+test('Hermes image write-back requires a lease and advances the post workflow', () => {
     assert.match(imageAnalysisCli, /requireHermesImageLease/);
     assert.match(imageAnalysisCli, /completeHermesImageReview/);
-    assert.match(imageAnalysisCli, /status: completedEvent\.status/);
+    assert.match(imageAnalysisCli, /outbox_status: completedEvent\.status/);
+    assert.match(imageAnalysisCli, /markImageWorkflowAnalyzed/);
     assert.match(mediaCrawlSkill, /agent:claim/);
     assert.match(mediaCrawlSkill, /agent:media/);
     assert.match(mediaCrawlSkill, /agent:image-analysis/);
-    assert.match(mediaCrawlSkill, /status.*sent/i);
+    assert.match(mediaCrawlSkill, /`sent` means Hermes consumed the delivery event/);
+    assert.match(mediaCrawlSkill, /triage\/pending/);
 });
 
 test('new capture finalization discards remote author avatars', () => {

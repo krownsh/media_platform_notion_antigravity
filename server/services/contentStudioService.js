@@ -35,10 +35,13 @@ export async function createFastTrackDraft(postData, format = 'x_thread', option
     throw new Error('postData with content is required for content adaptation');
   }
 
+  const workflowContext = options.workflowContext
+    ? `\nOur completed research or validation notes (use only as supplied; distinguish evidence from opinion):\n${String(options.workflowContext).slice(0, 4000)}`
+    : '';
   const prompt = `Adapt the following source into a ${format}:
 Title: ${postData.title || 'Untitled'}
 Source URL: ${postData.original_url || postData.url || 'N/A'}
-Content: ${postData.content.substring(0, 2000)}`;
+Content: ${postData.content.substring(0, 2000)}${workflowContext}`;
   const routeInstruction = options.instruction ? `\nRoute instruction: ${options.instruction}` : '';
 
   try {

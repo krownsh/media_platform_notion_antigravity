@@ -1,0 +1,522 @@
+{
+  "name": "LINE webhook (user) - validate URL/image -> capture -> push result",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-webhook",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        128
+      ],
+      "id": "f11bd348-3fde-46dd-a107-77a46bafeec8",
+      "name": "Webhook",
+      "webhookId": "replace-with-your-webhook-id",
+      "notes": "Set this webhook URL to LINE Messaging API Webhook URL.\nThis workflow assumes 1:1 chat (userId only)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "only-message",
+              "leftValue": "={{ $json.body.events[0].type }}",
+              "rightValue": "message",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        128
+      ],
+      "id": "8c75f2fb-fd1e-49a4-a65b-ac3dcc6ff452",
+      "name": "Only Message",
+      "notesInFlow": true,
+      "notes": "Continue only for LINE message events. The next node accepts either a URL text message or an image message."
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json.body.events[0];\nconst message = event.message || {};\nconst inputText = (message.text || '').trim();\nconst isValidUrl = inputText.startsWith('http://') || inputText.startsWith('https://');\nconst isImage = message.type === 'image';\nconst messageId = message.id || null;\n\nconst inputType = isImage ? 'image' : (isValidUrl ? 'url' : 'unsupported');\nconst isSupportedInput = isImage || isValidUrl;\n\nreturn [{\n  json: {\n    inputType,\n    inputText,\n    isValidUrl,\n    isImage,\n    isSupportedInput,\n    messageId,\n    fileName: isImage ? `line-image-${messageId || 'upload'}` : null,\n    idempotencyKey: isImage && messageId ? `line-image-${messageId}` : null,\n    replyToken: event.replyToken,\n    userId: event.source?.userId || null,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        128
+      ],
+      "id": "2db78c78-abab-4aa5-8d65-282f19fc26c6",
+      "name": "Validate Input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "isSupportedInput",
+              "leftValue": "={{ $json.isSupportedInput }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            },
+            {
+              "id": "hasUserId",
+              "leftValue": "={{ !!$json.userId }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            },
+            {
+              "id": "hasReplyToken",
+              "leftValue": "={{ !!$json.replyToken }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -304,
+        128
+      ],
+      "id": "ffab5145-27c0-482c-a2e8-9703b5bce60e",
+      "name": "IF Supported Input"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer rNrtMgmX+WetRblL5mkEq2FUADmsbIlgaAza+FL9zJPAQZKqyhxFdlo+AYtlRj78cLxtirKrRQVrCxzSxMDQVzO9lhUrjliyHk56wX94z84RjREL06NVEWtJElSFuE287hwGvQFJ2rGHo9BJQnUt8gdB04t89/1O/w1cDnyilFU="
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"replyToken\": \"{{ $json.replyToken }}\",\n  \"messages\": [{\"type\":\"text\",\"text\":\"處理中，請稍候…\"}]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -144,
+        16
+      ],
+      "id": "6cfa89f2-7856-4d65-ae98-f50a5484416d",
+      "name": "Reply Processing",
+      "notes": "Reply immediately (do not wait external API)."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://media-collection-api.krownsh.work/api/process",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"url\": \"{{ $('Validate Input').item.json.inputText }}\"\n} ",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        80
+      ],
+      "id": "605f4fa9-4ec2-440d-b465-04196ddc844c",
+      "name": "Call External POST",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "InrfAMt6jwP3C3Kv",
+          "name": "media_crawler"
+        }
+      },
+      "notes": "Call your external API. Non-2xx will still continue (ignoreResponseCode)."
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json || {};\nconst input = $('Validate Input').first().json || {};\nconst completedUrl = response.data?.originalUrl || response.originalUrl;\nconst capture = response.capture_id ? response : (response.data?.capture_id ? response.data : null);\n\nlet resultText;\nif (capture?.capture_id) {\n  resultText = `圖片已接收：${input.fileName || 'LINE 圖片'}。已進入背景分析。`;\n} else if (completedUrl) {\n  resultText = `處理完成：${completedUrl}`;\n} else {\n  resultText = input.inputType === 'image'\n    ? '圖片處理失敗，請稍後再試。'\n    : '網址處理失敗，請稍後再試。';\n}\n\nreturn [{\n  json: {\n    userId: input.userId,\n    resultText,\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        208
+      ],
+      "id": "161d9913-fa0c-4b3a-a5d0-eb5a0e3f017e",
+      "name": "Format Result"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer rNrtMgmX+WetRblL5mkEq2FUADmsbIlgaAza+FL9zJPAQZKqyhxFdlo+AYtlRj78cLxtirKrRQVrCxzSxMDQVzO9lhUrjliyHk56wX94z84RjREL06NVEWtJElSFuE287hwGvQFJ2rGHo9BJQnUt8gdB04t89/1O/w1cDnyilFU="
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"to\": \"{{ $json.userId }}\",\n  \"messages\": [{\"type\":\"text\",\"text\": \"{{ $json.resultText }}\"}]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        208
+      ],
+      "id": "2f70562c-c58d-46f1-9437-2eb7c2133b66",
+      "name": "Push Result"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer rNrtMgmX+WetRblL5mkEq2FUADmsbIlgaAza+FL9zJPAQZKqyhxFdlo+AYtlRj78cLxtirKrRQVrCxzSxMDQVzO9lhUrjliyHk56wX94z84RjREL06NVEWtJElSFuE287hwGvQFJ2rGHo9BJQnUt8gdB04t89/1O/w1cDnyilFU="
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n   \"replyToken\": \"{{ $json.replyToken }}\",\n  \"messages\": [{\"type\":\"text\",\"text\":\"請傳送含 http:// 或 https:// 的網址，或一張圖片\"}]\n}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        0,
+        368
+      ],
+      "id": "60c6d7da-0360-43e9-b2e3-3cd6f53f0227",
+      "name": "Reply Unsupported Input",
+      "notes": "Also used when userId or replyToken is missing (treated as invalid for 1:1 mode)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "isImage",
+              "leftValue": "={{ $('Validate Input').item.json.inputType }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        32,
+        16
+      ],
+      "id": "a043bf84-0389-4521-8319-e5117cb715f2",
+      "name": "IF Image Upload"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api-data.line.me/v2/bot/message/{{ $('Validate Input').item.json.messageId }}/content",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $node[\"Reply Processing\"].parameter[\"headerParameters\"][\"parameters\"][0][\"value\"] }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "1f4567cd-0e3e-458f-8c68-59798574e872",
+      "name": "Download LINE Image",
+      "notes": "Download the original image binary from LINE. The field name data is used by the upload node."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://media-collection-api.krownsh.work/api/captures/images",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $binary.data.mimeType }}"
+            },
+            {
+              "name": "x-file-name",
+              "value": "={{ $('Validate Input').item.json.fileName }}"
+            },
+            {
+              "name": "x-idempotency-key",
+              "value": "={{ $('Validate Input').item.json.idempotencyKey }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        480,
+        -80
+      ],
+      "id": "9f863007-6204-493e-98b8-1c5119644ef1",
+      "name": "Upload Image Capture",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "InrfAMt6jwP3C3Kv",
+          "name": "media_crawler"
+        }
+      },
+      "notes": "Forward the untouched binary file to the existing image capture endpoint."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Only Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only Message": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "IF Supported Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Supported Input": {
+      "main": [
+        [
+          {
+            "node": "Reply Processing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Unsupported Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call External POST": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Result": {
+      "main": [
+        [
+          {
+            "node": "Push Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reply Unsupported Input": {
+      "main": [
+        []
+      ]
+    },
+    "Reply Processing": {
+      "main": [
+        [
+          {
+            "node": "IF Image Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Image Upload": {
+      "main": [
+        [
+          {
+            "node": "Download LINE Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call External POST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download LINE Image": {
+      "main": [
+        [
+          {
+            "node": "Upload Image Capture",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Image Capture": {
+      "main": [
+        [
+          {
+            "node": "Format Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "b74c3544-275e-48c5-9e92-744454472cd1",
+  "meta": {
+    "instanceId": "32df70d6f5e64a9901fc2f3e7ec6645870db249e859ba0dc7553d4956c9c53a5"
+  },
+  "id": "Of7euhsgeB4qfpO5",
+  "tags": []
+}

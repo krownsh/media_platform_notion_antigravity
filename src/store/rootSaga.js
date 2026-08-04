@@ -2,6 +2,9 @@ import { all, takeLatest, takeEvery, call, put, delay } from 'redux-saga/effects
 import {
   addPostByUrl,
   monitorCapture,
+  fetchCaptureHistory,
+  fetchCaptureHistorySuccess,
+  fetchCaptureHistoryFailure,
   fetchPostFailure,
   fetchPosts,
   fetchPostsSuccess,
@@ -27,7 +30,7 @@ import {
 import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
-import { getCaptureStatus, submitUrlCapture } from '../api/captureApi';
+import { getCaptureStatus, listCaptureHistory, submitUrlCapture } from '../api/captureApi';
 
 
 // Worker Saga: Fetch all posts AND collections
@@ -76,6 +79,7 @@ function* handleFetchPost(action) {
     yield put(updateTaskStatus({ taskId, status: 'submitting' }));
     const capture = yield call(submitUrlCapture, url);
     yield put(updateTaskStatus({ taskId, status: 'accepted', captureId: capture.capture_id }));
+    yield put(fetchCaptureHistory());
     yield put(monitorCapture({ captureId: capture.capture_id, taskId }));
     yield put(addNotification({ message: '網址已加入擷取佇列，可以繼續新增', type: 'success' }));
 
@@ -105,11 +109,12 @@ function* handleMonitorCapture(action) {
 
       if (capture.status === 'finalized' || capture.status === 'degraded') {
         yield put(fetchPosts());
+        yield put(fetchCaptureHistory());
         yield put(removeTask(taskId));
         yield put(addNotification({
           message: capture.input_type === 'image'
-            ? '圖片已儲存，已交給 Hermes 分析佇列'
-            : '貼文已擷取並存入資料庫',
+            ? '圖片已儲存，等待 Hermes 進行圖片分析'
+            : '貼文已擷取並完成初步分析，等待 Hermes 分類',
           type: 'success'
         }));
         return;
@@ -123,7 +128,20 @@ function* handleMonitorCapture(action) {
   } catch (error) {
     console.error('[Saga] Capture monitor failed:', error);
     yield put(updateTaskStatus({ taskId, status: 'failed', captureId }));
+    yield put(fetchCaptureHistory());
     yield put(addNotification({ message: `擷取失敗: ${error.message}`, type: 'error' }));
+  }
+}
+
+function* handleFetchCaptureHistory() {
+  try {
+    const captures = yield call(listCaptureHistory, 20);
+    yield put(fetchCaptureHistorySuccess(captures));
+  } catch (error) {
+    // Capture history is observability, not a reason to interrupt normal
+    // browsing when its endpoint is temporarily unavailable.
+    console.error('[Saga] Capture history error:', error);
+    yield put(fetchCaptureHistoryFailure(error.message));
   }
 }
 
@@ -293,6 +311,7 @@ function* watchPosts() {
   yield takeEvery(addPostByUrl.type, handleFetchPost);
   yield takeEvery(monitorCapture.type, handleMonitorCapture);
   yield takeLatest(fetchPosts.type, handleFetchPosts);
+  yield takeLatest(fetchCaptureHistory.type, handleFetchCaptureHistory);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);
   yield takeLatest(createCollection.type, handleCreateCollection);

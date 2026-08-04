@@ -29,12 +29,13 @@ test('worker claim is atomic and supports expired-lease recovery', () => {
     assert.match(deployment, /status in \('accepted', 'extracting', 'finalized', 'degraded', 'failed'\)/);
 });
 
-test('capture API acknowledges before crawler or AI work', () => {
+test('capture API acknowledges before crawler work while the worker owns URL analysis', () => {
     assert.match(serverSource, /app\.use\(['"]\/api\/captures['"], requireApiAuth, captureRouter\)/);
     assert.match(routeSource, /return res\.status\(202\)\.json/);
     assert.doesNotMatch(routeSource, /orchestrator|aiService|processUrl/);
-    assert.doesNotMatch(processingSource, /aiService|categoryProcessor/);
-    assert.match(processingSource, /Hermes owns AI triage/);
+    assert.match(processingSource, /analyzeCapturedUrl/);
+    assert.match(processingSource, /updateWorkflowAfterCapture/);
+    assert.match(processingSource, /worker performs capture-time/);
 });
 
 test('agent job control plane rejects the capture API key', () => {

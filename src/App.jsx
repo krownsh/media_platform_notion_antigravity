@@ -13,7 +13,7 @@ import InsightPage from './pages/InsightPage';
 import TopicsPage from './pages/TopicsPage';
 import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
-import { fetchPosts } from './features/postsSlice';
+import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
 import { supabase } from './api/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
@@ -55,7 +55,20 @@ function App() {
   useEffect(() => {
     if (user?.id) {
       dispatch(fetchPosts());
+      dispatch(fetchCaptureHistory());
     }
+  }, [user?.id, dispatch]);
+
+  // Hermes runs outside the browser. Refresh compact workflow state while the
+  // user is signed in so image analysis and later triage do not require a
+  // manual page refresh.
+  useEffect(() => {
+    if (!user?.id) return undefined;
+    const intervalId = window.setInterval(() => {
+      dispatch(fetchPosts());
+      dispatch(fetchCaptureHistory());
+    }, 15000);
+    return () => window.clearInterval(intervalId);
   }, [user?.id, dispatch]);
 
   return (

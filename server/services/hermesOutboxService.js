@@ -329,6 +329,49 @@ export async function completeHermesStoredOnlyReview(eventInput, agentIdentity, 
   return data;
 }
 
+// `sent` remains an internal outbox-delivery acknowledgement. It must not be
+// interpreted as the post workflow being complete.
+export async function completeHermesTriage(eventInput, agentIdentity, supabaseClient, options = {}) {
+  if (!supabaseClient) throw new Error('Supabase client is required');
+  const event = eventInput?.id ? eventInput : await loadOutboxEvent(eventInput, supabaseClient);
+  const identity = normalizeHermesIdentity(agentIdentity);
+  if (event.locked_by !== identity) {
+    throw outboxError('OUTBOX_LEASE_OWNER_MISMATCH', `Outbox event ${event.id} is not leased by ${identity}`);
+  }
+
+  const reviewedAt = toDate(options.now || new Date(), 'now').toISOString();
+  const payload = {
+    ...(event.payload || {}),
+    hermes_review: {
+      schema_version: 1,
+      status: 'triaged',
+      reviewed_at: reviewedAt,
+      reviewed_by: identity,
+      workflow_id: options.workflowId || null
+    }
+  };
+  let query = supabaseClient
+    .from('collection_capture_outbox')
+    .update({
+      status: 'sent',
+      payload,
+      locked_at: null,
+      locked_by: null,
+      last_error: null
+    });
+  query = addLeaseVersionFilter(query, event).eq('locked_by', identity);
+  const { data, error } = await query
+    .select(HERMES_OUTBOX_SELECT)
+    .maybeSingle();
+  if (error || !data) {
+    throw outboxError(
+      'OUTBOX_TRIAGE_CONFLICT',
+      `Unable to acknowledge triage for outbox event ${event.id}${error ? `: ${error.message}` : ''}`
+    );
+  }
+  return data;
+}
+
 export async function completeHermesImageReview(
   eventInput,
   agentIdentity,

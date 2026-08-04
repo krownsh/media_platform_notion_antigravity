@@ -43,3 +43,9 @@ export async function getCaptureStatus(captureId) {
     const body = await readApiResponse(response, '無法讀取擷取狀態');
     return body.capture;
 }
+
+export async function listCaptureHistory(limit = 20) {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/captures?limit=${encodeURIComponent(limit)}`);
+    const body = await readApiResponse(response, '無法讀取擷取任務紀錄');
+    return Array.isArray(body.captures) ? body.captures : [];
+}

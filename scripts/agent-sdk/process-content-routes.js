@@ -32,7 +32,7 @@ export async function processContentRoutes(outboxId) {
   if (!postData) throw new Error('Related post data not found for this outbox event');
   const routeState = event.payload?.agent_routes;
   if (routeState?.schema_version !== 1 || !Array.isArray(routeState.routes)) {
-    throw new Error('Outbox has no persisted route plan; run agent:analyze first');
+    throw new Error('Outbox has no legacy route plan. New workflows use agent:decide and agent:create-draft.');
   }
 
   let activeEvent = event;

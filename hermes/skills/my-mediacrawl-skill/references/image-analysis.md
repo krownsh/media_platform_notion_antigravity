@@ -53,7 +53,9 @@ Accept success only when the final JSON contains all of:
   "ok": true,
   "analysis_id": "<uuid>",
   "outbox_id": "<uuid>",
-  "status": "sent"
+  "outbox_status": "sent",
+  "workflow_stage": "triage",
+  "workflow_status": "pending"
 }
 ```
 

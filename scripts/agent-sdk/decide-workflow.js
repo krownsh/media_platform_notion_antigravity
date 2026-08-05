@@ -9,14 +9,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../server/.env'), quiet: true });
 
-const ACTION_TYPES = new Set(['research', 'poc_proposal', 'poc_execute', 'fast_rewrite', 'content_synthesis']);
+const ACTION_TYPES = new Set([
+    'research',
+    'poc_proposal',
+    'poc_execute',
+    'replication_plan',
+    'fast_rewrite',
+    'content_synthesis',
+    'vault_note'
+]);
 
 function readOption(args, name) {
     const index = args.indexOf(name);
     return index >= 0 ? args[index + 1] : null;
 }
 
-function normalizePlan(value, agentIdentity) {
+export function normalizePlan(value, agentIdentity) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Action plan must be a JSON object');
     const actions = Array.isArray(value.actions) ? value.actions : [];
     const normalized = actions.map(action => {
@@ -27,13 +35,25 @@ function normalizePlan(value, agentIdentity) {
             status: 'approved',
             requested_by: agentIdentity,
             requested_at: new Date().toISOString(),
-            notes: String(action?.notes || '').slice(0, 2000)
+            notes: String(action?.notes || '').slice(0, 2000),
+            project_target: String(action?.project_target || '').slice(0, 500) || null,
+            project_name: String(action?.project_name || '').slice(0, 500) || null
         };
     });
     if (new Set(normalized.map(action => action.type)).size !== normalized.length) {
         throw new Error('An action type may appear only once in an action plan');
     }
-    return { schema_version: 1, actions: normalized };
+    const requestedVaultNote = normalized.find(action => action.type === 'vault_note');
+    const withoutVaultNote = normalized.filter(action => action.type !== 'vault_note');
+    withoutVaultNote.push({
+        ...(requestedVaultNote || {}),
+        type: 'vault_note',
+        status: 'approved',
+        requested_by: agentIdentity,
+        requested_at: new Date().toISOString(),
+        notes: requestedVaultNote?.notes || 'Mandatory final action: write the post record to Claude-Obsidian.'
+    });
+    return { schema_version: 2, actions: withoutVaultNote };
 }
 
 export async function decideWorkflow(workflowId, options = {}) {
@@ -48,12 +68,11 @@ export async function decideWorkflow(workflowId, options = {}) {
     }
     const plan = normalizePlan(JSON.parse(planRaw), options.agentIdentity);
     const claimed = await claimWorkflow(workflow, options.agentIdentity, supabase, { allowAwaitingUser: true });
-    const noActions = plan.actions.length === 0;
     const transitioned = await transitionWorkflow({
         workflow: claimed,
         agentIdentity: options.agentIdentity,
-        stage: noActions ? 'complete' : 'actions',
-        status: noActions ? 'completed' : 'pending',
+        stage: 'actions',
+        status: 'pending',
         actionPlan: plan,
         context: {
             ...(claimed.context || {}),

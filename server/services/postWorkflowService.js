@@ -10,7 +10,7 @@ const WORKFLOW_SELECT = `
   locked_at, locked_by, failed_stage, last_error, completed_at,
   created_at, updated_at,
   collection_posts (
-    id, platform, original_url, title, author_name, content, collection_id,
+    id, user_id, platform, original_url, title, author_name, content, full_json, collection_id,
     collection_post_media (*),
     collection_post_analysis (*)
   )
@@ -36,6 +36,19 @@ function normalizeIdentity(value) {
 
 function asObject(value) {
     return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function actionsFromPlan(actionPlan) {
+    const plan = asObject(actionPlan);
+    return Array.isArray(plan.actions) ? plan.actions : [];
+}
+
+function assertVaultNoteCompleted(actionPlan) {
+    const vaultNote = actionsFromPlan(actionPlan).find(action => action?.type === 'vault_note');
+    const outcome = asObject(vaultNote?.outcome);
+    if (!vaultNote || vaultNote.status !== 'completed' || !outcome.relative_path || !outcome.post_id) {
+        throw new Error('A workflow cannot be completed until its mandatory vault_note action is completed');
+    }
 }
 
 function workflowPost(workflow) {
@@ -219,13 +232,17 @@ export async function transitionWorkflow(input, supabaseClient = supabase) {
     if (workflow.locked_by !== identity) throw new Error(`Workflow ${workflow.id} is not leased by ${identity}`);
     const stage = requireWorkflowStage(input.stage || workflow.stage);
     const requestedStatus = requireWorkflowStatus(input.status);
+    const vaultNoteCompleted = actionsFromPlan(input.actionPlan === undefined ? workflow.action_plan : input.actionPlan)
+        .some(action => action?.type === 'vault_note' && action.status === 'completed');
     const status = requestedStatus === 'failed'
         && Number(workflow.attempt_count || 0) >= Number(workflow.max_attempts || 3)
+        && vaultNoteCompleted
         ? 'blocked'
         : requestedStatus;
     const context = input.context === undefined ? workflow.context : input.context;
     const actionPlan = input.actionPlan === undefined ? workflow.action_plan : input.actionPlan;
     const terminal = status === 'completed' || status === 'blocked';
+    if (status === 'completed') assertVaultNoteCompleted(actionPlan);
     const { data, error } = await supabaseClient
         .from('collection_post_workflows')
         .update({
@@ -257,9 +274,18 @@ export async function completeWorkflowAction(input, supabaseClient = supabase) {
     }
     const actionType = String(input?.actionType || '').trim();
     if (!actionType) throw new Error('actionType is required');
+    if (actionType === 'vault_note' && input.status !== 'completed') {
+        throw new Error('The mandatory vault_note action cannot be skipped or marked failed');
+    }
+    if (actionType === 'vault_note') {
+        const outcome = asObject(input.outcome);
+        if (!outcome.relative_path || !outcome.post_id) {
+            throw new Error('A completed vault_note action must include the written relative_path and post_id');
+        }
+    }
     const claimed = await claimWorkflow(workflow, identity, supabaseClient);
     const plan = asObject(claimed.action_plan);
-    const actions = Array.isArray(plan.actions) ? plan.actions : [];
+    const actions = actionsFromPlan(plan);
     let found = false;
     const nextActions = actions.map(action => {
         if (action?.type !== actionType) return action;

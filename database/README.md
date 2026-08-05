@@ -20,6 +20,9 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_f_private_image_captures.sql` — private image Storage,
   durable image-capture metadata, media storage references, and the
   service-role-only image enqueue/finalization contract. Apply after Stage E.
+- `deployments/stage_g_post_workflow.sql` — resumable user workflow, explicit
+  action plan, provenance, and the mandatory final `vault_note` action. Apply
+  after Stage F.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

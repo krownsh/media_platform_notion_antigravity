@@ -53,7 +53,37 @@ comment on table public.collection_post_workflows is
 comment on column public.collection_post_workflows.context is
     'Bounded workflow context: base_analysis {status, source, errors[]}, triage {summary, category, folder_suggestions[]}, and provenance. Never store credentials or raw private media.';
 comment on column public.collection_post_workflows.action_plan is
-    'Per-post action plan: {schema_version:1, actions:[{type:research|poc_proposal|poc_execute|fast_rewrite|content_synthesis, status, requested_by, outcome}]}.';
+    'Per-post action plan: {schema_version:2, actions:[{type:research|poc_proposal|poc_execute|replication_plan|fast_rewrite|content_synthesis|vault_note, status, requested_by, outcome}]}. vault_note is mandatory and must be the final completed action before workflow completion.';
+
+-- Existing resumable workflows predate the mandatory note action. Keep their
+-- current decisions and append an approved note action so they can finish
+-- safely without silently losing the source in the local knowledge vault.
+update public.collection_post_workflows workflow
+set action_plan = jsonb_set(
+        jsonb_set(
+            coalesce(workflow.action_plan, '{"schema_version":2,"actions":[]}'::jsonb),
+            '{schema_version}',
+            '2'::jsonb,
+            true
+        ),
+        '{actions}',
+        coalesce(workflow.action_plan -> 'actions', '[]'::jsonb)
+            || jsonb_build_array(jsonb_build_object(
+                'type', 'vault_note',
+                'status', 'approved',
+                'requested_by', 'system:migration',
+                'requested_at', now(),
+                'notes', 'Mandatory final action: write the post record to Claude-Obsidian.'
+            )),
+        true
+    ),
+    updated_at = now()
+where workflow.status not in ('completed', 'blocked')
+  and not exists (
+      select 1
+      from jsonb_array_elements(coalesce(workflow.action_plan -> 'actions', '[]'::jsonb)) action
+      where action ->> 'type' = 'vault_note'
+  );
 
 create index if not exists collection_post_workflows_next_idx
     on public.collection_post_workflows (user_id, available_at, created_at desc)
@@ -178,7 +208,7 @@ alter table public.collection_topic_scopes
     add column if not exists auto_execute_actions text[] not null default '{}'::text[];
 
 comment on column public.collection_topic_scopes.preferred_actions is
-    'Optional folder context only. Supported values include research, poc_proposal, fast_rewrite, and content_synthesis. It never authorizes an action by itself.';
+    'Optional folder context only. Supported values include research, poc_proposal, replication_plan, fast_rewrite, and content_synthesis. It never authorizes an action by itself.';
 comment on column public.collection_topic_scopes.auto_execute_actions is
     'Explicit unattended automation opt-in. Defaults empty; project changes, POC execution, and publishing are never allowed values.';
 

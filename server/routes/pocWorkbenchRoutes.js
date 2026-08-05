@@ -1,98 +1,43 @@
-import { execFile, execFileSync } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import express from 'express';
 import { supabase } from '../supabaseClient.js';
-import { normalizeGitHubTarget, selectPocTopicScope } from '../services/topicScopeService.js';
-
-const execFileAsync = promisify(execFile);
-const __filename = fileURLToPath(import.meta.url);
-const projectRoot = path.resolve(path.dirname(__filename), '../..');
-const analyzeScript = path.join(projectRoot, 'scripts', 'agent-sdk', 'analyze-item.js');
-
-function getCurrentProjectTarget() {
-  try {
-    const remoteUrl = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      windowsHide: true
-    });
-    return normalizeGitHubTarget(remoteUrl);
-  } catch {
-    return null;
-  }
-}
+import { runWorkflowPoc } from '../../scripts/agent-sdk/run-poc-workflow.js';
 
 export const pocWorkbenchRouter = express.Router();
 
 async function loadWorkbench(userId, postId) {
   const { data: post, error: postError } = await supabase
     .from('collection_posts')
-    .select('id, collection_id, collection_post_analysis(insights)')
+    .select('id, collection_post_analysis(insights), collection_post_workflows(*)')
     .eq('id', postId)
     .eq('user_id', userId)
     .maybeSingle();
   if (postError) throw postError;
   if (!post) return null;
 
-  const { data: outbox, error: outboxError } = await supabase
-    .from('collection_capture_outbox')
-    .select('id, status, payload')
-    .eq('aggregate_id', postId)
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (outboxError) throw outboxError;
-
-  let scope = null;
-  if (post.collection_id) {
-    const { data, error } = await supabase
-      .from('collection_topic_scopes')
-      .select('id, mode, objective, project_targets, is_active')
-      .eq('user_id', userId)
-      .eq('collection_id', post.collection_id)
-      .maybeSingle();
-    if (error) throw error;
-    scope = data;
-  }
+  const workflow = Array.isArray(post.collection_post_workflows)
+    ? post.collection_post_workflows[0]
+    : post.collection_post_workflows;
 
   const analysis = Array.isArray(post.collection_post_analysis)
     ? post.collection_post_analysis[0]
     : post.collection_post_analysis;
   const insights = Array.isArray(analysis?.insights) ? analysis.insights : [];
-  const successfulRun = insights.find(item => item?.type === 'poc_run' && item?.status === 'success') || null;
-  const route = outbox?.payload?.agent_routes?.routes?.find(item => item.type === 'apply_poc') || null;
-  const currentProjectTarget = getCurrentProjectTarget();
-  const eligibleScope = selectPocTopicScope(scope ? [scope] : [], currentProjectTarget);
+  const actions = Array.isArray(workflow?.action_plan?.actions) ? workflow.action_plan.actions : [];
+  const proposalAction = actions.find(item => item?.type === 'poc_proposal');
+  const executeAction = actions.find(item => item?.type === 'poc_execute');
+  const successfulRun = insights.find(item => item?.type === 'poc_run' && item?.status === 'success')
+    || (executeAction?.outcome?.status === 'success' ? executeAction.outcome : null);
 
   return {
     post_id: post.id,
-    outbox_id: outbox?.id || null,
-    current_project_target: currentProjectTarget,
-    eligible_for_proposal: Boolean(eligibleScope),
-    scope: scope ? {
-      mode: scope.mode,
-      objective: scope.objective,
-      project_targets: scope.project_targets || []
-    } : null,
-    route: route ? { status: route.status, outcome: route.outcome || null } : null,
+    workflow_id: workflow?.id || null,
+    current_project_target: null,
+    eligible_for_proposal: Boolean(proposalAction && ['approved', 'pending', 'failed'].includes(proposalAction.status)),
+    scope: null,
+    route: proposalAction ? { status: proposalAction.status, outcome: proposalAction.outcome || null } : null,
+    execute_action: executeAction ? { status: executeAction.status, outcome: executeAction.outcome || null } : null,
     successful_run: successfulRun ? { run_id: successfulRun.run_id, status: successfulRun.status } : null
   };
-}
-
-async function runAnalyze(outboxId, executePoc) {
-  const args = [analyzeScript, outboxId];
-  if (executePoc) args.push('--execute-poc');
-  const { stdout, stderr } = await execFileAsync(process.execPath, args, {
-    cwd: projectRoot,
-    env: process.env,
-    timeout: executePoc ? 180_000 : 60_000,
-    maxBuffer: 1_000_000,
-    windowsHide: true
-  });
-  return { stdout: stdout.slice(-8_000), stderr: stderr.slice(-8_000) };
 }
 
 pocWorkbenchRouter.get('/:postId', async (req, res) => {
@@ -109,11 +54,9 @@ pocWorkbenchRouter.post('/:postId/proposal', async (req, res) => {
   try {
     const state = await loadWorkbench(req.auth.userId, req.params.postId);
     if (!state) return res.status(404).json({ error: 'Post not found' });
-    if (!state.eligible_for_proposal || !state.outbox_id) {
-      return res.status(409).json({ error: 'This source is not eligible for a POC proposal.' });
-    }
-    const run = await runAnalyze(state.outbox_id, false);
-    return res.json({ ...await loadWorkbench(req.auth.userId, req.params.postId), run });
+    return res.status(409).json({
+      error: 'POC proposals are created during Hermes strategy discussion. Persist the approved proposal with agent:poc:propose.'
+    });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -126,10 +69,13 @@ pocWorkbenchRouter.post('/:postId/execute', async (req, res) => {
   try {
     const state = await loadWorkbench(req.auth.userId, req.params.postId);
     if (!state) return res.status(404).json({ error: 'Post not found' });
-    if (!state.eligible_for_proposal || !state.outbox_id) {
-      return res.status(409).json({ error: 'This source is not eligible for POC execution.' });
+    if (!state.workflow_id || !state.execute_action || !['approved', 'pending', 'failed'].includes(state.execute_action.status)) {
+      return res.status(409).json({ error: 'This source has no approved poc_execute workflow action.' });
     }
-    const run = await runAnalyze(state.outbox_id, true);
+    const run = await runWorkflowPoc(state.workflow_id, {
+      agentIdentity: 'api:poc-workbench',
+      confirmation: 'EXECUTE_POC'
+    });
     return res.json({ ...await loadWorkbench(req.auth.userId, req.params.postId), run });
   } catch (error) {
     return res.status(500).json({ error: error.message });

@@ -1,6 +1,6 @@
 ---
 name: my-mediacrawl-skill
-description: Operate this project's resumable media workflow. Use when a user asks Hermes to process a captured post, continue a failed post, inspect a private uploaded image, discuss research or POC strategy, or create a source-only or research-backed draft.
+description: Operate this project's resumable media workflow. Use when a user asks Hermes to process a captured post, continue a failed post, inspect a private uploaded image, discuss research, POC, or replication strategy, write the result to Claude-Obsidian, or create a source-only or research-backed draft.
 ---
 
 # Media workflow
@@ -11,6 +11,11 @@ scripts load `server/.env`; never read, print, copy, or request secrets.
 The API Server and Capture Worker are separate always-on PM2 processes. The
 Capture Worker is not a Cron job: an upload creates a durable request and the
 worker takes it as soon as it is available.
+
+There is no POC worker, cron worker, Phase 1 tool verifier, Phase 2 POC runner,
+or `node-tool-verifier` container in this repository. POC generation and
+execution are explicit Hermes commands. They run synchronously and use the
+existing, on-demand Docker `node-runner` or `python-runner` sandbox.
 
 ## Lifecycle and vocabulary
 
@@ -27,7 +32,8 @@ There are three independent states. Never collapse them into one word.
    - `triage`: classify and understand the source.
    - `strategy`: show the source and discuss what to do; normally `awaiting_user`.
    - `actions`: execute only actions the user explicitly approved.
-   - `complete`: every requested action is terminal.
+   - `complete`: every requested action is terminal and the mandatory
+     `vault_note` action has completed.
 
 Do not mark a workflow complete merely because it has no folder yet. Folder
 placement is organisation, not authorization.
@@ -55,8 +61,12 @@ The result selects one workflow in this order:
 3. The latest incomplete workflow.
 
 Show the selected source before discussing or acting: title, URL or image,
-summary, category, completed stages, failed stage/error, and current action
-plan. Resume only the failed step; do not redo completed work.
+the first 1,000 characters of the captured original, the original URL when
+available, summary, category, completed stages, failed stage/error, and current
+action plan. The CLI includes `content_length` and `content_truncated`; if it is
+truncated, explicitly say so and give the original URL. Never claim that the
+preview is the complete original. Resume only the failed step; do not redo
+completed work.
 
 For a scheduled run, omit `--interactive`. It may safely finish base analysis
 and triage for one item. It must stop at `strategy/awaiting_user`; it must not
@@ -81,6 +91,10 @@ in the same scheduled invocation.
 | Triage a workflow | `npm run agent:triage -- <workflow-id> --agent <identity>` |
 | Persist the user-approved action plan | `npm run agent:decide -- <workflow-id> --agent <identity> --file <action-plan.json>` |
 | Record an action result | `npm run agent:complete-action -- <workflow-id> <action-type> --agent <identity> --status completed --file <outcome.json>` |
+| Verify the configured Claude-Obsidian Vault | `npm run agent:vault:check -- [--vault <path>]` |
+| Write the mandatory final Claude-Obsidian note | `npm run agent:vault-note -- <workflow-id> --agent <identity> --file <vault-note.json> [--vault <path>]` |
+| Persist a reviewed POC proposal | `npm run agent:poc:propose -- <workflow-id> --agent <identity> --file <proposal.json>` |
+| Explicitly execute an approved POC | `npm run agent:poc:run -- <workflow-id> --agent <identity> --confirmation EXECUTE_POC [--case-file <case.json>]` |
 | Create an approved draft without publishing | `npm run agent:create-draft -- <workflow-id> <fast_rewrite|content_synthesis> --agent <identity>` |
 | Release a transient technical outbox lease | `npm run agent:release -- <outbox-id> --agent <identity> --available-at <ISO-8601>` |
 | Record a technical delivery failure | `npm run agent:fail -- <outbox-id> --agent <identity> --stage <stage> --error <safe-message>` |
@@ -110,13 +124,16 @@ For a workflow at `triage/pending`, run `agent:triage`. It records the current
 category/summary and investigation candidates, then moves the post to
 `strategy/awaiting_user`.
 
-At this point discuss the post with the user. Typical response structure:
+At this point discuss the post with the user. Always proactively include a
+replication／traffic／monetization assessment, even when it is only “not worth
+replicating”. Typical response structure:
 
 ```text
 這篇是什麼／為何值得注意
 目前分類與尚未確認的地方
 建議研究或專案比對方向
 是否值得最後整理成內容草稿
+是否值得復刻、如何引流與可能的變現方式
 ```
 
 Do not treat a folder as a command. `collection_topic_scopes` is optional
@@ -129,14 +146,34 @@ After the user decides, save an action plan JSON such as:
 {
   "actions": [
     { "type": "research", "notes": "確認 claims、限制與替代方案" },
-    { "type": "poc_proposal", "notes": "針對目前專案評估可行性" }
+    { "type": "poc_proposal", "notes": "針對目前專案評估可行性" },
+    { "type": "replication_plan", "notes": "評估最小 MVP、引流漏斗與變現假設" }
   ]
 }
 ```
 
 Valid action types are `research`, `poc_proposal`, `poc_execute`,
-`fast_rewrite`, and `content_synthesis`. An empty `actions` array means the
-user chose to keep the classified bookmark only.
+`replication_plan`, `fast_rewrite`, and `content_synthesis`. The command always
+appends a final `vault_note` action, including when the user chooses to keep a
+classified bookmark only. A folder never authorizes research, POC, replication,
+or publishing.
+
+`replication_plan` is an optional planning action. If approved, keep the plan
+isolated in its own Traditional-Chinese project folder:
+
+```text
+<Vault>/domain/<繁體中文領域>/<繁體中文復刻項目>/復刻規劃.md
+```
+
+The normal source note is stored at:
+
+```text
+<Vault>/wiki/domains/<繁體中文領域>/<繁體中文筆記名稱>.md
+```
+
+The source note links to the replication folder. Do not mix two replication
+projects in one folder. Hermes chooses the Traditional-Chinese domain, project
+name, and note title when the user does not provide them.
 
 ## Content output
 
@@ -158,18 +195,42 @@ action first. The command never publishes.
 
 ## POC and project safety
 
-`poc_proposal` may analyse fit and prepare a proposal. `poc_execute` requires
-an explicit user instruction for this exact workflow. Before executing, state
-the selected workflow, project, and isolated scope. Never alter the formal
-project, deploy, publish, or install production dependencies without a new
-explicit approval.
+`poc_proposal` may analyse fit and prepare a proposal. There is no background
+POC executor. `poc_execute` requires an explicit user instruction for this exact
+workflow and must use `agent:poc:run`, which calls the existing synchronous
+sandbox path. Before executing, state the selected workflow, project, and
+isolated scope. Never alter the formal project, deploy, publish, or install
+production dependencies without a new explicit approval. Do not mention a
+nonexistent worker or cron schedule.
+
+## Mandatory Claude-Obsidian note
+
+Read [references/vault-notes.md](references/vault-notes.md) before writing the
+note. The final action for every workflow is `agent:vault-note`; it is not
+optional and cannot be skipped or marked failed. The note must include the
+database `collection_posts.id`, the original URL (or explicitly say that the
+source is a private image upload), the captured original content, analysis,
+discussion, decisions, and next step. The CLI writes atomically and preserves
+human text outside its managed block.
+
+Do not copy the 1,000-character CLI preview into `original_content` unless you
+are intentionally recording an image/OCR or corrected text. When omitted, the
+writer reads the complete captured content from the workflow's database post.
+
+The default Vault path is `~/.hermes/claude-obsidian`. If that path is missing,
+or is only the Claude-Obsidian tool checkout rather than the real Obsidian Vault,
+stop and ask the user for the actual path. Set
+`HERMES_CLAUDE_OBSIDIAN_PATH` or pass `--vault`; never invent another path and
+never write secrets into the Vault.
 
 ## Completion and failures
 
 A post reaches `complete/completed` only when every user-approved action is
-`completed` or `skipped`. If an action fails, store its bounded error and keep
-the workflow retryable. If attempts are exhausted or manual information is
-needed, mark it `blocked` and explain the blocker to the user.
+`completed` or `skipped` and the mandatory `vault_note` is `completed`. If an
+action fails, store its bounded error and keep the workflow retryable. If the
+Vault path is missing, ask the user before retrying; do not mark a fake note as
+successful. If attempts are exhausted or manual information is needed, mark it
+`blocked` and explain the blocker to the user.
 
 Private media remains private. Never substitute a signed URL, arbitrary
 Storage path, or unrelated local file for a materialized image.

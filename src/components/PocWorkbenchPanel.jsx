@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlaskConical, Loader2, Play, Sparkles } from 'lucide-react';
+import { FlaskConical, Loader2, Play } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
 
@@ -70,11 +70,11 @@ const PocWorkbenchPanel = ({ postId }) => {
       </div>
       {message && <p className="mt-3 text-xs text-[#615d59]">{message}</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" disabled={status === 'running'} onClick={() => run('proposal')} className="inline-flex min-h-10 items-center gap-1 rounded-md border border-[#0075de]/30 bg-white px-3 text-xs font-medium text-[#0075de] disabled:opacity-50">
-          {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} 產生提案
-        </button>
+        {state?.route?.status === 'approved' && (
+          <p className="w-full text-xs text-[#615d59]">POC 提案由 Hermes 在策略討論中產生；這裡只提供明確核准後的執行入口。</p>
+        )}
         <button type="button" disabled={status === 'running' || Boolean(state?.successful_run)} onClick={() => run('execute')} className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[#0075de] px-3 text-xs font-medium text-white disabled:opacity-50">
-          <Play size={14} /> 執行 POC
+          {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} 執行 POC
         </button>
       </div>
     </section>

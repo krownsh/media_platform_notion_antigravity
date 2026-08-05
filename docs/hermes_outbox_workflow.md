@@ -13,6 +13,9 @@ Capture request, technical outbox, and user-visible post workflow are distinct:
   It never means the post was researched, tested, rewritten, or completed.
 - `collection_post_workflows.stage/status` is the authoritative user-facing
   lifecycle: base analysis → triage → strategy → approved actions → complete.
+- Every approved plan ends with a mandatory `vault_note`; completion is blocked
+  until the note is written to Claude-Obsidian with `collection_posts.id` and
+  the source URL. See the skill's Vault note reference for the JSON contract.
 
 URL capture runs the existing category/summary/tags analysis in Capture Worker.
 Image capture stores private media first; Hermes performs image inspection and
@@ -51,3 +54,8 @@ note. No third permanent worker is required.
 The browser reads workflow state from `/api/posts` and refreshes it while the
 user is signed in. Folder scope is optional background and project context; it
 does not authorize research, POC, rewrite, or publishing.
+
+There is no POC worker, cron worker, Phase 1 tool verifier, Phase 2 runner, or
+`node-tool-verifier` container in this project. POC proposal persistence uses
+`agent:poc:propose`; explicit execution uses `agent:poc:run` and the existing
+on-demand Docker `node-runner`/`python-runner` services.

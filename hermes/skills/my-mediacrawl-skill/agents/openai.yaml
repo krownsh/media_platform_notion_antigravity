@@ -1,4 +1,4 @@
 interface:
   display_name: "MediaCrawl Inbox"
   short_description: "Route captured URLs and analyze private images"
-  default_prompt: "Use $my-mediacrawl-skill to process the oldest available media capture safely."
+  default_prompt: "Use $my-mediacrawl-skill to process the next resumable media workflow, show the first 1,000 characters, discuss the user's decision, and always write the final result to Claude-Obsidian."

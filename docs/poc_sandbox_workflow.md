@@ -45,7 +45,34 @@ npm run agent:next -- --interactive
 - `sandbox/runs/` 已被 `sandbox/.gitignore` 排除，不會污染 Git。
 - 同一 `run_id` 寫回時會替換舊紀錄，避免重複結果。
 
-這個 MVP 刻意不允許第三方套件安裝、clone repo 或 container 對外連線。它可驗證演算法、資料轉換與介面契約；真正需要外部套件的整合型 POC，必須另做套件 allowlist、版本鎖定、供應鏈掃描與分離式下載／斷網執行，不能偷渡回 `npm install`。
+純演算法 POC 仍刻意不允許第三方套件安裝、clone repo 或 container 對外連線，只用來驗證演算法、資料轉換與介面契約。若貼文主張涉及某個工具、服務或代理人的實際行為，必須先核准 `test_plan.kind=integration`，再由 disposable `integration-runner` 依序執行安裝、真實互動與結果觀察。這不會安裝到正式專案或主機環境。
+
+整合測試不能用「程式碼可解析／manifest 合法／安裝腳本看起來安全」代替產品主張。成功結果至少包含：貼文主張、測試規劃、setup log、實際 request/action、raw response、可觀察結果、逐項 assertion 與限制。缺少 interaction 或 assertion 的計畫會在執行前被拒絕；工具自述成功但觀察結果不符時仍判定失敗。
+
+提案 JSON 的核心格式如下：
+
+```json
+{
+  "test_plan": {
+    "schema_version": 1,
+    "kind": "integration",
+    "objective": "驗證貼文中的具體主張",
+    "claims_under_test": ["工具收到真實 request 後會產生指定結果"],
+    "environment": { "network_access": true, "required_secrets": [] },
+    "steps": [
+      { "id": "install", "phase": "setup", "label": "安裝", "argv": ["npm", "install", "--prefix", "/workspace/tool", "套件名稱"] },
+      { "id": "request", "phase": "interaction", "label": "送出 request", "argv": ["/workspace/tool/node_modules/.bin/tool", "run"], "stdin": "實際輸入" },
+      { "id": "observe", "phase": "observation", "label": "觀察結果", "argv": ["node", "verify-result.js"] }
+    ],
+    "assertions": [
+      { "id": "install-ok", "description": "安裝成功", "step_id": "install", "field": "exit_code", "operator": "equals", "expected": 0 },
+      { "id": "request-ok", "description": "request 成功", "step_id": "request", "field": "exit_code", "operator": "equals", "expected": 0 },
+      { "id": "result-ok", "description": "產物符合預期", "step_id": "observe", "field": "stdout", "operator": "contains", "expected": "RESULT_OK" }
+    ],
+    "limitations": ["僅驗證此計畫內的案例"]
+  }
+}
+```
 
 ## JSONB 結果格式
 
@@ -71,6 +98,8 @@ npm run agent:next -- --interactive
   }
 }
 ```
+
+整合型結果使用 `schema_version: 2`，另保存 `poc_kind: "integration"`、完整 `test_plan`，以及 `evidence.steps`、`evidence.interactions`、`evidence.observations`、`evidence.assertions`。其中 interaction 會同時保存 argv/stdin 與 raw stdout/stderr/exit code；環境變數只記錄 secret 名稱，值會在 container 輸出落盤前遮罩。
 
 生成、靜態檢查或 container 啟動失敗時也會寫入 `status=error` 與失敗階段。若資料庫寫回本身失敗，CLI 會以非零狀態結束，避免只留本機 log 的 silent failure。
 

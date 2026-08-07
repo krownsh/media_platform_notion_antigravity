@@ -5,6 +5,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { generateContentJSON } from './aiService.js';
+import {
+  executeIntegrationWorkspace,
+  prepareIntegrationWorkspace
+} from './pocIntegrationExecutionService.js';
+import { validateIntegrationTestPlan } from './pocIntegrationPlan.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -559,9 +564,78 @@ function buildStoredPocResult({ runId, artifact, persistedArtifact, execution, a
   };
 }
 
+function buildStoredIntegrationResult({ runId, testPlan, workspace, execution, applicationCase, stage, error }) {
+  return {
+    type: 'poc_run',
+    schema_version: 2,
+    run_id: runId,
+    poc_kind: 'integration',
+    status: error ? 'error' : execution?.status || 'error',
+    stage,
+    objective: testPlan?.objective || null,
+    claims_under_test: testPlan?.claims_under_test || [],
+    success_criteria: testPlan?.assertions?.map(item => item.description) || [],
+    limitations: testPlan?.limitations || [],
+    test_plan: testPlan || null,
+    artifact_path: workspace?.relativePlanPath || null,
+    execution: execution || null,
+    evidence: execution?.evidence || null,
+    application_case: applicationCase || null,
+    error: error ? truncate(error.message || error, 4_000) : null,
+    created_at: new Date().toISOString()
+  };
+}
+
+async function runIntegrationPocWorkflow(input, options, runId) {
+  let stage = 'plan_validation';
+  let testPlan = null;
+  let workspace = null;
+  let execution = null;
+  let workflowError = null;
+  try {
+    testPlan = validateIntegrationTestPlan(input.testPlan);
+    stage = 'workspace_write';
+    workspace = await prepareIntegrationWorkspace(testPlan, {
+      runId,
+      sandboxRoot: options.sandboxRoot
+    });
+    stage = 'sandbox_execution';
+    execution = await executeIntegrationWorkspace(workspace, options);
+    stage = 'completed';
+  } catch (error) {
+    workflowError = error;
+  }
+
+  const storedResult = buildStoredIntegrationResult({
+    runId,
+    testPlan,
+    workspace,
+    execution,
+    applicationCase: input.applicationCase,
+    stage,
+    error: workflowError
+  });
+  try {
+    await storePocResult(input.postData, storedResult, options.supabaseClient);
+  } catch (storageError) {
+    const combinedError = new Error(
+      `Integration POC ${stage} result could not be stored: ${storageError.message}`,
+      { cause: storageError }
+    );
+    combinedError.pocResult = storedResult;
+    throw combinedError;
+  }
+  if (workflowError) {
+    workflowError.pocResult = storedResult;
+    throw workflowError;
+  }
+  return storedResult;
+}
+
 export async function runPocWorkflow(input, options = {}) {
   const runId = options.runId || randomUUID();
   assertRunId(runId);
+  if (input?.testPlan) return runIntegrationPocWorkflow(input, options, runId);
   let stage = 'generation';
   let artifact = null;
   let persistedArtifact = null;

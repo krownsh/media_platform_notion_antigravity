@@ -46,12 +46,18 @@ export async function runWorkflowPoc(workflowId, options = {}) {
     }
     const post = getWorkflowPost(workflow);
     if (!post) throw new Error('Workflow post was not found');
+    const proposalAction = (workflow.action_plan?.actions || []).find(item => item?.type === 'poc_proposal');
+    const testPlan = proposalAction?.outcome?.test_plan;
+    if (!testPlan) {
+        throw new Error('A completed poc_proposal with an approved test_plan is required before POC execution');
+    }
     const applicationCase = await readCase(options.caseFile);
     try {
         const pocResult = await runPocWorkflow({
             postData: post,
             enrichedContext: options.enrichedContext || '',
-            applicationCase
+            applicationCase,
+            testPlan
         }, { supabaseClient: supabase });
         const completed = await completeWorkflowAction({
             workflowId,
@@ -64,6 +70,8 @@ export async function runWorkflowPoc(workflowId, options = {}) {
                 stage: pocResult.stage,
                 artifact_path: pocResult.artifact_path || null,
                 execution: pocResult.execution || null,
+                evidence: pocResult.evidence || null,
+                claims_under_test: pocResult.claims_under_test || [],
                 error: pocResult.error || null
             }
         }, supabase);

@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import { completeWorkflowAction, loadWorkflow } from '../../server/services/postWorkflowService.js';
+import { validateIntegrationTestPlan } from '../../server/services/pocIntegrationPlan.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,6 +38,7 @@ export async function recordPocProposal(workflowId, options = {}) {
         throw new Error(`Workflow ${workflow.id} has no approved poc_proposal action`);
     }
     const outcome = await readProposal(options.file);
+    const testPlan = validateIntegrationTestPlan(outcome.test_plan);
     const completed = await completeWorkflowAction({
         workflowId,
         actionType: 'poc_proposal',
@@ -44,6 +46,7 @@ export async function recordPocProposal(workflowId, options = {}) {
         status: 'completed',
         outcome: {
             ...outcome,
+            test_plan: testPlan,
             requires_explicit_execution_confirmation: true,
             execution_command: `npm run agent:poc:run -- ${workflowId} --agent ${options.agentIdentity} --confirmation EXECUTE_POC`
         }

@@ -37,3 +37,26 @@ services:
     mem_limit: 256m
     cpus: 0.50
     pids_limit: 64
+
+  integration-runner:
+    build:
+      context: ..
+      dockerfile: sandbox/integration/Dockerfile
+    working_dir: /workspace
+    volumes:
+      - ${POC_INTEGRATION_RUN_DIR:-./runs}:/workspace:rw
+    environment:
+      HOME: /workspace
+      NPM_CONFIG_CACHE: /tmp/.npm
+      PIP_CACHE_DIR: /tmp/.pip
+    network_mode: ${POC_INTEGRATION_NETWORK_MODE:-none}
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,nosuid
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    cpus: 1.00
+    pids_limit: 128

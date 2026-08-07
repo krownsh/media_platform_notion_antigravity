@@ -12,10 +12,10 @@ The API Server and Capture Worker are separate always-on PM2 processes. The
 Capture Worker is not a Cron job: an upload creates a durable request and the
 worker takes it as soon as it is available.
 
-There is no POC worker, cron worker, Phase 1 tool verifier, Phase 2 POC runner,
-or `node-tool-verifier` container in this repository. POC generation and
-execution are explicit Hermes commands. They run synchronously and use the
-existing, on-demand Docker `node-runner` or `python-runner` sandbox.
+There is no POC worker or cron worker. POC execution is an explicit Hermes
+command. Deterministic algorithm tests use the network-disabled `node-runner`
+or `python-runner`; approved real-usage plans use the disposable
+`integration-runner` and retain execution evidence.
 
 ## Lifecycle and vocabulary
 
@@ -195,13 +195,29 @@ action first. The command never publishes.
 
 ## POC and project safety
 
-`poc_proposal` may analyse fit and prepare a proposal. There is no background
-POC executor. `poc_execute` requires an explicit user instruction for this exact
-workflow and must use `agent:poc:run`, which calls the existing synchronous
-sandbox path. Before executing, state the selected workflow, project, and
-isolated scope. Never alter the formal project, deploy, publish, or install
-production dependencies without a new explicit approval. Do not mention a
-nonexistent worker or cron schedule.
+`poc_proposal` must turn the captured post's claims into a reviewed
+`test_plan`; do not substitute clone/install/TOML/JSON/static checks when the
+claim is about actual product behavior. The proposal must name the claims under
+test, disposable environment, setup steps, at least one real interaction,
+observable assertions, and limitations. Commands are argv arrays, never shell
+strings. Set `network_access` and `required_secrets` explicitly when the planned
+test genuinely needs them.
+
+`poc_execute` requires an explicit user instruction for this exact workflow and
+must use `agent:poc:run`. Execute the approved plan as written and preserve:
+
+1. Setup/install command results.
+2. The actual request or action input.
+3. Raw stdout/stderr/exit status from the tested tool.
+4. Independent observations of produced results.
+5. Every assertion's expected value, actual value, and verdict.
+6. Known limitations.
+
+No interaction evidence or no assertions means no PASS. A tool or agent saying
+that it succeeded is a response, not independent proof of the result. Before
+executing, state the selected workflow, project, and isolated scope. Never alter
+the formal project, deploy, publish, or install production dependencies without
+a new explicit approval. Do not mention a nonexistent worker or cron schedule.
 
 ## Mandatory Claude-Obsidian note
 

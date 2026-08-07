@@ -1,0 +1,8 @@
+**
+!sandbox/
+!sandbox/integration/
+!sandbox/integration/Dockerfile
+!sandbox/integration/runner.mjs
+!server/
+!server/services/
+!server/services/pocIntegrationPlan.js

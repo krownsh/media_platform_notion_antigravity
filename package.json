@@ -29,7 +29,7 @@
     "agent:complete": "node scripts/agent-sdk/complete-item.js",
     "agent:content": "node scripts/agent-sdk/process-content-routes.js",
     "agent:poc:check-storage": "node scripts/agent-sdk/check-poc-storage.js",
-    "test:poc": "node --test test/script/poc_service.test.js",
+    "test:poc": "node --test test/script/poc_service.test.js test/script/poc_integration_plan.test.js",
     "test:poc:docker": "node scripts/agent-sdk/poc-smoke.js"
   },
   "dependencies": {

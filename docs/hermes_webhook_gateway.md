@@ -34,9 +34,11 @@ triage need.
 5. Apply the migration to the shared Supabase project.
 6. Start or restart `media-collection-hermes-dispatcher` through PM2.
 
-The Gateway-only rollout does not need an Obsidian Vault path and must not
-write Vault files. Configure that path only after the real Vault directory is
-confirmed; `/Volumes/DevSSD/claude-obsidian` is a tool checkout, not the Vault.
+Webhook delivery itself does not write Vault files. The confirmed Vault is
+`~/.hermes/claude-obsidian`; Hermes may write there only when the workflow later
+reaches its mandatory `vault_note` action. Before the first write, open that
+directory once as an Obsidian Vault and run `npm run agent:vault:check` on the
+Hermes host. `/Volumes/DevSSD/claude-obsidian` remains the tool checkout.
 
 The deployment does not backfill existing workflows. This is deliberate: the
 shared database already has a large triage backlog, and automatically waking

@@ -311,7 +311,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 - n8n 收到連結後呼叫本專案 `/api/process`。
 - Claude-Obsidian 的 Git checkout 位於 Mac 外接開發碟
   `/Volumes/DevSSD/claude-obsidian`；它不是實際 Obsidian Vault。
-- 實際 Vault 必須使用另一個目錄，完整路徑尚待在 Mac 上確認。
+- 實際 Vault 使用另一個目錄：`~/.hermes/claude-obsidian`。
 
 ### GitHub 選型結論
 
@@ -331,7 +331,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 ```bash
 git clone https://github.com/AgriciDaniel/claude-obsidian.git /Volumes/DevSSD/claude-obsidian
 cd /Volumes/DevSSD/claude-obsidian
-bash bin/setup-vault.sh <VAULT_PATH>
+bash bin/setup-vault.sh ~/.hermes/claude-obsidian
 ```
 
 clone 後必須先檢查 repo 的 `AGENTS.md`、requirements、Git remote 與工作樹，
@@ -341,8 +341,9 @@ Vault 或專案 runtime。
 
 ### 目前阻擋
 
-目前仍缺實際 Vault 的完整路徑；在確認前，Local Bridge 只能做到 transport
-與 preview 契約，不能宣稱已完成本機 Vault 寫入。
+Vault 路徑已確認，但仍需在 Mac 上用 Obsidian 開啟
+`~/.hermes/claude-obsidian` 完成初始化，並通過 `agent:vault:check`；在此之前
+不能宣稱已完成本機 Vault 寫入。
 
 ---
 

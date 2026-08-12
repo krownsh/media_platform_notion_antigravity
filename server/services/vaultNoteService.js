@@ -67,15 +67,23 @@ export async function verifyVaultRoot(explicitRoot) {
 
     // A tool checkout normally has .git but no Obsidian/wiki root. Refuse to
     // write there silently; the user must point Hermes at the actual Vault.
-    const [obsidian, wiki] = await Promise.all([
+    const [obsidian, wiki, git] = await Promise.all([
         fs.stat(path.join(root, '.obsidian')).catch(() => null),
-        fs.stat(path.join(root, 'wiki')).catch(() => null)
+        fs.stat(path.join(root, 'wiki')).catch(() => null),
+        fs.stat(path.join(root, '.git')).catch(() => null)
     ]);
     if (!obsidian?.isDirectory() && !wiki?.isDirectory()) {
+        if (git) {
+            const invalid = new Error(
+                `The configured path looks like a tool checkout, not an initialized Obsidian Vault: ${root}`
+            );
+            invalid.code = 'VAULT_NOT_RECOGNIZED';
+            throw invalid;
+        }
         const invalid = new Error(
-            `The configured path does not look like an Obsidian Vault (missing .obsidian and wiki): ${root}`
+            `The Vault exists but is not initialized (missing .obsidian and wiki): ${root}. Open this directory once as an Obsidian Vault, then run npm run agent:vault:check.`
         );
-        invalid.code = 'VAULT_NOT_RECOGNIZED';
+        invalid.code = 'VAULT_NOT_INITIALIZED';
         throw invalid;
     }
     return root;

@@ -119,3 +119,20 @@ test('missing Vault is an explicit user-confirmation blocker', async () => {
         error => error.code === 'VAULT_NOT_FOUND' && /Ask the user/.test(error.message)
     );
 });
+
+test('existing Vault path distinguishes uninitialized folder from a tool checkout', async () => {
+    const uninitialized = await fs.mkdtemp(path.join('/tmp', 'media-vault-uninitialized-'));
+    await assert.rejects(
+        verifyVaultRoot(uninitialized),
+        error => error.code === 'VAULT_NOT_INITIALIZED'
+            && /Open this directory once as an Obsidian Vault/.test(error.message)
+    );
+
+    const checkout = await fs.mkdtemp(path.join('/tmp', 'media-vault-checkout-'));
+    await fs.mkdir(path.join(checkout, '.git'));
+    await assert.rejects(
+        verifyVaultRoot(checkout),
+        error => error.code === 'VAULT_NOT_RECOGNIZED'
+            && /tool checkout/.test(error.message)
+    );
+});

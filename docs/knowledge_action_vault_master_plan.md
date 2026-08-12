@@ -1125,8 +1125,9 @@ Claude-Obsidian 程式碼 checkout：
 ```
 
 來源：`AgriciDaniel/claude-obsidian`。這個 Git clone 是工具程式碼，不等於
-Obsidian 實際開啟的 Vault。實際 Vault 必須是另一個資料夾，完整路徑待在
-Mac 上由使用者確認後寫入 Local Bridge allowlist。
+Obsidian 實際開啟的 Vault。已確認實際 Vault 為
+`~/.hermes/claude-obsidian`，並與工具 checkout 分離。第一次寫入前必須先在
+Obsidian 開啟一次，建立 `.obsidian`，再通過 Vault 檢查。
 
 共用 Agent 規則大腦另位於：
 
@@ -1255,7 +1256,7 @@ media-vault-bridge sync --correlation-id <id>
 - 不信任 request body 的 `userId`，應由驗證身分映射。
 - Supabase service-role key 只在 backend。
 - n8n 使用專用低權限 API credential。
-- Local Bridge 只能寫入尚待確認的實際 Vault allowlist；
+- Local Bridge 只能寫入 `~/.hermes/claude-obsidian` 的實際 Vault allowlist；
   `/Volumes/DevSSD/claude-obsidian` 只作為工具 checkout，不是同步目標。
 - 貼文中的 shell command 永不自動執行。
 - repo 安裝、套件下載、改碼、付費 API、發文都需要 Action `accepted`。
@@ -1375,7 +1376,8 @@ media-vault-bridge sync --correlation-id <id>
 - Supabase 保存原始資料與處理狀態。
 - Claude-Obsidian 工具 checkout 使用 `AgriciDaniel/claude-obsidian`，路徑為
   `/Volumes/DevSSD/claude-obsidian`。
-- 實際 Obsidian Vault 必須與工具 checkout 分離，目標路徑尚待確認。
+- 實際 Obsidian Vault 與工具 checkout 分離，路徑為
+  `~/.hermes/claude-obsidian`。
 - `~/.my-main-agent` 只管理 AGENTS／CLAUDE／GEMINI 規則與 Skills。
 - 先去重聚類，再產生行動；不一篇貼文一個任務。
 - Local Bridge 與 Vault 分離。
@@ -1384,7 +1386,7 @@ media-vault-bridge sync --correlation-id <id>
 
 - n8n 是 native、npm、Docker 或其他安裝方式。
 - `/Volumes/DevSSD` 實際掛載與權限。
-- 實際 Obsidian Vault 的完整路徑與權限。
+- `~/.hermes/claude-obsidian` 的實際權限與 Obsidian 初始化狀態。
 - Claude Code、Obsidian、Git、Node 版本。
 - Vault repo v1.9.2 實際 PARA mode 結構。
 - n8n Execute Command 是否能存取 Vault；若是 Docker，只掛載必要路徑。

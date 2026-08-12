@@ -213,8 +213,9 @@
 - [ ] 在 Mac 確認外接碟實際掛載路徑為 `/Volumes/DevSSD`。
 - [ ] clone 至 `/Volumes/DevSSD/claude-obsidian`，只作為工具 checkout。
 - [ ] clone 後先讀取 repo local `AGENTS.md`／`CLAUDE.md`，確認依賴、模式與寫入規則。
-- [ ] 另選實際 Vault 目錄，對該目錄執行 `bin/setup-vault.sh <VAULT_PATH>`。
-- [ ] 在 Obsidian 開啟實際 Vault，確認 graph、CSS、community plugins 與基本 wiki scaffold。
+- [x] 確認實際 Vault 目錄為 `~/.hermes/claude-obsidian`，與工具 checkout 分離。
+- [ ] 視既有內容決定是否對該目錄執行 `bin/setup-vault.sh ~/.hermes/claude-obsidian`；不得直接覆寫既有設定。
+- [ ] 在 Obsidian 開啟 `~/.hermes/claude-obsidian`，確認 `.obsidian`、graph、CSS、community plugins 與基本 wiki scaffold。
 - [ ] 選定方法論模式；本專案初步建議 PARA 作為行動管理、Topic Dossier 以 Resources／MOC 表達。
 - [ ] 建立 Supabase → preview → Vault 的 Local Sync Agent，不把 service-role key 寫入 Vault。
 - [ ] n8n 新增 process 後續節點：取得 postId → 觸發 Actionizer／Cluster → 寫入 sync outbox。

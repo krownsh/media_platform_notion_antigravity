@@ -29,6 +29,20 @@ module.exports = {
             env: {
                 CAPTURE_WORKER_ID: 'media-collection-capture-worker'
             }
+        },
+        {
+            name: 'media-collection-hermes-dispatcher',
+            cwd: projectRoot,
+            script: 'server/scripts/workers/run_hermes_dispatch_worker.js',
+            interpreter: 'node',
+            autorestart: true,
+            watch: false,
+            restart_delay: 3000,
+            kill_timeout: 10000,
+            time: true,
+            env: {
+                HERMES_DISPATCH_WORKER_ID: 'media-collection-hermes-dispatcher'
+            }
         }
     ]
 };

@@ -539,7 +539,7 @@ Source
 - `annotations`
 - `entities`
 - `relations`
-- `embeddings`
+- `content_fingerprints`
 - `processing_jobs`
 - `agent_jobs`
 - `agent_job_events`
@@ -843,18 +843,22 @@ knowledge-job:<user_id>:<post_id>:<pipeline_version>
 - 保留新 Source Post 作為證據或直接標記 duplicate。
 - 更新來源數量與最後出現時間。
 
-### 5.2 Semantic Duplicate
+### 5.2 Related-content candidate matching (no vectors)
 
 不同貼文可能都在講同一工具、repo、Skill 或方法。
 
 初始規則：
 
 - 相同 canonical entity key：直接視為同一 cluster。
-- embedding similarity `>= 0.90`：預設同義內容，交給 AI 做最後驗證。
-- similarity `0.78–0.90`：視為相關內容，加入同一 cluster 並產生 delta。
-- similarity `< 0.78`：建立新 cluster。
+- canonical URL 或正規化 content hash 相同：視為 exact duplicate。
+- 使用 PostgreSQL Full Text Search 與 `pg_trgm`，依標題、摘要、實體名稱與
+  正規化文字找出少量候選，不直接決定是否合併。
+- Hermes 讀取候選來源與既有 Dossier，輸出 `same`、`related` 或
+  `different`，並保存理由、引用證據與信心水準。
+- 信心不足或證據衝突時建立 review item，不自動合併。
 
-上述門檻是第一版校正值，必須用既有 100 筆人工驗證後再固定。
+本專案明確不儲存 embedding、不啟用 vector extension，也不使用向量相似度。
+字面候選分數只用來縮小 Hermes 的比較範圍，不是知識關係的權威判定。
 
 ### 5.3 Related Content
 
@@ -994,8 +998,9 @@ pending → accepted → in_progress → completed
 - `canonical_key`
 - `title`
 - `content_json`
-- `embedding`
-- `embedding_model`
+- `normalized_text`
+- `content_hash`
+- `search_document`
 - `pipeline_version`
 - `created_at`
 - `updated_at`

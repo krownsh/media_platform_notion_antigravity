@@ -539,7 +539,7 @@ Source
 - `annotations`
 - `entities`
 - `relations`
-- `embeddings`
+- `content_fingerprints`
 - `processing_jobs`
 - `agent_jobs`
 - `agent_job_events`
@@ -843,18 +843,22 @@ knowledge-job:<user_id>:<post_id>:<pipeline_version>
 - 保留新 Source Post 作為證據或直接標記 duplicate。
 - 更新來源數量與最後出現時間。
 
-### 5.2 Semantic Duplicate
+### 5.2 Related-content candidate matching (no vectors)
 
 不同貼文可能都在講同一工具、repo、Skill 或方法。
 
 初始規則：
 
 - 相同 canonical entity key：直接視為同一 cluster。
-- embedding similarity `>= 0.90`：預設同義內容，交給 AI 做最後驗證。
-- similarity `0.78–0.90`：視為相關內容，加入同一 cluster 並產生 delta。
-- similarity `< 0.78`：建立新 cluster。
+- canonical URL 或正規化 content hash 相同：視為 exact duplicate。
+- 使用 PostgreSQL Full Text Search 與 `pg_trgm`，依標題、摘要、實體名稱與
+  正規化文字找出少量候選，不直接決定是否合併。
+- Hermes 讀取候選來源與既有 Dossier，輸出 `same`、`related` 或
+  `different`，並保存理由、引用證據與信心水準。
+- 信心不足或證據衝突時建立 review item，不自動合併。
 
-上述門檻是第一版校正值，必須用既有 100 筆人工驗證後再固定。
+本專案明確不儲存 embedding、不啟用 vector extension，也不使用向量相似度。
+字面候選分數只用來縮小 Hermes 的比較範圍，不是知識關係的權威判定。
 
 ### 5.3 Related Content
 
@@ -994,8 +998,9 @@ pending → accepted → in_progress → completed
 - `canonical_key`
 - `title`
 - `content_json`
-- `embedding`
-- `embedding_model`
+- `normalized_text`
+- `content_hash`
+- `search_document`
 - `pipeline_version`
 - `created_at`
 - `updated_at`
@@ -1120,8 +1125,9 @@ Claude-Obsidian 程式碼 checkout：
 ```
 
 來源：`AgriciDaniel/claude-obsidian`。這個 Git clone 是工具程式碼，不等於
-Obsidian 實際開啟的 Vault。實際 Vault 必須是另一個資料夾，完整路徑待在
-Mac 上由使用者確認後寫入 Local Bridge allowlist。
+Obsidian 實際開啟的 Vault。已確認實際 Vault 為
+`~/.hermes/claude-obsidian`，並與工具 checkout 分離。第一次寫入前必須先在
+Obsidian 開啟一次，建立 `.obsidian`，再通過 Vault 檢查。
 
 共用 Agent 規則大腦另位於：
 
@@ -1250,7 +1256,7 @@ media-vault-bridge sync --correlation-id <id>
 - 不信任 request body 的 `userId`，應由驗證身分映射。
 - Supabase service-role key 只在 backend。
 - n8n 使用專用低權限 API credential。
-- Local Bridge 只能寫入尚待確認的實際 Vault allowlist；
+- Local Bridge 只能寫入 `~/.hermes/claude-obsidian` 的實際 Vault allowlist；
   `/Volumes/DevSSD/claude-obsidian` 只作為工具 checkout，不是同步目標。
 - 貼文中的 shell command 永不自動執行。
 - repo 安裝、套件下載、改碼、付費 API、發文都需要 Action `accepted`。
@@ -1370,7 +1376,8 @@ media-vault-bridge sync --correlation-id <id>
 - Supabase 保存原始資料與處理狀態。
 - Claude-Obsidian 工具 checkout 使用 `AgriciDaniel/claude-obsidian`，路徑為
   `/Volumes/DevSSD/claude-obsidian`。
-- 實際 Obsidian Vault 必須與工具 checkout 分離，目標路徑尚待確認。
+- 實際 Obsidian Vault 與工具 checkout 分離，路徑為
+  `~/.hermes/claude-obsidian`。
 - `~/.my-main-agent` 只管理 AGENTS／CLAUDE／GEMINI 規則與 Skills。
 - 先去重聚類，再產生行動；不一篇貼文一個任務。
 - Local Bridge 與 Vault 分離。
@@ -1379,7 +1386,7 @@ media-vault-bridge sync --correlation-id <id>
 
 - n8n 是 native、npm、Docker 或其他安裝方式。
 - `/Volumes/DevSSD` 實際掛載與權限。
-- 實際 Obsidian Vault 的完整路徑與權限。
+- `~/.hermes/claude-obsidian` 的實際權限與 Obsidian 初始化狀態。
 - Claude Code、Obsidian、Git、Node 版本。
 - Vault repo v1.9.2 實際 PARA mode 結構。
 - n8n Execute Command 是否能存取 Vault；若是 Docker，只掛載必要路徑。

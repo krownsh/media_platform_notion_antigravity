@@ -1,9 +1,10 @@
 # PM2 常駐程序
 
-這個設定只啟動兩個常駐程序：
+這個設定啟動三個常駐程序：
 
 - `media-collection-server`：既有 `server/index.js` API server
 - `media-collection-capture-worker`：既有 `worker:capture` capture worker
+- `media-collection-hermes-dispatcher`：將新 workflow 可靠喚醒至 Hermes webhook
 
 API port 不在這裡設定，會繼續使用 `server/.env` 的 `PORT`。
 
@@ -21,6 +22,7 @@ pm2 status
 ```bash
 pm2 logs media-collection-server
 pm2 logs media-collection-capture-worker
+pm2 logs media-collection-hermes-dispatcher
 ```
 
 確認運作正常後，才需要選擇性保存 PM2 程序清單：

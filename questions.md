@@ -69,3 +69,11 @@
 - 尚未完成的必要鏈：讓實際 backend 載入本機新程式、在真正的 Hermes 主機安裝／找到 CLI、安裝 gate、設定 project root、建立帶訊息投遞的 Cron、跑新文章 happy-path E2E、跑 disposable failure drill、確認人工核准邊界。
 - 目前程式只在本機 `agent-dev` commit，尚未 push／deploy；目前 Windows 找不到 `hermes` 指令，因此尚未建立 Cron。
 - 後續交接必須一次列出已完成、未完成、阻塞、驗收與需授權項目，不得再擠牙膏。
+
+## 2026-08-13：Hermes 改為純 Cron Pull
+
+目前實作已更新為：Capture Worker 完成來源擷取後只寫入 Supabase，不再觸發
+Hermes Webhook，也不再啟動 `media-collection-hermes-dispatcher`。Hermes 由
+自己的 Cron 執行 `scripts/hermes/media-inbox-gate.py`，透過 Supabase singleton
+lease 每次只 claim 一篇 workflow；沒有工作或已有 Agent 執行時直接結束。
+Capture queue 的 polling 仍保留，因為它負責實際爬取／儲存，不是 Hermes 分析輪詢。

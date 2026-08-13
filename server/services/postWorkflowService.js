@@ -120,6 +120,7 @@ export async function updateWorkflowAfterCapture(input, supabaseClient = supabas
 export async function markImageWorkflowAnalyzed(input, supabaseClient = supabase) {
     const workflow = await loadWorkflowByOutbox(input?.outboxEventId, supabaseClient);
     const identity = normalizeIdentity(input?.agentIdentity);
+    const keepCronLease = Boolean(input?.cron);
     const context = {
         ...asObject(workflow.context),
         base_analysis: {
@@ -135,13 +136,13 @@ export async function markImageWorkflowAnalyzed(input, supabaseClient = supabase
         .from('collection_post_workflows')
         .update({
             stage: 'triage',
-            status: 'pending',
+            status: keepCronLease ? 'processing' : 'pending',
             context,
             failed_stage: null,
             last_error: null,
             available_at: new Date().toISOString(),
-            locked_at: null,
-            locked_by: null
+            locked_at: keepCronLease ? new Date().toISOString() : null,
+            locked_by: keepCronLease ? identity : null
         })
         .eq('id', workflow.id)
         .eq('updated_at', workflow.updated_at)
@@ -177,7 +178,7 @@ export async function selectNextWorkflow(options = {}, supabaseClient = supabase
         .eq('status', status)
         .lte('available_at', now)
         .or(`locked_at.is.null,locked_at.lt.${staleBefore}`)
-        .order(status === 'failed' ? 'updated_at' : 'created_at', { ascending: false })
+        .order(status === 'failed' ? 'updated_at' : 'created_at', { ascending: true })
         .limit(status === 'failed' ? 20 : 1);
 
     const { data: failed, error: failedError } = await query('failed');
@@ -197,7 +198,7 @@ export async function selectNextWorkflow(options = {}, supabaseClient = supabase
 
     const { data: pending, error: pendingError } = await query('pending');
     if (pendingError) throw new Error(`Workflow pending lookup failed: ${pendingError.message}`);
-    return pending?.[0] ? { workflow: pending[0], selection: 'latest_pending' } : null;
+    return pending?.[0] ? { workflow: pending[0], selection: 'oldest_pending' } : null;
 }
 
 export async function claimWorkflow(workflow, agentIdentity, supabaseClient = supabase, options = {}) {

@@ -23,10 +23,21 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_g_post_workflow.sql` — resumable user workflow, explicit
   action plan, provenance, and the mandatory final `vault_note` action. Apply
   after Stage F.
+- `deployments/stage_j_hermes_cron_pull_cleanup.sql` — removes the retired
+  Hermes Webhook/Dispatcher tables, trigger, and RPCs; adds the singleton Cron
+  Pull lease RPCs. It does not alter the shared capture or post-workflow tables.
+- `deployments/stage_j_hermes_cron_include_backlog.sql` — removes the discarded
+  24-hour eligibility field and makes the claim RPC FIFO over the complete
+  available pending/retryable-failed queue, including historical rows.
+- `deployments/stage_j_hermes_cron_lease_index_cleanup.sql` — removes the
+  unnecessary index from the one-row Cron lease table.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the
   Stage B deployment guide before they accept new captures.
+
+Stage H/I deployment files remain as historical source records only. They must
+not be re-applied after Stage J; the active Hermes integration is Cron Pull.
 
 ## Deployment rules
 

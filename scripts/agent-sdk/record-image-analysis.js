@@ -23,6 +23,7 @@ async function main() {
     const outboxId = args[0];
     const inputFile = readOption(args, '--file');
     const agentIdentity = readOption(args, '--agent');
+    const isCronRun = args.includes('--cron');
     if (!inputFile) throw new Error('--file <analysis.json> is required');
 
     const raw = await readFile(path.resolve(inputFile), 'utf8');
@@ -38,7 +39,8 @@ async function main() {
     const workflow = await markImageWorkflowAnalyzed({
         outboxEventId: outboxId,
         agentIdentity,
-        analysisId: analysis.id
+        analysisId: analysis.id,
+        cron: isCronRun
     }, supabase);
     const completedEvent = await completeHermesImageReview(
         claimedEvent,

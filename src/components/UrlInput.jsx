@@ -64,7 +64,6 @@ const UrlInput = () => {
             const capture = await submitImageCapture(file);
             dispatch(updateTaskStatus({ taskId, status: 'accepted', captureId: capture.capture_id }));
             dispatch(monitorCapture({ captureId: capture.capture_id, taskId }));
-            dispatch(addNotification({ message: '圖片已安全儲存，可以繼續新增；Hermes 將在背景分析', type: 'success' }));
         } catch (error) {
             dispatch(updateTaskStatus({ taskId, status: 'failed' }));
             dispatch(addNotification({ message: `圖片上傳失敗：${error.message}`, type: 'error' }));

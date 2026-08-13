@@ -14,6 +14,7 @@ import {
     completeHermesTriage,
     failHermesOutboxItem
 } from '../../server/services/hermesOutboxService.js';
+import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,9 +47,14 @@ function buildTriageContext(workflow, post, classification) {
 export async function triageWorkflow(workflowId, options = {}) {
     const agentIdentity = options.agentIdentity;
     if (!agentIdentity) throw new Error('--agent <identity> is required');
+    const isCronRun = Boolean(options.cron);
     const { supabase } = await import('../../server/supabaseClient.js');
     let workflow = await loadWorkflow(workflowId, supabase);
-    if (workflow.stage !== 'triage' || !['pending', 'failed'].includes(workflow.status)) {
+    if (isCronRun) {
+        if (workflow.stage !== 'triage' || workflow.status !== 'processing' || workflow.locked_by !== agentIdentity) {
+            throw new Error(`Cron workflow ${workflow.id} is not leased for triage (${workflow.stage}/${workflow.status})`);
+        }
+    } else if (workflow.stage !== 'triage' || !['pending', 'failed'].includes(workflow.status)) {
         throw new Error(`Workflow ${workflow.id} is not ready for triage (${workflow.stage}/${workflow.status})`);
     }
 
@@ -67,7 +73,9 @@ export async function triageWorkflow(workflowId, options = {}) {
             }
         }
 
-        claimedWorkflow = await claimWorkflow(workflow, agentIdentity, supabase);
+        claimedWorkflow = isCronRun
+            ? workflow
+            : await claimWorkflow(workflow, agentIdentity, supabase);
         const post = getWorkflowPost(claimedWorkflow);
         if (!post) throw new Error('Workflow post was not found');
         const classification = classifyRoutesByRules(post);
@@ -81,6 +89,10 @@ export async function triageWorkflow(workflowId, options = {}) {
 
         if (outboxEvent) {
             await completeHermesTriage(outboxEvent, agentIdentity, supabase, { workflowId: transitioned.id });
+        }
+
+        if (isCronRun) {
+            await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: agentIdentity }, supabase);
         }
 
         return {
@@ -113,6 +125,13 @@ export async function triageWorkflow(workflowId, options = {}) {
                 console.error(`[Workflow Triage] Failed to persist workflow error: ${transitionError.message}`);
             }
         }
+        if (isCronRun) {
+            try {
+                await releaseHermesCronWorkflow({ workflowId, agentId: agentIdentity }, supabase);
+            } catch (finishError) {
+                console.error(`[Workflow Triage] Failed to release Hermes Cron lease: ${finishError.message}`);
+            }
+        }
         if (outboxEvent?.locked_by === agentIdentity) {
             try {
                 await failHermesOutboxItem(outboxEvent, agentIdentity, 'triage', error, supabase);
@@ -128,11 +147,13 @@ const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(path.r
 if (isMainModule) {
     const args = process.argv.slice(2);
     const agentIndex = args.indexOf('--agent');
-    triageWorkflow(args[0], { agentIdentity: agentIndex >= 0 ? args[agentIndex + 1] : null })
+    triageWorkflow(args[0], {
+        agentIdentity: agentIndex >= 0 ? args[agentIndex + 1] : null,
+        cron: args.includes('--cron')
+    })
         .then(result => process.stdout.write(`${JSON.stringify(result)}\n`))
         .catch(error => {
             process.stderr.write(`${JSON.stringify({ ok: false, code: error.code || 'ERROR', error: error.message })}\n`);
             process.exitCode = 1;
         });
 }
-

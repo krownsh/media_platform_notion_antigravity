@@ -81,8 +81,6 @@ function* handleFetchPost(action) {
     yield put(updateTaskStatus({ taskId, status: 'accepted', captureId: capture.capture_id }));
     yield put(fetchCaptureHistory());
     yield put(monitorCapture({ captureId: capture.capture_id, taskId }));
-    yield put(addNotification({ message: '網址已加入擷取佇列，可以繼續新增', type: 'success' }));
-
   } catch (error) {
     console.error('[Saga] Error in handleFetchPost:', error);
     yield put(addNotification({

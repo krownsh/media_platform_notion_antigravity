@@ -12,7 +12,6 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { orchestrator } from './services/orchestrator.js';
 import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
@@ -22,10 +21,8 @@ import { suggestTopicMatches } from './services/topicAgent.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
 import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
-import { finalizeCapture } from './services/captureFinalizationService.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
-import { analyzeCapturedUrl } from './services/captureAnalysisService.js';
-import { updateWorkflowAfterCapture } from './services/postWorkflowService.js';
+import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -326,85 +323,33 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
     }
 
     try {
-        const result = await orchestrator.processUrl(url);
-
-        if (result.data) {
-            const analyzed = await analyzeCapturedUrl(result.data);
-            result.data = analyzed.data;
-
-            // 3) A database RPC atomically upserts the source, replaces its
-            // child rows, and creates the source.ingested.v1 outbox event.
-            try {
-                const finalization = await finalizeCapture(userId, correlationId, result.source, result.data);
-                result.data.dbId = finalization.post_id;
-                result.data.outboxEventId = finalization.outbox_event_id;
-                try {
-                    await updateWorkflowAfterCapture({
-                        outboxEventId: finalization.outbox_event_id,
-                        sourceType: 'url_capture',
-                        baseAnalysis: analyzed.baseAnalysis
-                    });
-                } catch (workflowError) {
-                    console.warn('[Server] Workflow initialization deferred:', workflowError.message);
-                }
-                console.log('[Server] Capture finalized with outbox event');
-            } catch (error) {
-                console.error('[Capture] finalization failed', {
-                    correlationId,
-                    message: error.message,
-                    code: error.code || null
-                });
-                error.code = 'CAPTURE_FINALIZATION_FAILED';
-                throw error;
+        const suppliedIdempotencyKey = req.header('x-idempotency-key');
+        const idempotencyKey = suppliedIdempotencyKey
+            && /^[a-zA-Z0-9._:-]{1,128}$/.test(suppliedIdempotencyKey)
+            ? suppliedIdempotencyKey
+            : correlationId;
+        const result = await processUrlThroughCaptureQueue({
+            userId,
+            url,
+            correlationId,
+            idempotencyKey,
+            timeoutMs: process.env.LEGACY_PROCESS_WAIT_MS,
+            requestMeta: {
+                auth_type: req.auth.type,
+                client: req.header('user-agent')?.slice(0, 512) || null,
+                compatibility_route: '/api/process'
             }
-        }
+        });
 
-        res.json(result);
+        return res.status(result.status === 'degraded' ? 202 : 200).json(result);
     } catch (error) {
         console.error('Error processing URL:', error);
 
-        if (error.code === 'CAPTURE_FINALIZATION_FAILED') {
-            return res.status(500).json({
-                error: '擷取已完成，但來源 finalization 失敗；請使用 correlation id 重試。',
-                correlation_id: correlationId
-            });
-        }
-
-        // Identify if it's a core platform from the URL if result wasn't reached
-        const isCorePlatform = url.includes('threads.net') || url.includes('threads.com') ||
-            url.includes('twitter.com') || url.includes('x.com');
-
-        // If it's a core platform, we want to know it failed (Propagate error)
-        if (isCorePlatform) {
-            return res.status(500).json({ error: `核心平台抓取失敗: ${error.message}` });
-        }
-
-        // For generic URLs, use the Fallback: just save the link
-        try {
-            const fallbackData = {
-                source: 'fallback',
-                data: {
-                    platform: 'generic',
-                    original_url: url,
-                    title: '連結存檔 (自動容錯)',
-                    content: url,
-                    analysis: {
-                        summary: `⚠️ 此網址目前無法解析詳細內容，已為您自動轉為連結存檔模式。\n原因：${error.message}`
-                    }
-                }
-            };
-            const finalization = await finalizeCapture(userId, correlationId, 'fallback', fallbackData.data);
-            fallbackData.data.dbId = finalization.post_id;
-            fallbackData.data.outboxEventId = finalization.outbox_event_id;
-            return res.status(202).json({
-                source: 'fallback',
-                status: 'degraded',
-                data: fallbackData.data,
-                correlation_id: correlationId
-            });
-        } catch {
-            res.status(500).json({ error: error.message });
-        }
+        return res.status(error.code === 'CAPTURE_WAIT_TIMEOUT' ? 504 : 500).json({
+            error: error.message,
+            code: error.code || 'CAPTURE_FAILED',
+            correlation_id: correlationId
+        });
     }
 });
 

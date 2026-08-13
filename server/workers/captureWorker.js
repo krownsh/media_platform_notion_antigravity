@@ -5,13 +5,15 @@ import {
     failCaptureRequest
 } from '../services/captureRequestService.js';
 import { processCaptureRequest } from '../services/captureProcessingService.js';
+import { dispatchHermesWorkflowOnce } from './hermesDispatchWorker.js';
 
 export async function runCaptureWorkerCycle({
     workerId,
     claim = claimCaptureRequest,
     processRequest = processCaptureRequest,
     complete = completeCaptureRequest,
-    fail = failCaptureRequest
+    fail = failCaptureRequest,
+    dispatchNext = null
 }) {
     const request = await claim(workerId);
     if (!request) return { status: 'empty' };
@@ -23,7 +25,20 @@ export async function runCaptureWorkerCycle({
             workerId,
             ...result
         });
-        return { status: completed.status, request: completed };
+        let hermesDispatch = null;
+        if (dispatchNext && ['finalized', 'degraded'].includes(completed.status)) {
+            try {
+                hermesDispatch = await dispatchNext({
+                    workerId: `capture:${workerId}:${request.id}`
+                });
+            } catch (dispatchError) {
+                // Capture is already durable. Hermes can be started by its Cron
+                // or a manual wake; never turn a successful capture into a
+                // failed capture because the local Gateway is unavailable.
+                console.error(`[CaptureWorker] Hermes one-shot dispatch failed: ${dispatchError.message}`);
+            }
+        }
+        return { status: completed.status, request: completed, hermesDispatch };
     } catch (error) {
         const failed = await fail({
             requestId: request.id,
@@ -39,11 +54,12 @@ export async function runCaptureWorkerCycle({
 export async function runCaptureWorker({
     workerId = process.env.CAPTURE_WORKER_ID || `capture-worker-${randomUUID()}`,
     pollIntervalMs = Number(process.env.CAPTURE_WORKER_POLL_MS || 2000),
-    signal
+    signal,
+    dispatchNext = dispatchHermesWorkflowOnce
 } = {}) {
     console.log(`[CaptureWorker] started as ${workerId}`);
     while (!signal?.aborted) {
-        const result = await runCaptureWorkerCycle({ workerId });
+        const result = await runCaptureWorkerCycle({ workerId, dispatchNext });
         if (result.status === 'empty') {
             await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
         }

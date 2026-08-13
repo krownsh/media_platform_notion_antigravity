@@ -49,7 +49,7 @@ export function normalizeHermesWebhookUrl(value, options = {}) {
     return url.toString();
 }
 
-export function signHermesWebhook(body, secret, timestamp) {
+export function signHermesWebhook(body, secret, _timestamp) {
     const safeSecret = String(secret || '');
     if (!safeSecret || safeSecret === 'INSECURE_NO_AUTH') {
         throw new HermesWebhookError('A real HERMES_WEBHOOK_SECRET is required', {

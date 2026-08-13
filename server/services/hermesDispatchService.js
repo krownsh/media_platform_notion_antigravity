@@ -29,7 +29,10 @@ export async function claimHermesDispatch(workerId, leaseSeconds = 60, supabaseC
             p_lease_seconds: leaseSeconds
         })
         .maybeSingle();
-    return assertRpcResult(data, error, 'Hermes dispatch claim');
+    if (error) return assertRpcResult(data, error, 'Hermes dispatch claim');
+    // RPC returns all-null row when nothing to claim; treat as empty
+    if (!data?.id) return null;
+    return data;
 }
 
 export async function completeHermesDispatch(input, supabaseClient = supabase) {

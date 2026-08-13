@@ -57,9 +57,10 @@ export function signHermesWebhook(body, secret, timestamp) {
             retryable: false
         });
     }
+    // Gateway signs body-only (generic HMAC-SHA256 path)
     return crypto
         .createHmac('sha256', safeSecret)
-        .update(`${timestamp}.${body}`)
+        .update(body)
         .digest('hex');
 }
 
@@ -114,7 +115,7 @@ export async function sendHermesWorkflowWebhook(dispatch, options = {}) {
             method: 'POST',
             headers: {
                 'content-type': 'application/json',
-                'x-webhook-signature-v2': signature,
+                'x-webhook-signature': signature,
                 'x-webhook-timestamp': timestamp,
                 'x-request-id': String(dispatch.request_id)
             },

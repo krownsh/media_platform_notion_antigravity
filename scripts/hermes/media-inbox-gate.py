@@ -27,8 +27,9 @@ def main() -> int:
         print(f"Hermes workflow CLI not found: {workflow_script}", file=sys.stderr)
         return 2
 
+    queue = os.environ.get("HERMES_CRON_QUEUE", "preprocess").strip() or "preprocess"
     result = subprocess.run(
-        ["node", str(workflow_script)],
+        ["node", str(workflow_script), "--queue", queue],
         cwd=project_root,
         check=False,
         capture_output=True,
@@ -58,6 +59,7 @@ def main() -> int:
         "sourceType": workflow.get("source_type") if workflow else None,
         "agentId": payload.get("agentId"),
         "leaseSeconds": payload.get("leaseSeconds"),
+        "queue": payload.get("queue", queue),
     }
     print(json.dumps(gate_result, ensure_ascii=False))
     return 0

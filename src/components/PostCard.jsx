@@ -40,7 +40,10 @@ const PostCard = ({
         const labels = {
             base_analysis: '待內容分析',
             triage: '待 Hermes 分類',
+            preprocessing: 'Hermes 自動整理中',
             strategy: workflow.status === 'awaiting_user' ? '待討論策略' : '整理策略中',
+            research: '等待研究任務',
+            review: '待後續確認',
             actions: '執行後續工作中',
             complete: '處理完成'
         };

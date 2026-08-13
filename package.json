@@ -17,6 +17,8 @@
     "agent:cron:release": "node scripts/agent-sdk/release-cron-workflow.js",
     "agent:workflow": "node scripts/agent-sdk/get-workflow.js",
     "agent:triage": "node scripts/agent-sdk/triage-workflow.js",
+    "agent:preprocess": "node scripts/agent-sdk/preprocess-workflow.js",
+    "agent:research": "node scripts/agent-sdk/research-workflow.js",
     "agent:decide": "node scripts/agent-sdk/decide-workflow.js",
     "agent:complete-action": "node scripts/agent-sdk/complete-workflow-action.js",
     "agent:vault-note": "node scripts/agent-sdk/write-vault-note.js",

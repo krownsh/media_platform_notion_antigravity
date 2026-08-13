@@ -63,8 +63,8 @@ export async function decideWorkflow(workflowId, options = {}) {
     if (Buffer.byteLength(planRaw) > 64 * 1024) throw new Error('Action plan must be 64 KB or smaller');
     const { supabase } = await import('../../server/supabaseClient.js');
     const workflow = await loadWorkflow(workflowId, supabase);
-    if (workflow.stage !== 'strategy' || workflow.status !== 'awaiting_user') {
-        throw new Error(`Workflow ${workflow.id} is not awaiting a strategy decision (${workflow.stage}/${workflow.status})`);
+    if (!['strategy', 'review'].includes(workflow.stage) || workflow.status !== 'awaiting_user') {
+        throw new Error(`Workflow ${workflow.id} is not awaiting a strategy/review decision (${workflow.stage}/${workflow.status})`);
     }
     const plan = normalizePlan(JSON.parse(planRaw), options.agentIdentity);
     const claimed = await claimWorkflow(workflow, options.agentIdentity, supabase, { allowAwaitingUser: true });
@@ -79,7 +79,8 @@ export async function decideWorkflow(workflowId, options = {}) {
             strategy: {
                 status: 'completed',
                 decided_at: new Date().toISOString(),
-                decided_by: options.agentIdentity
+                decided_by: options.agentIdentity,
+                source: workflow.stage
             }
         }
     }, supabase);

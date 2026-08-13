@@ -79,11 +79,15 @@ export async function triageWorkflow(workflowId, options = {}) {
         const post = getWorkflowPost(claimedWorkflow);
         if (!post) throw new Error('Workflow post was not found');
         const classification = classifyRoutesByRules(post);
+        // A stale/legacy Cron prompt may still call agent:triage. Keep that
+        // invocation unattended: it only records the deterministic triage
+        // context and returns the row to the preprocess queue. Interactive
+        // triage retains the legacy strategy decision boundary.
         const transitioned = await transitionWorkflow({
             workflow: claimedWorkflow,
             agentIdentity,
-            stage: 'strategy',
-            status: 'awaiting_user',
+            stage: isCronRun ? 'preprocessing' : 'strategy',
+            status: isCronRun ? 'pending' : 'awaiting_user',
             context: buildTriageContext(claimedWorkflow, post, classification)
         }, supabase);
 

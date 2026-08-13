@@ -31,6 +31,12 @@ does **not** execute SQL or create Supabase migration history.
   available pending/retryable-failed queue, including historical rows.
 - `deployments/stage_j_hermes_cron_lease_index_cleanup.sql` — removes the
   unnecessary index from the one-row Cron lease table.
+- `deployments/stage_k_hermes_autonomous_preprocess.sql` — adds exact source
+  identity keys, autonomous workflow stages, and separate preprocess/research
+  Cron queues without vector storage.
+- `deployments/stage_k_hermes_review_backfill.sql` and
+  `deployments/stage_k_hermes_review_reconcile.sql` — move legacy strategy
+  pauses to persisted `review/awaiting_user` records.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

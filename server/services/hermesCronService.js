@@ -3,6 +3,9 @@ import { loadWorkflow } from './postWorkflowService.js';
 
 export const DEFAULT_HERMES_CRON_AGENT_ID = 'hermes:cron:media-inbox';
 export const DEFAULT_HERMES_CRON_LEASE_SECONDS = 1_800;
+export const DEFAULT_HERMES_CRON_QUEUE = 'preprocess';
+
+const CRON_QUEUES = new Set(['preprocess', 'research']);
 
 function normalizeIdentity(value) {
     const identity = String(value || '').trim();
@@ -18,6 +21,12 @@ function normalizeLeaseSeconds(value) {
     return Math.min(Math.max(Math.round(parsed), 60), 7_200);
 }
 
+function normalizeQueue(value) {
+    const queue = String(value || DEFAULT_HERMES_CRON_QUEUE).trim().toLowerCase();
+    if (!CRON_QUEUES.has(queue)) throw new Error(`Hermes Cron queue is invalid: ${queue}`);
+    return queue;
+}
+
 function firstRpcRow(data) {
     if (Array.isArray(data)) return data[0] || null;
     return data || null;
@@ -26,9 +35,11 @@ function firstRpcRow(data) {
 export async function claimHermesCronWorkflow(input = {}, supabaseClient = supabase) {
     const agentId = normalizeIdentity(input.agentId || DEFAULT_HERMES_CRON_AGENT_ID);
     const leaseSeconds = normalizeLeaseSeconds(input.leaseSeconds);
+    const queue = normalizeQueue(input.queue);
     const { data, error } = await supabaseClient.rpc('claim_collection_hermes_cron_workflow', {
         p_agent_id: agentId,
-        p_lease_seconds: leaseSeconds
+        p_lease_seconds: leaseSeconds,
+        p_queue: queue
     });
     if (error) throw new Error(`Hermes Cron claim failed: ${error.message}`);
     const row = firstRpcRow(data);

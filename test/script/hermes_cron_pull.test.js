@@ -48,7 +48,7 @@ test('Cron gate returns one atomically claimed workflow with a stable identity',
         }
     });
 
-    assert.deepEqual(calls, [{ agentId: 'hermes:cron:media-inbox', leaseSeconds: 900 }]);
+    assert.deepEqual(calls, [{ agentId: 'hermes:cron:media-inbox', leaseSeconds: 900, queue: 'preprocess' }]);
     assert.equal(result.ok, true);
     assert.equal(result.wakeAgent, true);
     assert.equal(result.workflow.workflow_id, workflow().id);
@@ -63,6 +63,7 @@ test('Cron gate stays silent when the singleton lease or queue has no work', asy
         wakeAgent: false,
         agentId: 'hermes:cron:media-inbox',
         leaseSeconds: 1800,
+        queue: 'preprocess',
         workflow: null
     });
 });
@@ -93,6 +94,19 @@ test('backlog migration removes the date cutoff and keeps FIFO claim semantics',
     assert.match(migration, /where workflow\.status in \('pending', 'failed'\)/i);
     assert.match(migration, /order by[\s\S]*workflow\.created_at asc/i);
     assert.doesNotMatch(migration, /created_at\s*>=\s*lease\./i);
+});
+
+test('autonomous preprocess migration separates preprocess, research, and review queues', () => {
+    const migration = fs.readFileSync(
+        path.join(projectRoot, 'database', 'deployments', 'stage_k_hermes_autonomous_preprocess.sql'),
+        'utf8'
+    );
+    assert.match(migration, /add column if not exists canonical_url/i);
+    assert.match(migration, /add column if not exists content_hash/i);
+    assert.match(migration, /stage in \('base_analysis', 'triage', 'preprocessing', 'strategy', 'research', 'review', 'actions', 'complete'\)/i);
+    assert.match(migration, /p_queue text default 'preprocess'/i);
+    assert.match(migration, /workflow\.stage = 'research'/i);
+    assert.doesNotMatch(migration, /workflow\.stage = 'review'/i);
 });
 
 test('Hermes Cron gate delegates to an atomic claim command, not the old selector', () => {

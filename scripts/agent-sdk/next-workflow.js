@@ -39,6 +39,8 @@ export function formatWorkflow(workflow) {
         status: workflow.status,
         failed_stage: workflow.failed_stage,
         last_error: workflow.last_error,
+        automation: workflow.context?.automation || null,
+        review_request: workflow.context?.review_request || null,
         action_plan: workflow.action_plan,
         post: {
             id: post?.id,

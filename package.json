@@ -14,6 +14,7 @@
     "agent:inbox": "node scripts/agent-sdk/get-inbox.js",
     "agent:next": "node scripts/agent-sdk/next-workflow.js",
     "agent:workflow": "node scripts/agent-sdk/get-workflow.js",
+    "agent:webhook": "node scripts/agent-sdk/process-webhook-workflow.js",
     "agent:triage": "node scripts/agent-sdk/triage-workflow.js",
     "agent:decide": "node scripts/agent-sdk/decide-workflow.js",
     "agent:complete-action": "node scripts/agent-sdk/complete-workflow-action.js",

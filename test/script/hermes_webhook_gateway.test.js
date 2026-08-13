@@ -53,6 +53,29 @@ test('Stage H keeps webhook delivery separate from capture and post workflow sta
     assert.doesNotMatch(deployment, /insert into public\.collection_hermes_dispatches[\s\S]+select[\s\S]+collection_post_workflows/i);
 });
 
+test('Stage I uses a singleton Agent slot and one-shot dispatch only', () => {
+    const deployment = fs.readFileSync(
+        path.join(projectRoot, 'database', 'deployments', 'stage_i_hermes_single_agent.sql'),
+        'utf8'
+    );
+    assert.match(deployment, /collection_hermes_agent_slots/);
+    assert.match(deployment, /for update/);
+    assert.match(deployment, /agent_status in \('pending', 'failed'\)/);
+    assert.match(deployment, /start_collection_hermes_agent/);
+    assert.match(deployment, /heartbeat_collection_hermes_agent/);
+    assert.match(deployment, /finish_collection_hermes_agent/);
+    assert.match(deployment, /p_result_status not in \('awaiting_user', 'completed', 'failed'\)/);
+    assert.match(deployment, /request_id = uuid_generate_v4\(\)/);
+    assert.doesNotMatch(deployment, /create extension\s+(pg_cron|realtime)/i);
+
+    const worker = fs.readFileSync(
+        path.join(projectRoot, 'server', 'workers', 'hermesDispatchWorker.js'),
+        'utf8'
+    );
+    assert.match(worker, /dispatchHermesWorkflowOnce/);
+    assert.doesNotMatch(worker, /while \(!signal\?\.aborted\)/);
+});
+
 test('Hermes signature uses body-only (generic HMAC-SHA256 path)', () => {
     const body = '{"event_type":"collection.workflow.ready.v1"}';
     // Gateway validates: hmac(secret, body_bytes) — no timestamp prefix

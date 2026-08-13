@@ -130,6 +130,7 @@ test('finalization failure never replaces extracted data with a fallback link', 
 
 test('worker completes a leased request through the durable status service', async () => {
     const calls = [];
+    let dispatchInput;
     const result = await runCaptureWorkerCycle({
         workerId: 'worker-test',
         claim: async () => request,
@@ -143,7 +144,11 @@ test('worker completes a leased request through the durable status service', asy
             calls.push(input);
             return { id: request.id, status: input.status };
         },
-        fail: async () => { throw new Error('fail should not be called'); }
+        fail: async () => { throw new Error('fail should not be called'); },
+        dispatchNext: async input => {
+            dispatchInput = input;
+            return { status: 'delivered' };
+        }
     });
 
     assert.equal(result.status, 'finalized');
@@ -155,6 +160,10 @@ test('worker completes a leased request through the durable status service', asy
         postId: 'post-3',
         outboxEventId: 'event-3'
     });
+    assert.deepEqual(dispatchInput, {
+        workerId: `capture:worker-test:${request.id}`
+    });
+    assert.equal(result.hermesDispatch.status, 'delivered');
 });
 
 test('worker records retry state when processing fails', async () => {

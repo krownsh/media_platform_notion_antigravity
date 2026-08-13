@@ -20,6 +20,7 @@ test('webhook runner triages the exact pending URL workflow with a stable identi
         dispatchId: DISPATCH_ID
     }, {
         load: async id => ({ id, stage: 'triage', status: 'pending' }),
+        startAgent: async input => input,
         triage: async (id, options) => {
             triageCall = { id, options };
             return { workflow_id: id, stage: 'strategy', status: 'awaiting_user' };
@@ -28,7 +29,10 @@ test('webhook runner triages the exact pending URL workflow with a stable identi
 
     assert.deepEqual(triageCall, {
         id: WORKFLOW_ID,
-        options: { agentIdentity: `hermes:webhook:${DISPATCH_ID}` }
+        options: {
+            agentIdentity: `hermes:webhook:${DISPATCH_ID}`,
+            dispatchId: DISPATCH_ID
+        }
     });
     assert.equal(result.action, 'triaged');
     assert.equal(result.stage, 'strategy');
@@ -41,6 +45,7 @@ test('webhook runner is idempotent after triage and does not call triage again',
         dispatchId: DISPATCH_ID
     }, {
         load: async id => ({ id, stage: 'strategy', status: 'awaiting_user' }),
+        startAgent: async () => assert.fail('agent must not start twice'),
         triage: async () => assert.fail('triage must not run twice')
     });
     assert.equal(result.action, 'awaiting_user');

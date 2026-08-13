@@ -37,7 +37,9 @@ triage need.
 4. Generate and review a formal migration from
    `database/deployments/stage_h_hermes_webhook_dispatch.sql`.
 5. Apply the migration to the shared Supabase project.
-6. Start or restart `media-collection-hermes-dispatcher` through PM2.
+6. Apply `database/deployments/stage_i_hermes_single_agent.sql` and its Stage I
+   follow-up migrations. Do not start a resident Hermes dispatcher; Capture
+   completion, Hermes Cron, or a manual command performs one dispatch attempt.
 
 After changing the route contract, deploy all three pieces together on the
 Hermes Mac:
@@ -61,6 +63,9 @@ Webhook delivery itself does not write Vault files. The confirmed Vault is
 reaches its mandatory `vault_note` action. Before the first write, open that
 directory once as an Obsidian Vault and run `npm run agent:vault:check` on the
 Hermes host. `/Volumes/DevSSD/claude-obsidian` remains the tool checkout.
+
+The Capture Worker still owns the capture queue and may poll it. That is separate
+from Hermes dispatch: there is no Hermes-side timer loop consuming this table.
 
 The deployment does not backfill existing workflows. This is deliberate: the
 shared database already has a large triage backlog, and automatically waking

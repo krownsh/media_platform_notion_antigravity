@@ -22,7 +22,7 @@ function assertRpcResult(data, error, action) {
     return data || null;
 }
 
-export async function claimHermesDispatch(workerId, leaseSeconds = 60, supabaseClient = supabase) {
+export async function claimHermesDispatch(workerId, leaseSeconds = 1_800, supabaseClient = supabase) {
     const { data, error } = await supabaseClient
         .rpc('claim_collection_hermes_dispatch', {
             p_worker_id: requireWorkerId(workerId),
@@ -33,6 +33,44 @@ export async function claimHermesDispatch(workerId, leaseSeconds = 60, supabaseC
     // RPC returns all-null row when nothing to claim; treat as empty
     if (!data?.id) return null;
     return data;
+}
+
+export async function startHermesAgentRun(input, supabaseClient = supabase) {
+    const { data, error } = await supabaseClient
+        .rpc('start_collection_hermes_agent', {
+            p_dispatch_id: requireDispatchId(input?.dispatchId),
+            p_agent_id: requireWorkerId(input?.agentId),
+            p_lease_seconds: Number(input?.leaseSeconds) || 1_800
+        })
+        .single();
+    return assertRpcResult(data, error, 'Hermes agent start');
+}
+
+export async function heartbeatHermesAgentRun(input, supabaseClient = supabase) {
+    const { data, error } = await supabaseClient
+        .rpc('heartbeat_collection_hermes_agent', {
+            p_dispatch_id: requireDispatchId(input?.dispatchId),
+            p_agent_id: requireWorkerId(input?.agentId),
+            p_lease_seconds: Number(input?.leaseSeconds) || 1_800
+        })
+        .single();
+    return assertRpcResult(data, error, 'Hermes agent heartbeat');
+}
+
+export async function finishHermesAgentRun(input, supabaseClient = supabase) {
+    const resultStatus = String(input?.status || '').trim();
+    if (!['awaiting_user', 'completed', 'failed'].includes(resultStatus)) {
+        throw new Error('Hermes agent result status must be awaiting_user, completed, or failed');
+    }
+    const { data, error } = await supabaseClient
+        .rpc('finish_collection_hermes_agent', {
+            p_dispatch_id: requireDispatchId(input?.dispatchId),
+            p_agent_id: requireWorkerId(input?.agentId),
+            p_result_status: resultStatus,
+            p_error_message: String(input?.errorMessage || '').slice(0, 4_000)
+        })
+        .single();
+    return assertRpcResult(data, error, 'Hermes agent completion');
 }
 
 export async function completeHermesDispatch(input, supabaseClient = supabase) {

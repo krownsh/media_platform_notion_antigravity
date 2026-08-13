@@ -14,6 +14,8 @@ import {
     completeHermesTriage,
     failHermesOutboxItem
 } from '../../server/services/hermesOutboxService.js';
+import { finishHermesAgentRun } from '../../server/services/hermesDispatchService.js';
+import { dispatchNext } from './dispatch-next.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,6 +85,21 @@ export async function triageWorkflow(workflowId, options = {}) {
             await completeHermesTriage(outboxEvent, agentIdentity, supabase, { workflowId: transitioned.id });
         }
 
+        if (options.dispatchId) {
+            await finishHermesAgentRun({
+                dispatchId: options.dispatchId,
+                agentId: agentIdentity,
+                status: 'awaiting_user'
+            }, supabase);
+            try {
+                await dispatchNext({ workerId: `hermes:completion:${options.dispatchId}` });
+            } catch (dispatchError) {
+                // The Agent slot is already released. A later Hermes Cron/manual
+                // wake can retry the next pending dispatch without reopening this one.
+                console.error(`[Workflow Triage] Next Hermes wake failed: ${dispatchError.message}`);
+            }
+        }
+
         return {
             ok: true,
             workflow_id: transitioned.id,
@@ -113,6 +130,18 @@ export async function triageWorkflow(workflowId, options = {}) {
                 console.error(`[Workflow Triage] Failed to persist workflow error: ${transitionError.message}`);
             }
         }
+        if (options.dispatchId) {
+            try {
+                await finishHermesAgentRun({
+                    dispatchId: options.dispatchId,
+                    agentId: agentIdentity,
+                    status: 'failed',
+                    errorMessage: error.message
+                }, supabase);
+            } catch (finishError) {
+                console.error(`[Workflow Triage] Failed to release Hermes agent slot: ${finishError.message}`);
+            }
+        }
         if (outboxEvent?.locked_by === agentIdentity) {
             try {
                 await failHermesOutboxItem(outboxEvent, agentIdentity, 'triage', error, supabase);
@@ -128,11 +157,14 @@ const isMainModule = process.argv[1] && import.meta.url === pathToFileURL(path.r
 if (isMainModule) {
     const args = process.argv.slice(2);
     const agentIndex = args.indexOf('--agent');
-    triageWorkflow(args[0], { agentIdentity: agentIndex >= 0 ? args[agentIndex + 1] : null })
+    const dispatchIndex = args.indexOf('--dispatch');
+    triageWorkflow(args[0], {
+        agentIdentity: agentIndex >= 0 ? args[agentIndex + 1] : null,
+        dispatchId: dispatchIndex >= 0 ? args[dispatchIndex + 1] : null
+    })
         .then(result => process.stdout.write(`${JSON.stringify(result)}\n`))
         .catch(error => {
             process.stderr.write(`${JSON.stringify({ ok: false, code: error.code || 'ERROR', error: error.message })}\n`);
             process.exitCode = 1;
         });
 }
-

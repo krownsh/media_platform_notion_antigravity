@@ -10,17 +10,6 @@ import {
     validateHermesWebhookConfig
 } from '../services/hermesWebhookClient.js';
 
-function wait(ms, signal) {
-    return new Promise((resolve) => {
-        if (signal?.aborted) return resolve();
-        const timer = setTimeout(resolve, ms);
-        signal?.addEventListener('abort', () => {
-            clearTimeout(timer);
-            resolve();
-        }, { once: true });
-    });
-}
-
 export async function runHermesDispatchCycle({
     workerId,
     claim = claimHermesDispatch,
@@ -51,22 +40,15 @@ export async function runHermesDispatchCycle({
     }
 }
 
-export async function runHermesDispatchWorker({
-    workerId = process.env.HERMES_DISPATCH_WORKER_ID || `hermes-dispatch-${randomUUID()}`,
-    pollIntervalMs = Number(process.env.HERMES_DISPATCH_POLL_MS || 2_000),
-    signal
+export async function dispatchHermesWorkflowOnce({
+    workerId = process.env.HERMES_DISPATCH_WORKER_ID || `hermes-dispatch-${randomUUID()}`
 } = {}) {
     validateHermesWebhookConfig();
-    pollIntervalMs = Math.min(Math.max(Number(pollIntervalMs) || 2_000, 250), 60_000);
-    console.log(`[HermesDispatchWorker] started as ${workerId}`);
-    while (!signal?.aborted) {
-        try {
-            const result = await runHermesDispatchCycle({ workerId });
-            if (result.status === 'empty') await wait(pollIntervalMs, signal);
-        } catch (error) {
-            console.error(`[HermesDispatchWorker] cycle failed: ${error.message}`);
-            await wait(pollIntervalMs, signal);
-        }
-    }
-    console.log('[HermesDispatchWorker] stopped');
+    return runHermesDispatchCycle({ workerId });
+}
+
+// Kept as a compatibility alias for older manual commands. It is intentionally
+// one-shot; Hermes dispatch must never become a background polling process.
+export async function runHermesDispatchWorker(options = {}) {
+    return dispatchHermesWorkflowOnce(options);
 }

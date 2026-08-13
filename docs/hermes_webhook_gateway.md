@@ -5,6 +5,11 @@ workflow to Hermes Agent. It does not replace the Hermes host. Hermes remains
 the agent execution machine; only the transport into Hermes changes from a
 Cron-only pull to event-driven delivery.
 
+The route must execute `agent:webhook` as its first tool call. For a URL
+workflow already at `triage/pending`, that command performs the deterministic
+triage transition immediately. Image base analysis remains an Agent task
+because Hermes must inspect the private material before triage.
+
 ## State boundaries
 
 Four states remain independent:
@@ -34,6 +39,23 @@ triage need.
 5. Apply the migration to the shared Supabase project.
 6. Start or restart `media-collection-hermes-dispatcher` through PM2.
 
+After changing the route contract, deploy all three pieces together on the
+Hermes Mac:
+
+1. Pull the repository `main` branch so `agent:webhook` exists locally.
+2. Sync `hermes/skills/my-mediacrawl-skill` through the shared
+   `~/.my-main-agent` skill-management flow.
+3. Merge `hermes/config/webhook-route.example.yaml` into the active everynote
+   profile without replacing its real route secret.
+4. Restart the Hermes Gateway. The API Server does not need a restart for this
+   Agent command, but any stale Capture or Dispatcher PM2 process should still
+   be restarted with `--update-env` when its own code or environment changed.
+
+For a URL smoke test, success is not merely
+`collection_hermes_dispatches.status = delivered`. The matching
+`collection_post_workflows` row must move from `triage/pending` to
+`strategy/awaiting_user` and contain `context.triage.status = completed`.
+
 Webhook delivery itself does not write Vault files. The confirmed Vault is
 `~/.hermes/claude-obsidian`; Hermes may write there only when the workflow later
 reaches its mandatory `vault_note` action. Before the first write, open that
@@ -50,7 +72,10 @@ verified.
 
 - The body contains only `dispatch_id`, `workflow_id`, `post_id`, event type,
   and schema version. Captured content is loaded from Supabase after wake-up.
-- Generic Hermes HMAC V2 signs `<timestamp>.<raw-body>` with SHA-256.
+- This deployment uses the Gateway's legacy generic header
+  `X-Webhook-Signature`, which signs the raw body only with HMAC-SHA256. Keep
+  the Worker and installed Gateway contract tests aligned before migrating to
+  the replay-resistant V2 header.
 - `X-Request-ID` is the dispatch's stable UUID across retries.
 - Network errors, timeouts, `408`, `429`, and `5xx` are retried with bounded
   exponential backoff.

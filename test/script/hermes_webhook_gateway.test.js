@@ -53,9 +53,10 @@ test('Stage H keeps webhook delivery separate from capture and post workflow sta
     assert.doesNotMatch(deployment, /insert into public\.collection_hermes_dispatches[\s\S]+select[\s\S]+collection_post_workflows/i);
 });
 
-test('Hermes V2 signature covers timestamp dot raw body', () => {
+test('Hermes signature uses body-only (generic HMAC-SHA256 path)', () => {
     const body = '{"event_type":"collection.workflow.ready.v1"}';
-    const expected = crypto.createHmac('sha256', SECRET).update(`${TIMESTAMP}.${body}`).digest('hex');
+    // Gateway validates: hmac(secret, body_bytes) — no timestamp prefix
+    const expected = crypto.createHmac('sha256', SECRET).update(body).digest('hex');
     assert.equal(signHermesWebhook(body, SECRET, TIMESTAMP), expected);
     assert.throws(
         () => signHermesWebhook(body, 'INSECURE_NO_AUTH', TIMESTAMP),
@@ -99,7 +100,7 @@ test('dispatch sends only identifiers with stable idempotency and accepts 202', 
     assert.equal(request.options.headers['x-request-id'], dispatch().request_id);
     assert.equal(request.options.headers['x-webhook-timestamp'], TIMESTAMP);
     assert.equal(
-        request.options.headers['x-webhook-signature-v2'],
+        request.options.headers['x-webhook-signature'],
         signHermesWebhook(request.options.body, SECRET, TIMESTAMP)
     );
     assert.deepEqual(result, {

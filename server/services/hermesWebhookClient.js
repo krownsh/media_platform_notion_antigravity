@@ -81,6 +81,8 @@ function acceptedResponse(status, payload) {
     return (
         status === 202 && payload?.status === 'accepted'
     ) || (
+        status === 200 && payload?.status === 'delivered'
+    ) || (
         status === 200 && payload?.status === 'duplicate'
     );
 }

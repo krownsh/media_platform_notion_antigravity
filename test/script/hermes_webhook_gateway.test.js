@@ -123,6 +123,20 @@ test('Hermes duplicate response completes the same durable delivery', async () =
     assert.equal(result.httpStatus, 200);
 });
 
+test('Hermes documented 200 delivered response completes the same durable delivery', async () => {
+    const result = await sendHermesWorkflowWebhook(dispatch(), {
+        url: 'https://hermes.example.test/webhooks/media-workflow',
+        secret: SECRET,
+        now: NOW_MS,
+        fetchImpl: async () => response(200, {
+            status: 'delivered',
+            delivery_id: dispatch().request_id
+        })
+    });
+    assert.equal(result.status, 'delivered');
+    assert.equal(result.httpStatus, 200);
+});
+
 test('gateway rejects an accepted response for another delivery id', async () => {
     await assert.rejects(
         () => sendHermesWorkflowWebhook(dispatch(), {

@@ -16,8 +16,8 @@ Four states remain independent:
 4. `collection_post_workflows`: the authoritative end-to-end post lifecycle.
 
 `collection_hermes_dispatches.status = delivered` means only that the current
-Hermes gateway returned `202 accepted`, or returned `200 duplicate` for the
-same stable `X-Request-ID`. It never marks a post workflow complete.
+Hermes gateway returned `202 accepted`, `200 delivered`, or `200 duplicate`
+for the same stable `X-Request-ID`. It never marks a post workflow complete.
 
 The dispatcher intentionally has its own outbox. Claiming the existing capture
 outbox before Hermes starts would steal the lease that image analysis and

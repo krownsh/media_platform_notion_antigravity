@@ -74,12 +74,23 @@ export function normalizeAutonomyDecision(input = {}) {
         || (Array.isArray(input.poc?.test_plan?.environment?.required_secrets)
             && input.poc.test_plan.environment.required_secrets.length > 0)
     );
+    // A post may mention a future POC that would need network access without
+    // asking Hermes to execute it now.  Only an explicit execution request is
+    // a high-risk action; merely recording a candidate belongs in normal
+    // preprocessing or the research queue.
+    const pocExecutionRequested = Boolean(
+        input.poc?.auto_execute
+        || input.poc?.execute_requested
+        || input.poc?.execution_requested
+    );
 
     let outcome = AUTONOMY_OUTCOMES.has(requestedOutcome) ? requestedOutcome : 'review_pending';
     let reason = null;
-    if (networkRequired || secretsRequired || riskLevel === 'high') {
+    if ((pocExecutionRequested && (networkRequired || secretsRequired)) || riskLevel === 'high') {
         outcome = 'review_pending';
-        reason = networkRequired || secretsRequired ? 'high_risk_poc' : 'high_risk_action';
+        reason = pocExecutionRequested && (networkRequired || secretsRequired)
+            ? 'high_risk_poc'
+            : 'high_risk_action';
     } else if (confidenceFloor < AUTONOMY_CONFIDENCE_THRESHOLD) {
         outcome = 'review_pending';
         reason = 'low_confidence';
@@ -92,6 +103,7 @@ export function normalizeAutonomyDecision(input = {}) {
         risk_level: riskLevel,
         network_required: networkRequired,
         secrets_required: secretsRequired,
+        poc_execution_requested: pocExecutionRequested,
         reason,
         policy_version: AUTONOMY_POLICY_VERSION
     };
@@ -165,6 +177,7 @@ export function normalizePreprocessInput(input = {}) {
             network_required: Boolean(poc.network_required || poc.requires_network),
             secrets_required: Boolean(poc.secrets_required || poc.requires_secrets),
             auto_execute: Boolean(poc.auto_execute),
+            execute_requested: Boolean(poc.execute_requested || poc.execution_requested),
             artifact: poc.artifact && typeof poc.artifact === 'object' ? poc.artifact : null,
             result: poc.result && typeof poc.result === 'object' ? poc.result : null
         } : null,

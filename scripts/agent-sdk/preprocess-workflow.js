@@ -57,6 +57,19 @@ function actionPlan(vaultOutcome) {
     };
 }
 
+function deferredVaultActionPlan() {
+    return {
+        schema_version: 2,
+        actions: [{
+            type: 'vault_note',
+            status: 'pending',
+            requested_by: 'codex:db-preprocess',
+            requested_at: new Date().toISOString(),
+            notes: 'Write the prepared note to the configured Claude-Obsidian Vault before finalizing this workflow.'
+        }]
+    };
+}
+
 function compactPocResult(result) {
     if (!result) return null;
     return {
@@ -172,19 +185,59 @@ export async function preprocessWorkflow(workflowId, options = {}) {
         }
 
         const noteInput = toNoteInput(result, post, persistence, pocResult, folderPersistence);
-        const vaultOutcome = await writeWorkflowVaultNotes({ workflow, noteInput, vaultRoot: options.vaultRoot });
-        const context = buildAutomationContext(result, {
-        source_identity: persistence,
-        topic_persistence: topicPersistence,
-        folder_persistence: folderPersistence,
-        vault: vaultOutcome,
-        source_url: sourceUrl(post)
-        });
         const next = result.autonomy.outcome === 'complete'
         ? { stage: 'complete', status: 'completed' }
         : result.autonomy.outcome === 'research_pending'
             ? { stage: 'research', status: 'pending' }
             : { stage: 'review', status: 'awaiting_user' };
+        if (options.deferVault) {
+            const context = buildAutomationContext(result, {
+                source_identity: persistence,
+                topic_persistence: topicPersistence,
+                folder_persistence: folderPersistence,
+                vault: { status: 'pending', relative_path: null },
+                vault_sync: {
+                    status: 'pending',
+                    target_stage: next.stage,
+                    target_status: next.status,
+                    note_input: noteInput,
+                    queued_at: new Date().toISOString()
+                },
+                source_url: sourceUrl(post)
+            });
+            const transitioned = await transitionWorkflow({
+                workflow,
+                agentIdentity: options.agentIdentity,
+                stage: 'vault_sync',
+                status: 'pending',
+                context,
+                actionPlan: deferredVaultActionPlan(),
+                failedStage: null,
+                lastError: null
+            }, supabase);
+            await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabase);
+            return {
+                ok: true,
+                workflow_id: transitioned.id,
+                stage: transitioned.stage,
+                status: transitioned.status,
+                target_stage: next.stage,
+                target_status: next.status,
+                autonomy: result.autonomy,
+                exact_duplicate: persistence.exact_duplicate?.id || null,
+                vault_path: null,
+                poc: result.poc?.result || null
+            };
+        }
+
+        const vaultOutcome = await writeWorkflowVaultNotes({ workflow, noteInput, vaultRoot: options.vaultRoot });
+        const context = buildAutomationContext(result, {
+            source_identity: persistence,
+            topic_persistence: topicPersistence,
+            folder_persistence: folderPersistence,
+            vault: vaultOutcome,
+            source_url: sourceUrl(post)
+        });
         const transitioned = await transitionWorkflow({
             workflow,
             agentIdentity: options.agentIdentity,
@@ -233,7 +286,8 @@ if (isMainModule) {
     preprocessWorkflow(args[0], {
         agentIdentity: option(args, '--agent'),
         file: option(args, '--file'),
-        vaultRoot: option(args, '--vault')
+        vaultRoot: option(args, '--vault'),
+        deferVault: args.includes('--defer-vault')
     })
         .then(result => process.stdout.write(`${JSON.stringify(result)}\n`))
         .catch(error => {

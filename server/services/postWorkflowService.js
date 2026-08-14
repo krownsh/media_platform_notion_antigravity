@@ -4,6 +4,7 @@ export const WORKFLOW_STAGES = new Set([
     'base_analysis',
     'triage',
     'preprocessing',
+    'vault_sync',
     'strategy',
     'research',
     'review',

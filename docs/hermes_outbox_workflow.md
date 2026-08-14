@@ -67,6 +67,19 @@ A separate research Cron sets `HERMES_CRON_QUEUE=research`, claims one
 `research/pending` row, performs the research, and runs `agent:research`. It
 also persists any approval question instead of prompting during the Cron tick.
 
+For a remote DB-only backfill that cannot reach the Mac Vault, use
+`agent:preprocess --defer-vault` or `agent:codex-preprocess`. Both persist the
+analysis, exact-duplicate identity, topic/folder decisions, and the complete
+note input, then park the row in `vault_sync/pending`. They never invent a
+local path or mark the workflow complete. The Mac-side `agent:vault-sync` run
+is the only step allowed to write Claude-Obsidian and restore the recorded
+target (`complete`, `research`, or `review`).
+
+For a one-time backlog drain (without enabling Cron), run
+`npm run agent:vault-sync:drain -- --agent hermes:manual:vault-sync --max 500`.
+It claims one row at a time, writes each real note, releases the lease, and
+exits when the `vault_sync` queue is empty or a systemic Vault error occurs.
+
 ## Deployment and verification
 
 Deploy `database/deployments/stage_g_post_workflow.sql` after its listed

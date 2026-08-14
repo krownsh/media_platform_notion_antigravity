@@ -16,26 +16,29 @@ test('high-confidence low-risk preprocessing stays autonomous', () => {
     assert.equal(decision.network_required, false);
 });
 
-test('network POC is deferred without blocking preprocessing', () => {
+test('a network POC candidate is recorded without blocking preprocessing', () => {
     const decision = normalizeAutonomyDecision({
         outcome: 'complete',
         confidence: { content: 0.99, poc: 0.98 },
         risk_level: 'low',
         poc: { network_required: true }
     });
-    assert.equal(decision.outcome, 'review_pending');
-    assert.equal(decision.reason, 'high_risk_poc');
+    assert.equal(decision.outcome, 'complete');
+    assert.equal(decision.reason, null);
+    assert.equal(decision.network_required, true);
+    assert.equal(decision.poc_execution_requested, false);
 });
 
-test('secret-requiring POC is treated as high risk', () => {
+test('an explicitly requested secret-requiring POC is treated as high risk', () => {
     const decision = normalizeAutonomyDecision({
         outcome: 'complete',
         confidence: { content: 0.99, poc: 0.98 },
         risk_level: 'low',
-        poc: { secrets_required: true }
+        poc: { secrets_required: true, auto_execute: true }
     });
     assert.equal(decision.outcome, 'review_pending');
     assert.equal(decision.secrets_required, true);
+    assert.equal(decision.poc_execution_requested, true);
 });
 
 test('low-confidence folder falls back to 待整理 and does not invent a folder', () => {

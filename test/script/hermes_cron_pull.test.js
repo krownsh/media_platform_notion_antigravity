@@ -109,6 +109,29 @@ test('autonomous preprocess migration separates preprocess, research, and review
     assert.doesNotMatch(migration, /workflow\.stage = 'review'/i);
 });
 
+test('Vault sync migration adds a dedicated queue without changing the preprocess queue', () => {
+    const migration = fs.readFileSync(
+        path.join(projectRoot, 'database', 'deployments', 'stage_l_codex_vault_sync.sql'),
+        'utf8'
+    );
+    assert.match(migration, /'vault_sync'/i);
+    assert.match(migration, /p_queue.*'preprocess', 'research', 'vault_sync'/i);
+    assert.match(migration, /workflow\.stage = 'vault_sync'/i);
+    assert.match(migration, /stage in \([\s\S]*'vault_sync'/i);
+});
+
+test('Codex remote preprocess migration parks work before the local Vault write', () => {
+    const migration = fs.readFileSync(
+        path.join(projectRoot, 'database', 'deployments', 'stage_m_codex_remote_preprocess.sql'),
+        'utf8'
+    );
+    assert.match(migration, /create or replace function public\.codex_stage_collection_preprocess/i);
+    assert.match(migration, /security definer/i);
+    assert.match(migration, /set stage = 'vault_sync'/i);
+    assert.match(migration, /grant execute[\s\S]*service_role/i);
+    assert.doesNotMatch(migration, /pgvector|embedding\s+(?:column|table|extension)/i);
+});
+
 test('Hermes Cron gate delegates to an atomic claim command, not the old selector', () => {
     const gate = fs.readFileSync(path.join(projectRoot, 'scripts', 'hermes', 'media-inbox-gate.py'), 'utf8');
     assert.match(gate, /claim-cron-workflow\.js/);

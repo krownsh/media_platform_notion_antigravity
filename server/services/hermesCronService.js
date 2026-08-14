@@ -5,7 +5,7 @@ export const DEFAULT_HERMES_CRON_AGENT_ID = 'hermes:cron:media-inbox';
 export const DEFAULT_HERMES_CRON_LEASE_SECONDS = 1_800;
 export const DEFAULT_HERMES_CRON_QUEUE = 'preprocess';
 
-const CRON_QUEUES = new Set(['preprocess', 'research']);
+const CRON_QUEUES = new Set(['preprocess', 'research', 'vault_sync']);
 
 function normalizeIdentity(value) {
     const identity = String(value || '').trim();

@@ -25,10 +25,11 @@ There is no POC worker or cron worker. POC runs are invoked by the preprocess
 command or the explicit on-demand POC command according to the policy below.
 
 POC execution follows the autonomy policy. A deterministic, network-disabled,
-secret-free sandbox POC may run automatically when confidence is high. A POC
-requiring network, credentials, package installation, paid APIs, or an
-external service is persisted as a review request and is never run by the
-five-minute Cron.
+secret-free sandbox POC may run automatically when confidence is high. Merely
+recording a future POC candidate does not require user review. A POC requiring
+network, credentials, package installation, paid APIs, or an external service
+is persisted as a review request only when Hermes is actually asked to execute
+that POC; it is never run by the five-minute Cron without approval.
 
 ## Lifecycle and vocabulary
 
@@ -106,6 +107,14 @@ work, write `context.review_request`, move it to `review/awaiting_user`, and
 end silently. Never ask the user, invent a decision, publish, modify formal
 project source, or run network/secret/package-install POCs in this Cron.
 
+For a remote DB-only backfill that cannot reach the user's Mac Vault, pass
+`--defer-vault` to `agent:preprocess`. This performs all database work and
+stores the complete note input, then moves the workflow to
+`vault_sync/pending`. It must not invent a Vault path or mark the workflow
+complete. On the Mac, claim the `vault_sync` queue and run
+`agent:vault-sync`; that command writes the real note and restores the
+recorded target (`complete`, `research`, or `review`).
+
 Normal Cron output is `[SILENT]` after the database/Vault result is persisted.
 Only systemic failures such as Supabase unavailable, Vault write failure, a
 contract/migration mismatch, or repeated lease failure should be surfaced.
@@ -162,6 +171,11 @@ never ask the user from inside a Cron tick.
 | Load the exact claimed workflow | `npm run agent:workflow -- <workflow-id>` |
 | Read legacy technical outbox diagnostics | `npm run agent:inbox -- --json --limit 10` |
 | Complete unattended preprocessing | `npm run agent:preprocess -- <workflow-id> --agent <identity> --file <preprocess-result.json>` |
+| Defer only the local Vault write | `npm run agent:preprocess -- <workflow-id> --agent <identity> --file <preprocess-result.json> --defer-vault` |
+| Persist remote DB-only preprocessing | `npm run agent:codex-preprocess -- <workflow-id> --agent codex:db-preprocess --file <preprocess-result.json>` |
+| Claim one deferred Vault sync | `HERMES_CRON_QUEUE=vault_sync npm run agent:cron:claim` |
+| Finalize one deferred Vault sync | `npm run agent:vault-sync -- <workflow-id> --agent <identity> [--vault <path>]` |
+| One-shot drain of deferred Vault notes | `npm run agent:vault-sync:drain -- --agent hermes:manual:vault-sync --max 500` |
 | Complete a deferred research run | `npm run agent:research -- <workflow-id> --agent <identity> --file <research-result.json>` |
 | Claim private image delivery | `npm run agent:claim -- <outbox-id> --agent <identity>` |
 | Materialize private image media | `npm run agent:media -- <outbox-id>` |

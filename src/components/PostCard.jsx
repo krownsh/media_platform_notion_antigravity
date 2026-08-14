@@ -44,6 +44,7 @@ const PostCard = ({
             strategy: workflow.status === 'awaiting_user' ? '待討論策略' : '整理策略中',
             research: '等待研究任務',
             review: '待後續確認',
+            vault_sync: '等待 Vault 同步',
             actions: '執行後續工作中',
             complete: '處理完成'
         };
@@ -117,6 +118,12 @@ const PostCard = ({
                             <span className="max-w-[120px] truncate text-[10px] sm:text-[11px] font-medium leading-none text-[var(--accent)]" title={post.workflow?.last_error || workflowText}>
                                 {workflowText}
                             </span>
+                        </>
+                    )}
+                    {post.drafts?.length > 0 && (
+                        <>
+                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
+                            <span className="rounded-full bg-amber-50 px-1.5 py-1 text-[10px] font-medium text-amber-700" title="已有 Hermes 自動草稿">草稿</span>
                         </>
                     )}
                 </div>

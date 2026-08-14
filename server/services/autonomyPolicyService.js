@@ -14,6 +14,61 @@ function number(value, fallback = 0) {
     return Math.min(1, Math.max(0, parsed));
 }
 
+function textList(value, maxItems = 60, maxLength = 180) {
+    if (!Array.isArray(value)) return [];
+    const seen = new Set();
+    const result = [];
+    for (const item of value) {
+        const normalized = text(item, maxLength).replace(/\s+/g, ' ');
+        const key = normalized.toLocaleLowerCase('zh-TW');
+        if (!normalized || seen.has(key)) continue;
+        seen.add(key);
+        result.push(normalized);
+        if (result.length >= maxItems) break;
+    }
+    return result;
+}
+
+function normalizeSearchInput(value) {
+    const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    return {
+        keywords: textList(input.keywords, 60),
+        entities: textList(input.entities, 40),
+        aliases: textList(input.aliases, 40),
+        memory_cues: textList(input.memory_cues || input.memoryCues, 20, 240)
+    };
+}
+
+function normalizeContentOutput(value) {
+    const input = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+    const mode = text(input.mode, 40).toLowerCase();
+    const allowedModes = new Set(['fast_rewrite', 'content_synthesis']);
+    const skill = input.rewrite_skill && typeof input.rewrite_skill === 'object' && !Array.isArray(input.rewrite_skill)
+        ? input.rewrite_skill
+        : input.skill && typeof input.skill === 'object' && !Array.isArray(input.skill)
+            ? input.skill
+            : {};
+    return {
+        mode: allowedModes.has(mode) ? mode : 'none',
+        format: text(input.format, 40) || null,
+        title: text(input.title, 240) || null,
+        body: text(input.body, 30_000) || null,
+        confidence: number(input.confidence),
+        content_basis: mode === 'content_synthesis' ? 'researched' : 'source_only',
+        published: false,
+        rewrite_skill: {
+            name: text(skill.name || skill.skill_name, 120) || null,
+            version: text(skill.version, 80) || null,
+            preset: text(skill.preset || skill.profile, 120) || null,
+            target_platform: text(skill.target_platform || input.target_platform, 80) || null,
+            brief: text(skill.brief || skill.editorial_brief, 4_000),
+            constraints: Array.isArray(skill.constraints)
+                ? skill.constraints.map(item => text(item, 500)).filter(Boolean).slice(0, 20)
+                : []
+        }
+    };
+}
+
 export function normalizeConfidence(value) {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
         return Object.fromEntries(Object.entries(value)
@@ -184,7 +239,9 @@ export function normalizePreprocessInput(input = {}) {
         vault: input.vault && typeof input.vault === 'object' ? input.vault : {},
         review_request: input.review_request && typeof input.review_request === 'object'
             ? normalizeReviewRequest(input.review_request, autonomy.reason || 'user_confirmation_required')
-            : null
+            : null,
+        search: normalizeSearchInput(input.search || input.search_document),
+        content_output: normalizeContentOutput(input.content_output || input.content)
     };
 
     if (normalized.folder.confidence < AUTONOMY_CONFIDENCE_THRESHOLD) {
@@ -231,6 +288,8 @@ export function buildAutomationContext(result, extra = {}) {
                 result: result.poc.result
             } : null
         },
+        search: result.search,
+        content_output: result.content_output,
         ...(result.review_request ? { review_request: result.review_request } : {})
     };
 }

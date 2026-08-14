@@ -72,6 +72,34 @@ const CommentItem = ({ comment, depth = 0, onImageClick }) => {
     );
 };
 
+const WorkflowSummaryPanel = ({ post }) => {
+    const workflow = post.workflow;
+    const drafts = Array.isArray(post.drafts) ? post.drafts : [];
+    const review = post.reviewRequest;
+    const vault = post.vault;
+    if (!workflow && drafts.length === 0 && !vault) return null;
+    return (
+        <div className="mt-6 space-y-3">
+            <div className="flow-panel p-4">
+                <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)]">HERMES 工作流</h3>
+                    {workflow && <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-[10px] text-[var(--accent)]">{workflow.stage} / {workflow.status}</span>}
+                </div>
+                {vault?.relative_path && <p className="mt-3 text-xs text-[var(--muted-foreground)] break-all">Vault：{vault.relative_path}</p>}
+                {review && <div className="mt-3 border-t border-[var(--border)] pt-3"><p className="text-sm leading-6 text-[var(--foreground)]">{review.question}</p><div className="mt-2 flex flex-wrap gap-1.5">{(review.options || []).map(option => <span key={option} className="rounded-full border border-black/10 px-2 py-1 text-[10px] text-[#615d59]">{option}</span>)}</div></div>}
+            </div>
+            {drafts.map((draft) => (
+                <div key={draft.id} className="flow-panel p-4">
+                    <div className="flex items-center justify-between gap-3"><h3 className="text-[10px] tracking-[0.16em] font-bold text-amber-700">自動改寫草稿</h3><span className="text-[10px] text-[#615d59]">{draft.format} · {draft.status}</span></div>
+                    <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{draft.title}</p>
+                    {draft.latestRevision?.body && <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--foreground)]/80 line-clamp-8">{draft.latestRevision.body}</p>}
+                    <p className="mt-3 text-[10px] text-[#615d59]">草稿不會自動發布，可在後續互動任務中修改或審核。</p>
+                </div>
+            ))}
+        </div>
+    );
+};
+
 const PostDetailView = ({ onRemix }) => {
     const { postId } = useParams();
     const navigate = useNavigate();
@@ -366,6 +394,7 @@ const PostDetailView = ({ onRemix }) => {
                     <div className="flex-1 md:overflow-y-auto p-5 custom-scrollbar">
                         <PocResultPanel insights={analysis?.insights} />
                         <PocWorkbenchPanel postId={post.dbId || post.id} />
+                        <WorkflowSummaryPanel post={post} />
 
                         {analysis?.summary ? (
                             <div className="mt-6 space-y-6">

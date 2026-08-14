@@ -20,6 +20,8 @@ import {
 import { writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
 import { runPocWorkflow } from '../../server/services/pocService.js';
 import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
+import { storePreparedContentDraft } from '../../server/services/contentRouteService.js';
+import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,31 +44,52 @@ function sourceUrl(post) {
     return post?.platform === 'image' ? '（圖片上傳，無公開連結）' : (post?.original_url || '（無原文連結）');
 }
 
-function actionPlan(vaultOutcome) {
+function contentAction(contentDraft) {
+    if (!contentDraft?.content_asset_id) return null;
     return {
-        schema_version: 2,
-        actions: [{
-            type: 'vault_note',
-            status: 'completed',
-            requested_by: 'hermes:preprocess',
-            requested_at: new Date().toISOString(),
-            completed_by: 'hermes:preprocess',
-            completed_at: new Date().toISOString(),
-            outcome: vaultOutcome
-        }]
+        type: contentDraft.route_type === 'quick_rewrite' ? 'fast_rewrite' : contentDraft.route_type,
+        status: 'completed',
+        requested_by: 'hermes:preprocess',
+        requested_at: new Date().toISOString(),
+        completed_by: 'hermes:preprocess',
+        completed_at: new Date().toISOString(),
+        outcome: contentDraft
     };
 }
 
-function deferredVaultActionPlan() {
+function actionPlan(vaultOutcome, contentDraft) {
+    const actions = [];
+    const generated = contentAction(contentDraft);
+    if (generated) actions.push(generated);
+    actions.push({
+        type: 'vault_note',
+        status: 'completed',
+        requested_by: 'hermes:preprocess',
+        requested_at: new Date().toISOString(),
+        completed_by: 'hermes:preprocess',
+        completed_at: new Date().toISOString(),
+        outcome: vaultOutcome
+    });
     return {
         schema_version: 2,
-        actions: [{
-            type: 'vault_note',
-            status: 'pending',
-            requested_by: 'codex:db-preprocess',
-            requested_at: new Date().toISOString(),
-            notes: 'Write the prepared note to the configured Claude-Obsidian Vault before finalizing this workflow.'
-        }]
+        actions
+    };
+}
+
+function deferredVaultActionPlan(contentDraft) {
+    const actions = [];
+    const generated = contentAction(contentDraft);
+    if (generated) actions.push(generated);
+    actions.push({
+        type: 'vault_note',
+        status: 'pending',
+        requested_by: 'codex:db-preprocess',
+        requested_at: new Date().toISOString(),
+        notes: 'Write the prepared note to the configured Claude-Obsidian Vault before finalizing this workflow.'
+    });
+    return {
+        schema_version: 2,
+        actions
     };
 }
 
@@ -88,7 +111,7 @@ function compactPocResult(result) {
     };
 }
 
-function toNoteInput(result, post, persistence, pocResult, folderPersistence) {
+function toNoteInput(result, post, persistence, pocResult, folderPersistence, contentDraft) {
     const review = result.review_request;
     const decision = result.autonomy.outcome === 'complete'
         ? 'Hermes 依據高信心且低風險規則完成預處理。'
@@ -127,7 +150,14 @@ function toNoteInput(result, post, persistence, pocResult, folderPersistence) {
         tags: result.analysis.tags,
         topics: result.analysis.topics,
         replication: result.vault.replication || undefined,
-        source_url: sourceUrl(post)
+        source_url: sourceUrl(post),
+        content_draft: contentDraft
+            ? {
+                ...contentDraft,
+                status: 'draft',
+                published: false
+            }
+            : null
     };
 }
 
@@ -184,7 +214,30 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             }
         }
 
-        const noteInput = toNoteInput(result, post, persistence, pocResult, folderPersistence);
+        let contentDraft = null;
+        const output = result.content_output;
+        const outputConfidence = Number(output?.confidence || 0);
+        const canAutoRewrite = output?.mode === 'fast_rewrite'
+            && output?.body
+            && outputConfidence >= 0.85
+            && result.autonomy.outcome !== 'review_pending';
+        const canAutoSynthesize = output?.mode === 'content_synthesis'
+            && output?.body
+            && outputConfidence >= 0.85
+            && (pocResult?.status === 'completed' || result.research.candidates.length > 0)
+            && result.autonomy.outcome !== 'review_pending';
+        if (canAutoRewrite || canAutoSynthesize) {
+            contentDraft = await storePreparedContentDraft({
+                postData: post,
+                routeType: output.mode,
+                contentOutput: output
+            }, {
+                supabaseClient: supabase,
+                pocRunId: pocResult?.run_id || null
+            });
+        }
+
+        const noteInput = toNoteInput(result, post, persistence, pocResult, folderPersistence, contentDraft);
         const next = result.autonomy.outcome === 'complete'
         ? { stage: 'complete', status: 'completed' }
         : result.autonomy.outcome === 'research_pending'
@@ -211,10 +264,17 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                 stage: 'vault_sync',
                 status: 'pending',
                 context,
-                actionPlan: deferredVaultActionPlan(),
+                actionPlan: deferredVaultActionPlan(contentDraft),
                 failedStage: null,
                 lastError: null
             }, supabase);
+            await upsertPostSearchDocument(post, {
+                supabaseClient: supabase,
+                analysis: result.analysis,
+                workflow: transitioned,
+                generated: result.search,
+                contentDraft: contentDraft?.body || null
+            }).catch(error => console.warn(`[Hermes Preprocess] Search projection skipped: ${error.message}`));
             await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabase);
             return {
                 ok: true,
@@ -226,11 +286,13 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                 autonomy: result.autonomy,
                 exact_duplicate: persistence.exact_duplicate?.id || null,
                 vault_path: null,
+                content_draft: contentDraft,
                 poc: result.poc?.result || null
             };
         }
 
         const vaultOutcome = await writeWorkflowVaultNotes({ workflow, noteInput, vaultRoot: options.vaultRoot });
+        if (contentDraft && vaultOutcome.draft_path) contentDraft.relative_path = vaultOutcome.draft_path;
         const context = buildAutomationContext(result, {
             source_identity: persistence,
             topic_persistence: topicPersistence,
@@ -244,11 +306,18 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             stage: next.stage,
             status: next.status,
             context,
-            actionPlan: actionPlan(vaultOutcome),
+            actionPlan: actionPlan(vaultOutcome, contentDraft),
             failedStage: null,
             lastError: null
         }, supabase);
         await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabase);
+        await upsertPostSearchDocument(post, {
+            supabaseClient: supabase,
+            analysis: result.analysis,
+            workflow: transitioned,
+            generated: result.search,
+            contentDraft: contentDraft?.body || null
+        }).catch(error => console.warn(`[Hermes Preprocess] Search projection skipped: ${error.message}`));
         return {
             ok: true,
             workflow_id: transitioned.id,
@@ -257,6 +326,7 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             autonomy: result.autonomy,
             exact_duplicate: persistence.exact_duplicate?.id || null,
             vault_path: vaultOutcome.relative_path,
+            content_draft: contentDraft,
             poc: result.poc?.result || null
         };
     } catch (error) {

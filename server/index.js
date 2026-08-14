@@ -23,6 +23,7 @@ import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
+import { searchRouter } from './routes/searchRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -205,6 +206,7 @@ app.use('/api/image-workflow', requireSupabaseJwt);
 app.use('/api/publish', requireSupabaseJwt);
 app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
+app.use('/api/search', requireSupabaseJwt, searchRouter);
 
 function normalizeTopicTextList(value) {
     return Array.isArray(value)
@@ -518,7 +520,12 @@ app.get('/api/posts', async (req, res) => {
             collection_post_comments (*),
             collection_post_analysis (*),
             collection_post_workflows (*),
-            collection_user_annotations (*)
+            collection_user_annotations (*),
+            content_assets (
+                id, source_id, title, format, status, metadata, created_at, updated_at,
+                content_revisions (id, revision_number, body, author_type, created_at, updated_at),
+                content_evidence_links (id, evidence_type, target_id, citation_text)
+            )
         `;
         // Fetch posts. The workflow relation is deployed in Stage G; the
         // fallback keeps existing environments readable until that deployment
@@ -529,7 +536,7 @@ app.get('/api/posts', async (req, res) => {
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
-        if (postsError && /collection_post_workflows/i.test(postsError.message || '')) {
+        if (postsError && /(collection_post_workflows|content_assets)/i.test(postsError.message || '')) {
             ({ data: posts, error: postsError } = await supabase
                 .from('collection_posts')
                 .select(`
@@ -578,7 +585,14 @@ app.get('/api/posts', async (req, res) => {
             })) || [],
             annotations: post.collection_user_annotations || [],
             analysis: post.collection_post_analysis?.[0] || null,
-            workflow: post.collection_post_workflows?.[0] || null
+            workflow: post.collection_post_workflows?.[0] || null,
+            reviewRequest: post.collection_post_workflows?.[0]?.context?.review_request || null,
+            vault: post.collection_post_workflows?.[0]?.context?.vault || null,
+            drafts: (post.content_assets || []).map(asset => ({
+                ...asset,
+                latestRevision: [...(asset.content_revisions || [])]
+                    .sort((a, b) => Number(b.revision_number || 0) - Number(a.revision_number || 0))[0] || null
+            }))
         }));
 
         res.json({ posts: formattedPosts, collections: collections || [] });

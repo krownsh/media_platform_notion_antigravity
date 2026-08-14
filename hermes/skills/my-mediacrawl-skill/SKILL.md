@@ -137,7 +137,10 @@ the policy can distinguish safe automatic completion from deferred work:
   "topic": {"title": "...", "confidence": 0.88, "keywords": []},
   "folder": {"domain": "繁體中文領域", "confidence": 0.86},
   "research": {"questions": [], "candidates": [], "priority": "normal"},
-  "poc": {"auto_execute": false, "network_required": false, "secrets_required": false}
+  "poc": {"auto_execute": false, "network_required": false, "secrets_required": false},
+  "search": {"keywords": [], "entities": [], "aliases": [], "memory_cues": []},
+  "content_output": {"mode": "fast_rewrite", "format": "x_thread", "title": "", "body": "", "confidence": 0.90,
+    "rewrite_skill": {"name": "my-rewrite-editorial-skill", "version": "", "preset": "", "target_platform": "", "brief": "", "constraints": []}}
 }
 ```
 
@@ -271,18 +274,35 @@ The source note links to the replication folder. Do not mix two replication
 projects in one folder. Hermes chooses the Traditional-Chinese domain, project
 name, and note title when the user does not provide them.
 
-## Content output
+## Content output and recall search
 
-Rewrite is an output stage, not a default triage route.
+Rewrite is an output stage, not a default triage route; the unattended path
+only creates it when the explicit confidence and safety gates below pass.
 
-- `content_synthesis`: after research, project comparison, or a test, create a
-  new draft based on the source plus our conclusions. Preserve source
-  attribution and distinguish verified facts from our opinion.
-- `fast_rewrite`: only when the user explicitly asks to quickly adapt or
-  recreate the source. Mark its outcome `content_basis: "source_only"`.
+Every unattended preprocess run should extract a compact, high-quality recall
+index (usually 25–50 terms, not a blind 100-keyword dump): `keywords` for
+concepts, `entities` for products/people/projects, `aliases` for alternate
+names, and `memory_cues` for natural phrases the owner may remember later.
+The application stores these in a lexical PostgreSQL search projection; never
+invent embeddings or vector storage.
 
-Neither action publishes automatically. If research or validation informed the
-draft, record `content_basis: "researched"` or `"validated"` in the outcome.
+When confidence is high and the operation is reversible, `fast_rewrite` may be
+generated during preprocess without a user prompt. It is stored as a Draft in
+`content_assets`/`content_revisions` and in the Vault, and is **never
+published**. Use `content_basis: "source_only"` and include attribution. If
+confidence is low, omit the body and leave the workflow's review request in
+the database.
+
+The `rewrite_skill` object is an extension point for the owner's separate
+編稿／改寫 Skill. Preserve its name, version, preset, target platform, brief,
+and constraints in the Draft metadata; do not copy or replace that Skill in
+this repository. If the external Skill is unavailable, leave the body empty
+unless the generic rewrite is still high-confidence and safe.
+
+`content_synthesis` remains gated: only generate it after a completed offline
+POC or recorded research evidence. Mark the basis `researched` or `validated`.
+Neither route publishes automatically. A later interactive command may revise,
+approve, or publish a draft.
 
 For an approved `fast_rewrite` or `content_synthesis`, use
 `agent:create-draft`; it persists a content asset and marks only that action

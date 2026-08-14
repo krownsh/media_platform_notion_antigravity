@@ -10,6 +10,7 @@ import {
     releaseHermesCronWorkflow
 } from '../../server/services/hermesCronService.js';
 import { writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
+import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,6 +97,14 @@ export async function syncVaultWorkflow(workflowId, options = {}) {
             lastError: null
         }, supabaseClient);
         await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabaseClient);
+        const post = Array.isArray(workflow.collection_posts) ? workflow.collection_posts[0] : workflow.collection_posts;
+        await upsertPostSearchDocument(post, {
+            supabaseClient,
+            analysis: workflow.context?.preprocess?.analysis,
+            workflow: transitioned,
+            generated: workflow.context?.search,
+            contentDraft: workflow.context?.content_output?.body || null
+        }).catch(error => console.warn(`[Hermes Vault Sync] Search projection skipped: ${error.message}`));
         return {
             ok: true,
             workflow_id: transitioned.id,

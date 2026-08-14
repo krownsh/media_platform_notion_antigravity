@@ -11,6 +11,7 @@ import PostDetailView from './components/PostDetailView';
 import ImageWorkflowPage from './pages/ImageWorkflowPage';
 import InsightPage from './pages/InsightPage';
 import TopicsPage from './pages/TopicsPage';
+import SearchPage from './pages/SearchPage';
 import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
 import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
@@ -108,6 +109,11 @@ function App() {
           <Route path="/topics" element={
             <ProtectedRoute>
               <TopicsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/search" element={
+            <ProtectedRoute>
+              <SearchPage />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<LoginPage />} />

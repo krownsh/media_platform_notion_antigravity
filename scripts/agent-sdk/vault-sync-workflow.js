@@ -53,8 +53,9 @@ function completedVaultActionPlan(actionPlan, outcome, agentIdentity) {
 
 export async function syncVaultWorkflow(workflowId, options = {}) {
     if (!options.agentIdentity) throw new Error('--agent <identity> is required');
-    const { supabase } = await import('../../server/supabaseClient.js');
-    let workflow = await loadWorkflow(workflowId, supabase);
+    const { supabase: defaultSupabase } = await import('../../server/supabaseClient.js');
+    const supabaseClient = options.supabaseClient || defaultSupabase;
+    let workflow = await loadWorkflow(workflowId, supabaseClient);
     if (workflow.stage !== 'vault_sync' || workflow.status !== 'processing'
         || workflow.locked_by !== options.agentIdentity) {
         throw new Error(`Workflow ${workflow.id} is not leased for Vault sync by ${options.agentIdentity}`);
@@ -93,8 +94,8 @@ export async function syncVaultWorkflow(workflowId, options = {}) {
             actionPlan: completedVaultActionPlan(workflow.action_plan, vaultOutcome, options.agentIdentity),
             failedStage: null,
             lastError: null
-        }, supabase);
-        await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabase);
+        }, supabaseClient);
+        await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabaseClient);
         return {
             ok: true,
             workflow_id: transitioned.id,
@@ -104,7 +105,7 @@ export async function syncVaultWorkflow(workflowId, options = {}) {
         };
     } catch (error) {
         try {
-            workflow = await loadWorkflow(workflowId, supabase);
+            workflow = await loadWorkflow(workflowId, supabaseClient);
             if (workflow.status === 'processing' && workflow.locked_by === options.agentIdentity) {
                 await transitionWorkflow({
                     workflow,
@@ -113,12 +114,12 @@ export async function syncVaultWorkflow(workflowId, options = {}) {
                     status: 'failed',
                     failedStage: 'vault_sync',
                     lastError: error.message
-                }, supabase);
+                }, supabaseClient);
             }
         } catch (persistError) {
             console.error(`[Hermes Vault Sync] Failed to persist error: ${persistError.message}`);
         }
-        await releaseHermesCronWorkflow({ workflowId, agentId: options.agentIdentity }, supabase).catch(() => {});
+        await releaseHermesCronWorkflow({ workflowId, agentId: options.agentIdentity }, supabaseClient).catch(() => {});
         throw error;
     }
 }

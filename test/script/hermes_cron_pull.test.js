@@ -132,6 +132,17 @@ test('Codex remote preprocess migration parks work before the local Vault write'
     assert.doesNotMatch(migration, /pgvector|embedding\s+(?:column|table|extension)/i);
 });
 
+test('legacy JSON summaries are normalized without guessing malformed rows', () => {
+    const migration = fs.readFileSync(
+        path.join(projectRoot, 'database', 'deployments', 'stage_m_2_normalize_legacy_analysis_summaries.sql'),
+        'utf8'
+    );
+    assert.match(migration, /core_insight/i);
+    assert.match(migration, /key_points/i);
+    assert.match(migration, /exception when others/i);
+    assert.match(migration, /vault_sync.*note_input/s);
+});
+
 test('Hermes Cron gate delegates to an atomic claim command, not the old selector', () => {
     const gate = fs.readFileSync(path.join(projectRoot, 'scripts', 'hermes', 'media-inbox-gate.py'), 'utf8');
     assert.match(gate, /claim-cron-workflow\.js/);

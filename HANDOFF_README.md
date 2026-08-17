@@ -1,5 +1,22 @@
 # media_platform_notion_antigravity 本機交付說明
 
+## 2026-08-13 最新狀態
+
+本專案目前採用純 Hermes Cron Pull。Capture Worker 完成擷取後只寫入
+Supabase；不再發送 Hermes Webhook，也不再使用 Hermes Dispatcher PM2。
+
+已套用至共用 Supabase（`dcyjictvatixbflfrsfg`）：
+
+- 移除 `collection_hermes_dispatches`、`collection_hermes_agent_slots`。
+- 移除 Stage H/I 的 enqueue trigger 與 dispatcher／agent lease RPC。
+- 新增 `collection_hermes_cron_leases` singleton lease，以及 claim、heartbeat、release RPC。
+- 保留 `collection_capture_outbox`、`collection_post_workflows`、`collection_posts`、`collection_post_analysis`。
+- Hermes Gateway route/config 保持原樣，僅不再由本專案呼叫。
+
+本機本輪驗證：`npm run lint`、`npm run build`、`node --test` 均通過。
+
+以下舊段落是早期 Stage E/F ZIP 交付紀錄，不代表目前遠端狀態。
+
 這份交付來自 `agent/async-capture-pipeline` 工作樹，包含：
 
 - 非同步 URL capture queue（Stage E）
@@ -44,7 +61,7 @@ ZIP 已排除 `.git`、`node_modules`、`dist`、真正的 `.env`、logs 與 cov
 解壓後可以直接用 VS Code 閱讀。若要推回 GitHub，建議先另行 clone GitHub repo，
 再把 ZIP 內容複製進 clone，而不是在 ZIP 目錄重新建立不相干的 Git 歷史。
 
-## 尚未執行
+## 早期交付時尚未執行
 
 - 沒有修改遠端 Supabase。
 - Stage E／Stage F SQL 尚未部署。

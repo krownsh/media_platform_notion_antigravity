@@ -1,6 +1,16 @@
 import { supabase } from '../supabaseClient.js';
 
-export const WORKFLOW_STAGES = new Set(['base_analysis', 'triage', 'strategy', 'actions', 'complete']);
+export const WORKFLOW_STAGES = new Set([
+    'base_analysis',
+    'triage',
+    'preprocessing',
+    'vault_sync',
+    'strategy',
+    'research',
+    'review',
+    'actions',
+    'complete'
+]);
 export const WORKFLOW_STATUSES = new Set(['pending', 'processing', 'awaiting_user', 'completed', 'failed', 'blocked']);
 
 const MAX_ERROR_LENGTH = 4_000;
@@ -9,8 +19,9 @@ const WORKFLOW_SELECT = `
   context, action_plan, attempt_count, max_attempts, available_at,
   locked_at, locked_by, failed_stage, last_error, completed_at,
   created_at, updated_at,
-  collection_posts (
-    id, user_id, platform, original_url, title, author_name, content, full_json, collection_id,
+    collection_posts (
+    id, user_id, platform, original_url, canonical_url, content_hash, platform_post_id,
+    title, author_name, content, full_json, collection_id,
     collection_post_media (*),
     collection_post_analysis (*)
   )
@@ -120,6 +131,7 @@ export async function updateWorkflowAfterCapture(input, supabaseClient = supabas
 export async function markImageWorkflowAnalyzed(input, supabaseClient = supabase) {
     const workflow = await loadWorkflowByOutbox(input?.outboxEventId, supabaseClient);
     const identity = normalizeIdentity(input?.agentIdentity);
+    const keepCronLease = Boolean(input?.cron);
     const context = {
         ...asObject(workflow.context),
         base_analysis: {
@@ -135,13 +147,13 @@ export async function markImageWorkflowAnalyzed(input, supabaseClient = supabase
         .from('collection_post_workflows')
         .update({
             stage: 'triage',
-            status: 'pending',
+            status: keepCronLease ? 'processing' : 'pending',
             context,
             failed_stage: null,
             last_error: null,
             available_at: new Date().toISOString(),
-            locked_at: null,
-            locked_by: null
+            locked_at: keepCronLease ? new Date().toISOString() : null,
+            locked_by: keepCronLease ? identity : null
         })
         .eq('id', workflow.id)
         .eq('updated_at', workflow.updated_at)
@@ -177,8 +189,8 @@ export async function selectNextWorkflow(options = {}, supabaseClient = supabase
         .eq('status', status)
         .lte('available_at', now)
         .or(`locked_at.is.null,locked_at.lt.${staleBefore}`)
-        .order(status === 'failed' ? 'updated_at' : 'created_at', { ascending: false })
-        .limit(status === 'failed' ? 20 : 1);
+        .order(status === 'failed' ? 'updated_at' : 'created_at', { ascending: true })
+        .limit(status === 'failed' || status === 'awaiting_user' ? 20 : 1);
 
     const { data: failed, error: failedError } = await query('failed');
     if (failedError) throw new Error(`Workflow failure lookup failed: ${failedError.message}`);
@@ -192,12 +204,14 @@ export async function selectNextWorkflow(options = {}, supabaseClient = supabase
     if (options.interactive) {
         const { data: awaiting, error: awaitingError } = await query('awaiting_user');
         if (awaitingError) throw new Error(`Workflow decision lookup failed: ${awaitingError.message}`);
+        const review = (awaiting || []).find(item => item.stage === 'review');
+        if (review) return { workflow: review, selection: 'review' };
         if (awaiting?.[0]) return { workflow: awaiting[0], selection: 'awaiting_user' };
     }
 
     const { data: pending, error: pendingError } = await query('pending');
     if (pendingError) throw new Error(`Workflow pending lookup failed: ${pendingError.message}`);
-    return pending?.[0] ? { workflow: pending[0], selection: 'latest_pending' } : null;
+    return pending?.[0] ? { workflow: pending[0], selection: 'oldest_pending' } : null;
 }
 
 export async function claimWorkflow(workflow, agentIdentity, supabaseClient = supabase, options = {}) {

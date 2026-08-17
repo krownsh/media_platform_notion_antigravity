@@ -155,6 +155,7 @@ test('worker completes a leased request through the durable status service', asy
         postId: 'post-3',
         outboxEventId: 'event-3'
     });
+    assert.equal(Object.hasOwn(result, 'hermesDispatch'), false);
 });
 
 test('worker records retry state when processing fails', async () => {

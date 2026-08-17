@@ -129,6 +129,9 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
     const poc = markdownText(noteInput.poc, 20_000);
     const nextStep = markdownText(noteInput.next_step, 8_000);
     const decision = markdownText(noteInput.decision, 8_000);
+    const contentDraft = noteInput.content_draft && typeof noteInput.content_draft === 'object'
+        ? noteInput.content_draft
+        : null;
     const tags = Array.isArray(noteInput.tags) ? noteInput.tags : analysis?.tags;
     const topics = Array.isArray(noteInput.topics) ? noteInput.topics : analysis?.topics;
     const sourceUrl = post?.platform === 'image'
@@ -168,6 +171,21 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         '## 下一步',
         nextStep || '（尚未提供）'
     ];
+    if (contentDraft?.body) {
+        lines.push(
+            '',
+            '## 自動改寫草稿',
+            `- 格式: ${yamlText(contentDraft.format || '未指定')}`,
+            `- 狀態: ${yamlText(contentDraft.status || 'draft')}`,
+            `- 依據: ${yamlText(contentDraft.content_basis || 'source_only')}`,
+            contentDraft.rewrite_skill?.name ? `- 編稿 Skill: ${yamlText(contentDraft.rewrite_skill.name)}` : '',
+            contentDraft.rewrite_skill?.preset ? `- 編稿預設: ${yamlText(contentDraft.rewrite_skill.preset)}` : '',
+            `- 發布: ${contentDraft.published ? '已發布' : '未發布（僅草稿）'}`,
+            contentDraft.relative_path ? `- 草稿檔案: ${contentDraft.relative_path}` : '',
+            '',
+            markdownText(contentDraft.body, 30_000)
+        );
+    }
     if (replication) {
         lines.push('', '## 復刻規劃連結', `- ${replication.relative_path}`);
     }
@@ -287,9 +305,48 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
         forceReplication: Boolean(replicationAction)
     });
     const replication = paths.replication && replicationAction ? paths.replication : null;
+    const draft = effectiveNoteInput.content_draft && typeof effectiveNoteInput.content_draft === 'object'
+        ? effectiveNoteInput.content_draft
+        : null;
+    let draftPath = null;
+    let draftFile = null;
+    let draftFormat = null;
+    let draftTitle = null;
+    if (draft?.body) {
+        const draftDomain = safeSegment(paths.domain, '未分類', 'draft domain');
+        draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
+        draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
+        draftFile = path.resolve(root, 'content', 'drafts', draftDomain, draftFormat, `${draftTitle}.md`);
+        assertInside(root, draftFile);
+        draftPath = path.relative(root, draftFile).split(path.sep).join('/');
+        effectiveNoteInput.content_draft.relative_path = draftPath;
+    }
     const wikiManaged = buildManagedBlock({ workflow, noteInput: effectiveNoteInput, post, analysis, replication });
     const existingWiki = await fs.readFile(paths.wiki.path, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
     await atomicWrite(paths.wiki.path, mergeManagedBlock(existingWiki, wikiManaged));
+
+    if (draft?.body) {
+        const draftNote = [
+            `# ${draftTitle}`,
+            '',
+            `- workflow_id: ${workflow.id}`,
+            `- database_post_id: ${post.id}`,
+            `- format: ${draftFormat}`,
+            `- status: ${draft.status || 'draft'}`,
+            `- content_basis: ${draft.content_basis || 'source_only'}`,
+            `- published: ${draft.published ? 'true' : 'false'}`,
+            `- source_note: ../../../../wiki/domains/${paths.domain}/${paths.note_title}.md`,
+            '',
+            VAULT_MANAGED_START,
+            '## 草稿內容',
+            markdownText(draft.body, 30_000),
+            '',
+            VAULT_MANAGED_END,
+            ''
+        ].join('\n');
+        const existingDraft = await fs.readFile(draftFile, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
+        await atomicWrite(draftFile, existingDraft ? mergeManagedBlock(existingDraft, draftNote) : draftNote);
+    }
 
     if (replication) {
         const existingReplication = await fs.readFile(replication.path, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
@@ -303,6 +360,7 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
         vault_root: root,
         relative_path: paths.wiki.relative_path,
         replication_path: replication?.relative_path || null,
+        draft_path: draftPath,
         note_title: paths.note_title,
         domain: paths.domain,
         source_url: post.platform === 'image' ? null : (post.original_url || null),

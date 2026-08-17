@@ -12,7 +12,8 @@ Capture request, technical outbox, and user-visible post workflow are distinct:
 - `collection_capture_outbox.status = sent` is only delivery acknowledgement.
   It never means the post was researched, tested, rewritten, or completed.
 - `collection_post_workflows.stage/status` is the authoritative user-facing
-  lifecycle: base analysis → triage → strategy → approved actions → complete.
+  lifecycle: base analysis → triage → preprocessing → research/review →
+  approved actions → complete.
 - Every approved plan ends with a mandatory `vault_note`; completion is blocked
   until the note is written to Claude-Obsidian with `collection_posts.id` and
   the source URL. See the skill's Vault note reference for the JSON contract.
@@ -21,35 +22,70 @@ URL capture runs the existing category/summary/tags analysis in Capture Worker.
 Image capture stores private media first; Hermes performs image inspection and
 analysis before triage.
 
-## Hermes scheduling
+## Hermes Cron Pull
 
-The optional Hermes Cron must run `scripts/hermes/media-inbox-gate.py`. The gate
-calls `agent:next` (not the technical outbox inbox) and wakes Hermes only for a
-safe retryable/`pending` workflow. It intentionally ignores
-`strategy/awaiting_user`: that state needs a human conversation, not another
-automated run.
+Hermes is driven by its own Cron Pull. `scripts/hermes/media-inbox-gate.py`
+delegates to `agent:cron:claim`, which atomically claims one row from
+`collection_post_workflows` and owns a singleton lease in Supabase. It never
+reads a Hermes dispatch table and it never starts a resident local worker.
 
-The scheduled prompt should say:
+The gate returns `wakeAgent=false` when there is no available workflow or when
+another Hermes run owns the lease. The five-minute `preprocess` queue ignores
+`research` and `review/awaiting_user`; those are handled by separate research
+or decision runs. A run must use the claimed `workflow_id` only, heartbeat
+long work, and release the lease after it persists its result. Claiming is FIFO
+across the complete available queue, including historical rows; there is no
+date cutoff.
+
+The scheduled preprocess prompt should say:
 
 ```text
-Use /my-mediacrawl-skill. Read the gate workflow result and process exactly one
-selected workflow with identity hermes:cron:media-inbox. For base_analysis image
-work, claim/materialize/inspect/write image analysis; for triage/pending, run
-agent:triage. Stop at strategy/awaiting_user. Never invent an action plan,
-execute a POC, publish, install packages, deploy, or modify project source.
-Report failures; respond [SILENT] only when wakeAgent is false.
+Use /my-mediacrawl-skill. The gate has already claimed exactly one workflow.
+Process only its workflow_id with identity hermes:cron:media-inbox. For
+base_analysis image work, materialize/inspect/write image analysis, then create
+the structured preprocess result and run agent:preprocess. For triage/processing,
+create the structured preprocess result and run agent:preprocess. Complete all
+high-confidence, low-risk work, write source notes, and persist research or
+review requests in Supabase. Do not ask the user during this run. Networked
+POC, credentials, package installation, deployment, publishing, and formal
+project edits remain deferred. agent:preprocess owns lease release. Respond
+[SILENT] after a persisted result; report only systemic failures.
 ```
+
+The preprocess JSON must include `automation.outcome` (`complete`,
+`research_pending`, or `review_pending`), per-domain confidence scores, and
+`automation.risk_level` (`low`, `medium`, or `high`). Missing safety evidence
+is treated as high risk. A networked, credentialed, package-install, paid API,
+or external-side-effect POC must be marked `network_required` and deferred;
+offline secret-free POCs may run when confidence is high.
 
 For interactive work, the user asks Hermes to “處理一篇貼文”; Hermes runs
 `npm run agent:next -- --interactive`, shows the selected source, then follows
 the skill. It never asks the user for an outbox ID.
 
+A separate research Cron sets `HERMES_CRON_QUEUE=research`, claims one
+`research/pending` row, performs the research, and runs `agent:research`. It
+also persists any approval question instead of prompting during the Cron tick.
+
+For a remote DB-only backfill that cannot reach the Mac Vault, use
+`agent:preprocess --defer-vault` or `agent:codex-preprocess`. Both persist the
+analysis, exact-duplicate identity, topic/folder decisions, and the complete
+note input, then park the row in `vault_sync/pending`. They never invent a
+local path or mark the workflow complete. The Mac-side `agent:vault-sync` run
+is the only step allowed to write Claude-Obsidian and restore the recorded
+target (`complete`, `research`, or `review`).
+
+For a one-time backlog drain (without enabling Cron), run
+`npm run agent:vault-sync:drain -- --agent hermes:manual:vault-sync --max 500`.
+It claims one row at a time, writes each real note, releases the lease, and
+exits when the `vault_sync` queue is empty or a systemic Vault error occurs.
+
 ## Deployment and verification
 
 Deploy `database/deployments/stage_g_post_workflow.sql` after its listed
-prerequisites, then restart the existing API server and Capture Worker PM2
-processes. See [post_workflow.md](post_workflow.md) for the exact deployment
-note. No third permanent worker is required.
+prerequisites, then deploy Stage J cleanup and restart only the existing API
+server and Capture Worker PM2 processes. See [post_workflow.md](post_workflow.md)
+for the workflow deployment note. No third permanent worker is required.
 
 The browser reads workflow state from `/api/posts` and refreshes it while the
 user is signed in. Folder scope is optional background and project context; it

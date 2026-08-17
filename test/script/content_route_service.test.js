@@ -4,7 +4,8 @@ import test from 'node:test';
 import {
   buildContentRouteIdempotencyKey,
   createAndStoreContentRoute,
-  getContentRouteConfig
+  getContentRouteConfig,
+  storePreparedContentDraft
 } from '../../server/services/contentRouteService.js';
 import { buildInitialRouteState, transitionOutboxRoute } from '../../server/services/outboxRouteStateService.js';
 
@@ -78,4 +79,38 @@ test('content route storage sends stable idempotency and validated POC evidence 
   assert.equal(rpcArgs.p_idempotency_key, buildContentRouteIdempotencyKey(postData, 'quick_rewrite'));
   assert.equal(stored.content_asset_id, '44444444-4444-4444-8444-444444444444');
   assert.equal(stored.created, true);
+});
+
+test('Hermes can persist a prepared rewrite without a second model call', async () => {
+  let args;
+  const result = await storePreparedContentDraft({
+    postData,
+    routeType: 'quick_rewrite',
+    contentOutput: {
+      mode: 'fast_rewrite',
+      format: 'x_thread',
+      title: 'Prepared draft',
+      body: 'Source-only draft body',
+      confidence: 0.94
+    }
+  }, {
+    supabaseClient: {
+      rpc(_name, rpcArgs) {
+        args = rpcArgs;
+        return Promise.resolve({
+          data: [{
+            content_asset_id: '66666666-6666-4666-8666-666666666666',
+            content_revision_id: '77777777-7777-4777-8777-777777777777',
+            revision_number: 1,
+            created: true
+          }],
+          error: null
+        });
+      }
+    }
+  });
+  assert.equal(args.p_format, 'x_thread');
+  assert.equal(args.p_metadata.generator, 'hermes_preprocess_v1');
+  assert.equal(args.p_metadata.published, false);
+  assert.equal(result.content_asset_id, '66666666-6666-4666-8666-666666666666');
 });

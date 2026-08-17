@@ -32,14 +32,15 @@ test('/api/process keeps the n8n-facing route and response contract', () => {
     assert.match(serverSource, /const \{ url \} = req\.body/);
     assert.doesNotMatch(serverSource, /const \{ url, userId \} = req\.body/);
     assert.match(serverSource, /const userId = getAuthenticatedUserId\(req\)/);
-    assert.match(serverSource, /orchestrator\.processUrl\(url\)/);
-    assert.match(serverSource, /res\.json\(result\)/);
+    assert.match(serverSource, /processUrlThroughCaptureQueue/);
+    assert.doesNotMatch(serverSource, /orchestrator\.processUrl\(url\)/);
+    assert.match(serverSource, /status === 'degraded' \? 202 : 200/);
 });
 
 test('post finalization is tenant-aware and routed through the atomic database RPC', () => {
     assert.doesNotMatch(orchestratorSource, /upsertPost\(/);
     assert.doesNotMatch(orchestratorSource, /collection_posts/);
     assert.match(finalizationSource, /rpc\('finalize_collection_capture'/);
-    assert.match(serverSource, /CAPTURE_FINALIZATION_FAILED/);
-    assert.match(serverSource, /finalizeCapture\(userId, correlationId, 'fallback'/);
+    assert.match(serverSource, /processUrlThroughCaptureQueue/);
+    assert.doesNotMatch(serverSource, /finalizeCapture\(userId/);
 });

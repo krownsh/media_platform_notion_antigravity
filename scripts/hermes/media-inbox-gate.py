@@ -1,7 +1,9 @@
-"""Hermes Cron pre-check for one safe media post workflow.
+"""Hermes Cron claim gate for one media post workflow.
 
 The script never receives a database credential. It delegates the read to the
 project's allowlisted Node CLI and emits Hermes's final-line wakeAgent contract.
+The Node command performs an atomic Supabase claim, so a second Cron/manual
+wake cannot start another workflow while this run owns the singleton lease.
 """
 
 from __future__ import annotations
@@ -20,13 +22,14 @@ def main() -> int:
         return 2
 
     project_root = Path(project_root_value).expanduser().resolve()
-    workflow_script = project_root / "scripts" / "agent-sdk" / "next-workflow.js"
+    workflow_script = project_root / "scripts" / "agent-sdk" / "claim-cron-workflow.js"
     if not workflow_script.is_file():
         print(f"Hermes workflow CLI not found: {workflow_script}", file=sys.stderr)
         return 2
 
+    queue = os.environ.get("HERMES_CRON_QUEUE", "preprocess").strip() or "preprocess"
     result = subprocess.run(
-        ["node", str(workflow_script)],
+        ["node", str(workflow_script), "--queue", queue],
         cwd=project_root,
         check=False,
         capture_output=True,
@@ -54,6 +57,9 @@ def main() -> int:
         "workflowId": workflow.get("workflow_id") if workflow else None,
         "stage": workflow.get("stage") if workflow else None,
         "sourceType": workflow.get("source_type") if workflow else None,
+        "agentId": payload.get("agentId"),
+        "leaseSeconds": payload.get("leaseSeconds"),
+        "queue": payload.get("queue", queue),
     }
     print(json.dumps(gate_result, ensure_ascii=False))
     return 0

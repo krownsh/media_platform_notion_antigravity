@@ -9,7 +9,9 @@ to a shared environment.
 Legacy sources are deliberately backfilled as actionable work: an old outbox
 row with `sent` proves only technical delivery, not that a user discussed,
 researched, tested, or completed the post. URL sources enter triage; legacy
-images enter base analysis.
+images enter base analysis. Stage K then routes unattended preprocessing to
+`research/pending`, `review/awaiting_user`, or `complete/completed`; the
+five-minute Cron never opens an interactive decision.
 
 Every new strategy decision receives a final `vault_note` action. The workflow
 cannot become `complete/completed` until Hermes writes the source note to the
@@ -30,8 +32,9 @@ The Capture Worker stays permanently running. It is not a scheduled job:
 uploads are claimed as soon as they are available. Hermes is scheduled or used
 interactively through `my-mediacrawl-skill`.
 
-POC execution is also not a worker: `agent:poc:run` invokes the existing
-on-demand Docker sandbox synchronously after explicit `EXECUTE_POC` confirmation.
+POC execution is also not a worker. Safe offline POCs may run during unattended
+preprocessing when confidence is high; networked or otherwise high-risk POCs
+use `agent:poc:run` after explicit `EXECUTE_POC` confirmation.
 
 The browser shows post workflow state via `/api/posts`; it refreshes while a
 user is signed in so Hermes updates appear without a manual reload.

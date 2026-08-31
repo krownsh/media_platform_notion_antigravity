@@ -646,7 +646,14 @@ export async function runPocWorkflow(input, options = {}) {
   let fallbackReason = null;
 
   try {
-    const generation = await generatePocWithSingleRepair(input, options);
+    const generation = input?.artifact
+      ? {
+        artifact: normalizeGeneratedPoc(input.artifact),
+        generationAttempts: 0,
+        generationMethod: 'hermes_prevalidated',
+        fallbackReason: null
+      }
+      : await generatePocWithSingleRepair(input, options);
     artifact = generation.artifact;
     generationAttempts = generation.generationAttempts;
     generationMethod = generation.generationMethod;

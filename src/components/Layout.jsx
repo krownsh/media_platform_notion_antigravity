@@ -157,6 +157,12 @@ const Layout = ({ children }) => {
                                     onClick={() => { navigate('/view-all'); setIsMobileMenuOpen(false); }}
                                 />
                                 <SidebarItem
+                                    icon={Search}
+                                    label="記憶搜尋"
+                                    active={location.pathname === '/search'}
+                                    onClick={() => { navigate('/search'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
                                     icon={BarChart3}
                                     label="趨勢看板"
                                     active={location.pathname === '/insight'}
@@ -293,6 +299,14 @@ const Layout = ({ children }) => {
                         label="所有貼文"
                         active={location.pathname === '/view-all'}
                         onClick={() => navigate('/view-all')}
+                        collapsed={isSidebarCollapsed}
+                    />
+
+                    <SidebarItem
+                        icon={Search}
+                        label="記憶搜尋"
+                        active={location.pathname === '/search'}
+                        onClick={() => navigate('/search')}
                         collapsed={isSidebarCollapsed}
                     />
 

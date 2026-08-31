@@ -1,5 +1,13 @@
 # Project Memory
 
+## 2026-08-13：Hermes 五分鐘 Cron 只做無人值守預處理
+
+1. Capture Worker 先把 URL／圖片完成擷取、持久化與必要的圖片基礎分析；Hermes 不使用 Webhook dispatcher 或常駐 polling worker。
+2. 五分鐘 Cron 只從 Supabase FIFO claim 一篇 `base_analysis`／`triage`／`preprocessing`，完成高信心、低風險的分類、重複來源比對、Topic／資料夾整理、Vault source note，以及可安全的離線 POC，然後釋放 lease 並結束；不得詢問使用者。
+3. 需要研究的內容寫入 `research/pending`，由另一個 Research Cron 處理；需要確認的內容寫入 `review/awaiting_user` 與 `context.review_request`，由之後的互動／決策流程處理。
+4. 網路、密鑰、套件安裝、付費 API、部署、發布或正式專案修改一律不是五分鐘 Cron 的自動動作。沒有明確風險／信心資料時視為高風險。
+5. 不使用向量儲存；重複判斷使用 canonical URL、平台貼文 ID、內容雜湊，命中既有資料夾時沿用該資料夾。Vault 預設為 `~/.hermes/claude-obsidian`。
+
 ## 2026-07-29：Hermes 採 pull-based inbox，不是常駐自動執行器
 
 1. `/api/process` 只負責擷取、Atomic Finalization 與建立 outbox；後端不啟動常駐 dispatcher。

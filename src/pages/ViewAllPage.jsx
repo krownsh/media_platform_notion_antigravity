@@ -92,7 +92,12 @@ const ViewAllPage = ({ onRemix }) => {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="全文搜尋 (作者/內容/總結)"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && searchQuery.trim()) {
+                                    navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+                                }
+                            }}
+                            placeholder="全文搜尋（Enter 查看整個收藏庫）"
                             className="w-full bg-transparent border border-transparent hover:bg-black/[0.025] focus:border-[var(--accent)] focus:bg-surface-raised rounded-md pl-9 pr-4 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:shadow-[0_0_0_3px_var(--accent-soft)]"
                             aria-label="搜尋貼文"
                         />

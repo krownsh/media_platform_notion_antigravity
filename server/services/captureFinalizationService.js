@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
+import { upsertPostSearchDocument } from './postSearchService.js';
 
 function serializeAnalysisSummary(summary) {
     if (!summary) return null;
@@ -91,6 +92,25 @@ export async function finalizeCapture(
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
     if (!finalized?.post_id || !finalized?.outbox_event_id) {
         throw new Error('Capture finalization returned an incomplete result');
+    }
+
+    // Search indexing is a projection. A missing/unapplied Stage N migration
+    // must never make the durable capture fail; the maintenance command can
+    // rebuild the projection later.
+    try {
+        const { data: indexedPost, error: indexLookupError } = await supabaseClient
+            .from('collection_posts')
+            .select(`
+                id, user_id, platform, original_url, title, author_name, content, collection_id,
+                collection_post_analysis (*), collection_post_workflows (stage, status, updated_at)
+            `)
+            .eq('id', finalized.post_id)
+            .eq('user_id', userId)
+            .maybeSingle();
+        if (indexLookupError) throw indexLookupError;
+        if (indexedPost) await upsertPostSearchDocument(indexedPost, { supabaseClient });
+    } catch (error) {
+        console.warn(`[Capture] Search projection deferred: ${error.message}`);
     }
 
     return finalized;

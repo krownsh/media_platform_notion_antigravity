@@ -1,6 +1,12 @@
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
-const projectRoot = path.resolve(__dirname, '..');
+const repositoryRoot = path.resolve(__dirname, '..');
+const linkedProjectRoot = path.join(os.homedir(), 'Projects', 'media_platform_notion_antigravity');
+const projectRoot = fs.existsSync(linkedProjectRoot) && fs.statSync(linkedProjectRoot).isDirectory()
+    ? linkedProjectRoot
+    : repositoryRoot;
 
 module.exports = {
     apps: [

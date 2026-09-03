@@ -11,7 +11,7 @@ const preprocess = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/pre
 const vaultSync = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/vault-sync-workflow.js'), 'utf8');
 const vaultDrain = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/drain-vault-sync.js'), 'utf8');
 const remotePreprocess = fs.readFileSync(path.join(projectRoot, 'server/services/codexRemotePreprocessService.js'), 'utf8');
-const remoteMigration = fs.readFileSync(path.join(projectRoot, 'database/deployments/stage_m_codex_remote_preprocess.sql'), 'utf8');
+const remoteMigration = fs.readFileSync(path.join(projectRoot, 'database/deployments/stage_o_stop_auto_container_creation.sql'), 'utf8');
 const knowledge = fs.readFileSync(path.join(projectRoot, 'server/services/autonomousKnowledgeService.js'), 'utf8');
 const triage = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/triage-workflow.js'), 'utf8');
 
@@ -59,6 +59,7 @@ test('Codex can persist DB-only preprocessing without pretending to write Vault'
     assert.match(remotePreprocess, /codex_stage_collection_preprocess/);
     assert.match(remotePreprocess, /normalizePreprocessInput/);
     assert.match(remoteMigration, /security definer/);
+    assert.match(remoteMigration, /collection_post_analysis/);
     assert.match(remoteMigration, /stage = 'vault_sync'/);
     assert.match(remoteMigration, /exact_duplicate_id/);
     assert.match(remoteMigration, /network\/Secrets POC boundary|network\/Secrets POC/i);

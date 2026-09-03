@@ -107,7 +107,6 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
     const post = sourcePost(workflow);
     if (!post?.user_id || !supabaseClient) return { topic: null, match: null, reason: 'missing_topic_context' };
     topicInput ||= {};
-    const topicConfidence = Number(topicInput.confidence || 0);
     let topic = null;
     if (topicInput.topic_id) {
         const { data, error } = await supabaseClient
@@ -126,6 +125,7 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             .select('id, user_id, slug, title, status, origin')
             .eq('user_id', post.user_id)
             .eq('slug', topicInput.slug)
+            .eq('status', 'active')
             .maybeSingle();
         if (error) throw new Error(`Topic slug lookup failed: ${error.message}`);
         topic = data;

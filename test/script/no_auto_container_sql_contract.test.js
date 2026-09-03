@@ -9,8 +9,20 @@ const sql = fs.readFileSync(path.join(root, 'database/deployments/stage_o_stop_a
 
 test('remote preprocess is link-only and retains classification suggestions', () => {
     assert.match(sql, /classification_suggestions/);
-    assert.match(sql, /folder,collection_id/);
-    assert.match(sql, /topic,topic_id/);
+    assert.match(sql, /v_folder_input\s*->>\s*'collection_id'/);
+    assert.match(sql, /v_topic_input\s*->>\s*'topic_id'/);
     assert.doesNotMatch(sql, /insert into public\.collection_collections/i);
     assert.doesNotMatch(sql, /insert into public\.collection_topics/i);
+});
+
+test('remote preprocess retains the Stage M lifecycle outside container decisions', () => {
+    assert.match(sql, /collection_post_analysis/);
+    assert.match(sql, /canonical_url/);
+    assert.match(sql, /platform_post_id/);
+    assert.match(sql, /content_hash/);
+    assert.match(sql, /network\/Secrets POC boundary|network\/Secrets POC/i);
+    assert.match(sql, /review_request/);
+    assert.match(sql, /vault_sync/);
+    assert.match(sql, /action_plan/);
+    assert.match(sql, /revoke all on function[\s\S]+grant execute on function[\s\S]+service_role/i);
 });

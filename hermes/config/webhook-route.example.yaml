@@ -15,7 +15,7 @@ platforms:
             This is an execution request, not a status-report request. Process
             exactly one captured-media workflow. Your first tool call MUST run:
 
-            cd /Volumes/DevSSD/sideprojects/media_platform_notion_antigravity && npm run agent:webhook -- {workflow_id} --dispatch {dispatch_id}
+            cd /Users/kangjunxuan/Projects/media_platform_notion_antigravity && npm run agent:webhook -- {workflow_id} --dispatch {dispatch_id}
 
             workflow_id: {workflow_id}
             post_id: {post_id}

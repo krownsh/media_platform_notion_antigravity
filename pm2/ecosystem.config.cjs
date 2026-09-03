@@ -2,11 +2,14 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const repositoryRoot = path.resolve(__dirname, '..');
-const linkedProjectRoot = path.join(os.homedir(), 'Projects', 'media_platform_notion_antigravity');
-const projectRoot = fs.existsSync(linkedProjectRoot) && fs.statSync(linkedProjectRoot).isDirectory()
-    ? linkedProjectRoot
-    : repositoryRoot;
+// PM2 must always run the deployed copy under ~/Projects. Do not fall back to
+// the directory containing this config: an old checkout there can otherwise
+// start successfully while serving stale code.
+const projectRoot = path.join(os.homedir(), 'Projects', 'media_platform_notion_antigravity');
+
+if (!fs.existsSync(projectRoot) || !fs.statSync(projectRoot).isDirectory()) {
+    throw new Error(`PM2 project directory does not exist: ${projectRoot}`);
+}
 
 module.exports = {
     apps: [

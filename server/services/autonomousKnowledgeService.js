@@ -135,11 +135,12 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
     }
 
     if (!topic) {
+        const slug = topicInput.slug || `hermes-${post.id.slice(0, 12)}`;
         const { data, error } = await supabaseClient
             .from('collection_topics')
             .insert({
                 user_id: post.user_id,
-                slug: topicInput.slug || `hermes-${post.id.slice(0, 12)}`,
+                slug,
                 title: topicInput.title,
                 description: topicInput.description || null,
                 purpose: topicInput.purpose || null,
@@ -151,8 +152,20 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             })
             .select('id, user_id, slug, title, status, origin')
             .single();
-        if (error) throw new Error(`Topic creation failed: ${error.message}`);
-        topic = data;
+        if (error?.code === '23505') {
+            const recovered = await supabaseClient
+                .from('collection_topics')
+                .select('id, user_id, slug, title, status, origin')
+                .eq('user_id', post.user_id)
+                .eq('slug', slug)
+                .maybeSingle();
+            if (recovered.error) throw new Error(`Topic recovery lookup failed: ${recovered.error.message}`);
+            topic = recovered.data;
+        } else if (error) {
+            throw new Error(`Topic creation failed: ${error.message}`);
+        } else {
+            topic = data;
+        }
     }
 
     if (!topic?.id) return { topic: null, match: null };

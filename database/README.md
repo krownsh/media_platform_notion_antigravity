@@ -37,6 +37,10 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_k_hermes_review_backfill.sql` and
   `deployments/stage_k_hermes_review_reconcile.sql` — move legacy strategy
   pauses to persisted `review/awaiting_user` records.
+- `deployments/stage_p_collection_rls_hardening.sql` — enables owner-only RLS
+  for `collection_posts` and `collection_collections`, removes anonymous
+  access, and enforces same-owner post-to-Collection links. It requires a
+  two-user verification plan before production deployment.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

@@ -11,3 +11,7 @@
 
 - Supabase JS 對 UUID 欄位的 NULL 條件不可使用 `.eq('column', null)`，會送出字串 `"null"` 而導致型別錯誤。必須使用 `.is('column', null)`。
 - 寫入多個相關資料前先做可檢查的前置條件；若發生半套寫入，先唯讀盤點實際狀態，再只補齊缺少的部分。
+
+## 2026-09-04：Schema patch 定位
+
+- 修改 SQL schema 時，不能以重複出現的欄位尾端作為唯一 patch context；必須以目標 `CREATE TABLE` 區塊錨定，並以契約測試確認 constraint 位於正確資料表。曾在未提交草稿中把 `collection_collections_id_user_unique` 錯放到 `collection_post_comments`；已在部署前修正，未影響任何資料庫。

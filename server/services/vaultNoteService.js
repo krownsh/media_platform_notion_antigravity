@@ -187,7 +187,14 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         );
     }
     if (replication) {
-        lines.push('', '## 復刻規劃連結', `- ${replication.relative_path}`);
+        lines.push(
+            '', '## 復刻方案',
+            `- 名稱: ${yamlText(replication.project_name || '未命名')}`,
+            `- 目標: ${markdownText(replication.goal || '', 12_000) || '（尚未提供）'}`,
+            `- MVP: ${markdownText(replication.mvp || '', 12_000) || '（尚未提供）'}`,
+            '- 驗收條件:',
+            formatList(replication.acceptance_criteria)
+        );
     }
     lines.push(VAULT_MANAGED_END);
     return lines.join('\n');
@@ -216,76 +223,25 @@ async function atomicWrite(filePath, content) {
 }
 
 export function buildVaultNotePaths(root, noteInput, post, options = {}) {
-    const domain = safeSegment(noteInput.domain, '未分類', 'domain');
+    const allowedPlatforms = new Set(['instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github', 'image']);
+    const platform = allowedPlatforms.has(String(post?.platform || '').toLowerCase())
+        ? String(post.platform).toLowerCase()
+        : 'generic';
     const noteTitle = safeSegment(noteInput.note_title || post?.title, `貼文-${post?.id?.slice(0, 8) || '未命名'}`, 'note_title');
-    const wikiDirectory = path.resolve(root, 'wiki', 'domains', domain);
-    const wikiPath = path.resolve(wikiDirectory, `${noteTitle}.md`);
+    const postDate = String(post?.posted_at || post?.created_at || new Date().toISOString()).slice(0, 10);
+    const postId = safeSegment(String(post?.id || '').slice(0, 8), 'unknown', 'post id');
+    const wikiDirectory = path.resolve(root, 'wiki', 'threads', platform);
+    const wikiPath = path.resolve(wikiDirectory, `${postDate}-${noteTitle}--${postId}.md`);
     assertInside(root, wikiPath);
-
-    const replicationInput = noteInput.replication;
-    let replication = null;
-    if ((replicationInput && typeof replicationInput === 'object' && replicationInput.enabled !== false) || options.forceReplication) {
-        const project = safeSegment(
-            replicationInput.project_name || noteInput.replication_project,
-            noteTitle,
-            'replication project name'
-        );
-        const replicationDirectory = path.resolve(root, 'domain', domain, project);
-        const replicationPath = path.resolve(replicationDirectory, '復刻規劃.md');
-        assertInside(root, replicationPath);
-        replication = {
-            domain,
-            project,
-            relative_path: path.relative(root, replicationPath).split(path.sep).join('/'),
-            path: replicationPath
-        };
-    }
     return {
-        domain,
+        platform,
         note_title: noteTitle,
         wiki: {
             relative_path: path.relative(root, wikiPath).split(path.sep).join('/'),
             path: wikiPath
         },
-        replication
+        replication: null
     };
-}
-
-function buildReplicationNote({ workflow, noteInput, post, analysis, paths }) {
-    const replication = noteInput.replication || {};
-    const content = [
-        `# ${paths.replication.project}`,
-        '',
-        `- 資料庫貼文 ID: ${post?.id || '未知'}`,
-        `- 原文連結: ${post?.platform === 'image' ? '（圖片上傳，無公開連結）' : (post?.original_url || '（無原文連結）')}`,
-        `- 來源筆記: ../../wiki/domains/${paths.domain}/${paths.note_title}.md`,
-        `- workflow_id: ${workflow.id}`,
-        '',
-        '## 復刻目標',
-        markdownText(replication.goal || noteInput.replication_goal || '', 12_000) || '（尚未提供）',
-        '',
-        '## 核心機制與差異化',
-        markdownText(replication.mechanism || '', 16_000) || '（尚未提供）',
-        '',
-        '## 最小 MVP',
-        markdownText(replication.mvp || '', 16_000) || '（尚未提供）',
-        '',
-        '## 引流與變現假設',
-        markdownText(replication.funnel || replication.monetization || '', 16_000) || '（尚未提供）',
-        '',
-        '## 技術限制、風險與合規',
-        markdownText(replication.risks || '', 16_000) || '（尚未提供）',
-        '',
-        '## 驗收條件',
-        formatList(replication.acceptance_criteria),
-        '',
-        '## 研究／POC 證據',
-        markdownText(replication.evidence || noteInput.research || analysis?.summary || '', 20_000) || '（尚未提供）',
-        '',
-        '## 待下一位架構 Agent 處理',
-        markdownText(replication.next_architecture_steps || '', 12_000) || '請依本資料夾內容建立正式架構規劃與實作拆解。'
-    ].join('\n');
-    return `${content}\n\n${VAULT_MANAGED_START}\n- workflow_id: ${workflow.id}\n- database_post_id: ${post?.id || '未知'}\n- updated_at: ${new Date().toISOString()}\n${VAULT_MANAGED_END}\n`;
 }
 
 export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultRoot } = {}) {
@@ -296,15 +252,12 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     const analysis = analysisFromPost(post);
     const replicationAction = actionFromWorkflow(workflow, 'replication_plan');
     const effectiveNoteInput = replicationAction && !noteInput.replication
-        ? {
-            ...noteInput,
-            replication: { project_name: replicationAction.project_name || noteInput.replication_project }
-        }
+        ? { ...noteInput, replication: { project_name: replicationAction.project_name || noteInput.replication_project } }
         : noteInput;
-    const paths = buildVaultNotePaths(root, effectiveNoteInput, post, {
-        forceReplication: Boolean(replicationAction)
-    });
-    const replication = paths.replication && replicationAction ? paths.replication : null;
+    const paths = buildVaultNotePaths(root, effectiveNoteInput, post);
+    const replication = effectiveNoteInput.replication && typeof effectiveNoteInput.replication === 'object'
+        ? effectiveNoteInput.replication
+        : null;
     const draft = effectiveNoteInput.content_draft && typeof effectiveNoteInput.content_draft === 'object'
         ? effectiveNoteInput.content_draft
         : null;
@@ -313,10 +266,9 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     let draftFormat = null;
     let draftTitle = null;
     if (draft?.body) {
-        const draftDomain = safeSegment(paths.domain, '未分類', 'draft domain');
         draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
         draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
-        draftFile = path.resolve(root, 'content', 'drafts', draftDomain, draftFormat, `${draftTitle}.md`);
+        draftFile = path.resolve(root, 'content', 'drafts', paths.platform, draftFormat, `${draftTitle}.md`);
         assertInside(root, draftFile);
         draftPath = path.relative(root, draftFile).split(path.sep).join('/');
         effectiveNoteInput.content_draft.relative_path = draftPath;
@@ -335,7 +287,7 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
             `- status: ${draft.status || 'draft'}`,
             `- content_basis: ${draft.content_basis || 'source_only'}`,
             `- published: ${draft.published ? 'true' : 'false'}`,
-            `- source_note: ../../../../wiki/domains/${paths.domain}/${paths.note_title}.md`,
+            `- source_note: ${paths.wiki.relative_path}`,
             '',
             VAULT_MANAGED_START,
             '## 草稿內容',
@@ -348,21 +300,15 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
         await atomicWrite(draftFile, existingDraft ? mergeManagedBlock(existingDraft, draftNote) : draftNote);
     }
 
-    if (replication) {
-        const existingReplication = await fs.readFile(replication.path, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
-        const replicationNote = buildReplicationNote({ workflow, noteInput: effectiveNoteInput, post, analysis, paths });
-        await atomicWrite(replication.path, existingReplication ? mergeManagedBlock(existingReplication, replicationNote) : replicationNote);
-    }
-
     return {
         post_id: post.id,
         workflow_id: workflow.id,
         vault_root: root,
         relative_path: paths.wiki.relative_path,
-        replication_path: replication?.relative_path || null,
+        replication_path: null,
         draft_path: draftPath,
         note_title: paths.note_title,
-        domain: paths.domain,
+        platform: paths.platform,
         source_url: post.platform === 'image' ? null : (post.original_url || null),
         content_length: capturedContent(post).length
     };

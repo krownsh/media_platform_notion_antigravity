@@ -119,14 +119,13 @@ function toNoteInput(result, post, persistence, pocResult, folderPersistence, co
             ? '預處理已完成，等待 Research Cron 進一步研究。'
             : '預處理已完成，部分高風險或低信心項目等待後續確認。';
     return {
-        domain: result.folder.domain || '待整理',
         note_title: result.folder.note_title || post.title || `貼文-${post.id.slice(0, 8)}`,
         summary: result.analysis.summary,
         original_content: post.platform === 'image' ? (post.content || '') : undefined,
         discussion: [
             `自動分類：${result.analysis.primary_category}`,
             `關係判斷：${result.relation?.kind || '未提供'}`,
-            `資料夾：${result.folder.domain || '待整理'}`,
+            `分類建議：${result.folder.suggested_name || result.folder.domain || '未提供'}`,
             persistence.exact_duplicate
                 ? `Exact duplicate：${persistence.exact_duplicate.id}${persistence.exact_duplicate.collection_id ? '（沿用原資料夾）' : ''}`
                 : folderPersistence?.inherited_from_related
@@ -190,10 +189,6 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                     : []
             }
         );
-        if ((folderPersistence.inherited_from_duplicate || folderPersistence.inherited_from_related)
-            && folderPersistence.collection?.name) {
-            result.folder.domain = folderPersistence.collection.name;
-        }
 
         let pocResult = null;
         if (result.poc?.auto_execute

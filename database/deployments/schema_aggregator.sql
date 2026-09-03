@@ -1,5 +1,6 @@
 -- =============================================================================
 -- Intelligence Aggregator Schema Upgrade
+-- Remote preprocess behavior is replaced by stage_o_stop_auto_container_creation.sql.
 -- 參考 fieldtheory-cli 的分類聚合架構，為 collection_post_analysis 與 collection_posts 表新增欄位。
 -- 所有操作均使用 IF NOT EXISTS，可安全重複執行，不會與現有資料衝突。
 -- =============================================================================

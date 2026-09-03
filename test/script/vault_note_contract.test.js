@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -21,6 +22,7 @@ function fixtureWorkflow() {
         collection_posts: {
             id: 'post-123',
             platform: 'threads',
+            created_at: '2026-09-03T10:00:00.000Z',
             original_url: 'https://example.test/posts/123',
             title: '來源貼文',
             content: '這是完整原文內容。',
@@ -34,8 +36,8 @@ function fixtureWorkflow() {
     };
 }
 
-test('Vault note writes source id/url and isolates a replication project', async () => {
-    const root = await fs.mkdtemp(path.join('/tmp', 'media-vault-'));
+test('Vault note writes one source note and keeps replication in its managed block', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
     await fs.mkdir(path.join(root, '.obsidian'));
     const result = await writeWorkflowVaultNotes({
         workflow: fixtureWorkflow(),
@@ -54,19 +56,18 @@ test('Vault note writes source id/url and isolates a replication project', async
     });
 
     assert.equal(result.post_id, 'post-123');
-    assert.equal(result.relative_path, 'wiki/domains/個人品牌/Wallpets 深度研究與複製規劃.md');
-    assert.equal(result.replication_path, 'domain/個人品牌/Wallpets 復刻項目/復刻規劃.md');
+    assert.equal(result.relative_path, 'wiki/threads/threads/2026-09-03-Wallpets 深度研究與複製規劃--post-123.md');
+    assert.equal(result.replication_path, null);
     const source = await fs.readFile(path.join(root, result.relative_path), 'utf8');
-    const replication = await fs.readFile(path.join(root, result.replication_path), 'utf8');
     assert.match(source, /database_post_id: post-123/);
     assert.match(source, /https:\/\/example\.test\/posts\/123/);
     assert.match(source, /完整原文內容/);
-    assert.match(replication, /資料庫貼文 ID: post-123/);
-    assert.match(replication, /Wallpets 復刻項目/);
+    assert.match(source, /## 復刻方案/);
+    assert.match(source, /Wallpets 復刻項目/);
 });
 
 test('Vault note retry preserves text outside the managed block', async () => {
-    const root = await fs.mkdtemp(path.join('/tmp', 'media-vault-'));
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
     await fs.mkdir(path.join(root, 'wiki'));
     const input = {
         domain: '測試',
@@ -76,7 +77,7 @@ test('Vault note retry preserves text outside the managed block', async () => {
     const workflow = fixtureWorkflow();
     workflow.action_plan.actions = [{ type: 'vault_note', status: 'approved' }];
     await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
-    const filePath = path.join(root, 'wiki', 'domains', '測試', '保留人工內容.md');
+    const filePath = path.join(root, 'wiki', 'threads', 'threads', '2026-09-03-保留人工內容--post-123.md');
     await fs.appendFile(filePath, '\n\n## 人工補充\n不要覆蓋我\n');
     workflow.collection_posts.content = '第二次內容';
     await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
@@ -115,20 +116,20 @@ test('agent:next returns exactly the first 1,000 captured characters', () => {
 
 test('missing Vault is an explicit user-confirmation blocker', async () => {
     await assert.rejects(
-        verifyVaultRoot('/tmp/media-vault-path-that-does-not-exist'),
+        verifyVaultRoot(path.join(os.tmpdir(), 'media-vault-path-that-does-not-exist')),
         error => error.code === 'VAULT_NOT_FOUND' && /Ask the user/.test(error.message)
     );
 });
 
 test('existing Vault path distinguishes uninitialized folder from a tool checkout', async () => {
-    const uninitialized = await fs.mkdtemp(path.join('/tmp', 'media-vault-uninitialized-'));
+    const uninitialized = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-uninitialized-'));
     await assert.rejects(
         verifyVaultRoot(uninitialized),
         error => error.code === 'VAULT_NOT_INITIALIZED'
             && /Open this directory once as an Obsidian Vault/.test(error.message)
     );
 
-    const checkout = await fs.mkdtemp(path.join('/tmp', 'media-vault-checkout-'));
+    const checkout = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-checkout-'));
     await fs.mkdir(path.join(checkout, '.git'));
     await assert.rejects(
         verifyVaultRoot(checkout),

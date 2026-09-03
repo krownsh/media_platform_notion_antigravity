@@ -107,6 +107,12 @@ work, write `context.review_request`, move it to `review/awaiting_user`, and
 end silently. Never ask the user, invent a decision, publish, modify formal
 project source, or run network/secret/package-install POCs in this Cron.
 
+**Container boundary:** unattended preprocess is link-only. It must never
+create a Collection, Topic, or Project. `collection_id` and `topic_id` may
+link an existing container owned by the same user; `suggested_name` and
+`suggested_title` are display/review metadata only and stay in workflow
+context when no existing ID matches.
+
 For a remote DB-only backfill that cannot reach the user's Mac Vault, pass
 `--defer-vault` to `agent:preprocess`. This performs all database work and
 stores the complete note input, then moves the workflow to
@@ -134,8 +140,8 @@ the policy can distinguish safe automatic completion from deferred work:
   },
   "analysis": {"primary_category": "tool", "summary": "...", "tags": [], "topics": [], "claims": []},
   "relation": {"kind": "related", "confidence": 0.90, "rationale": "..."},
-  "topic": {"title": "...", "confidence": 0.88, "keywords": []},
-  "folder": {"domain": "繁體中文領域", "confidence": 0.86},
+  "topic": {"topic_id": null, "suggested_title": "...", "confidence": 0.88, "keywords": []},
+  "folder": {"collection_id": null, "suggested_name": "繁體中文領域", "confidence": 0.86},
   "research": {"questions": [], "candidates": [], "priority": "normal"},
   "poc": {"auto_execute": false, "network_required": false, "secrets_required": false},
   "search": {"keywords": [], "entities": [], "aliases": [], "memory_cues": []},
@@ -257,22 +263,18 @@ appends a final `vault_note` action, including when the user chooses to keep a
 classified bookmark only. A folder never authorizes research, POC, replication,
 or publishing.
 
-`replication_plan` is an optional planning action. If approved, keep the plan
-isolated in its own Traditional-Chinese project folder:
-
-```text
-<Vault>/domain/<繁體中文領域>/<繁體中文復刻項目>/復刻規劃.md
-```
+`replication_plan` is an optional planning action. Keep its plan in the
+source note's `## 復刻方案` managed block. Only an explicit Owner decision to
+create a sideproject may create a formal Project workspace.
 
 The normal source note is stored at:
 
 ```text
-<Vault>/wiki/domains/<繁體中文領域>/<繁體中文筆記名稱>.md
+<Vault>/wiki/threads/<platform>/<YYYY-MM-DD>-<title>--<post-id前8碼>.md
 ```
 
-The source note links to the replication folder. Do not mix two replication
-projects in one folder. Hermes chooses the Traditional-Chinese domain, project
-name, and note title when the user does not provide them.
+The source note is the only automatic artifact. Hermes must not derive a
+directory from model-produced domain, topic, or project text.
 
 ## Content output and recall search
 

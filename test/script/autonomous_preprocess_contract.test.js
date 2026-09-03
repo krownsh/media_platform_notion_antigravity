@@ -65,12 +65,13 @@ test('Codex can persist DB-only preprocessing without pretending to write Vault'
     assert.match(remoteMigration, /grant execute .*service_role/s);
 });
 
-test('duplicate sources inherit an existing collection when one is known', () => {
+test('preprocess can inherit an existing collection but cannot create one from text', () => {
     assert.match(knowledge, /collection_id/);
     assert.match(knowledge, /Duplicate collection inheritance failed/);
     assert.match(knowledge, /Related collection lookup failed/);
     assert.match(preprocess, /duplicate: persistence\.exact_duplicate/);
-    assert.match(preprocess, /inherited_from_duplicate/);
+    assert.match(knowledge, /no_existing_collection/);
+    assert.doesNotMatch(knowledge, /collection_collections'[\s\S]{0,400}\.insert/);
 });
 
 test('legacy Cron triage cannot create an interactive strategy pause', () => {

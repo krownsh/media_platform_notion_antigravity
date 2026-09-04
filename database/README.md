@@ -49,6 +49,25 @@ does **not** execute SQL or create Supabase migration history.
 Stage H/I deployment files remain as historical source records only. They must
 not be re-applied after Stage J; the active Hermes integration is Cron Pull.
 
+## Legacy auto-container dry-run (read-only)
+
+Create the migration manifest only after the live schema has the link-only Stage O
+function. The script needs an explicitly named local environment file; it never
+loads credentials implicitly from another worktree and performs only `SELECT`
+queries before writing artifact files.
+
+```powershell
+node scripts/maintenance/audit-auto-containers.js `
+  --env-file G:\media_platform_notion_antigravity\server\.env `
+  --output artifacts/container-migration/<timestamp>
+node scripts/maintenance/plan-auto-container-migration.js `
+  --output artifacts/container-migration/<timestamp>
+```
+
+The manifest does not modify the database or Vault. Every proposed row has a
+zero confidence score and requires explicit Owner confirmation before any
+migration can run.
+
 ## Deployment rules
 
 1. Back up and use staging first.

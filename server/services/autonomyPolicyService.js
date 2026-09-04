@@ -261,6 +261,8 @@ export function normalizePreprocessInput(input = {}) {
 }
 
 export function buildAutomationContext(result, extra = {}) {
+    const topicWasLinked = Boolean(extra.topic_persistence?.topic?.id);
+    const folderWasAssigned = Boolean(extra.folder_persistence?.assigned);
     return {
         ...extra,
         automation: {
@@ -290,12 +292,12 @@ export function buildAutomationContext(result, extra = {}) {
             } : null
         },
         classification_suggestions: {
-            topic: result.topic?.topic_id ? null : (result.topic?.suggested_title ? {
+            topic: topicWasLinked ? null : (result.topic?.suggested_title ? {
                 suggested_title: result.topic.suggested_title,
                 slug: result.topic.slug,
                 confidence: result.topic.confidence
             } : null),
-            folder: result.folder?.collection_id ? null : (result.folder?.suggested_name ? {
+            folder: folderWasAssigned ? null : (result.folder?.suggested_name ? {
                 suggested_name: result.folder.suggested_name,
                 confidence: result.folder.confidence
             } : null)

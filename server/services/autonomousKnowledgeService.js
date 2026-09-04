@@ -107,6 +107,16 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
     const post = sourcePost(workflow);
     if (!post?.user_id || !supabaseClient) return { topic: null, match: null, reason: 'missing_topic_context' };
     topicInput ||= {};
+    const proposal = {
+        suggested_title: text(topicInput.suggested_title || topicInput.title, 240) || null,
+        slug: text(topicInput.slug, 120) || null,
+        description: text(topicInput.description, 2_000) || null,
+        purpose: text(topicInput.purpose, 2_000) || null,
+        keywords: Array.isArray(topicInput.keywords) ? topicInput.keywords.map(item => text(item, 120)).filter(Boolean).slice(0, 30) : [],
+        confidence: Math.round(Math.min(1, Math.max(0, Number(topicInput.confidence) || 0)) * 100),
+        source_id: post.id,
+        rationale: text(relationInput?.rationale || topicInput.rationale, 4_000) || null
+    };
     let topic = null;
     if (topicInput.topic_id) {
         const { data, error } = await supabaseClient
@@ -131,7 +141,12 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
         topic = data;
     }
 
-    if (!topic?.id) return { topic: null, match: null, deferred: true, reason: 'no_existing_topic' };
+    if (!topic?.id) return { topic: null, match: null, deferred: true, reason: 'no_existing_topic', proposal };
+    // Legacy agent_auto Topics are not owner-approved workspaces. Never let a
+    // new source revive them merely because a caller supplied their ID or slug.
+    if (topic.origin !== 'user' || topic.status !== 'active') {
+        return { topic: null, match: null, deferred: true, reason: 'topic_not_user_active', proposal };
+    }
     const matchType = ['duplicate', 'supports', 'extends', 'contradicts', 'related'].includes(relationInput?.kind)
         ? relationInput.kind
         : topicInput.match_type;
@@ -147,12 +162,12 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             rationale: text(relationInput?.rationale || topicInput.rationale || 'Hermes autonomous topic assignment', 4_000),
             matched_terms: topicInput?.keywords || [],
             matched_by: 'agent',
-            status: score >= 85 ? 'accepted' : 'suggested'
+            status: 'suggested'
         }, { onConflict: 'topic_id,source_id' })
         .select('id, topic_id, source_id, match_type, score, status')
         .single();
     if (matchError) throw new Error(`Topic match persistence failed: ${matchError.message}`);
-    return { topic, match };
+    return { topic, match, deferred: true, reason: 'user_acceptance_required', proposal };
 }
 
 export async function persistFolderDecision(workflow, folderInput, supabaseClient, options = {}) {

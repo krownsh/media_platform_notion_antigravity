@@ -134,38 +134,21 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
         topic = data;
     }
 
+    const proposal = {
+        title: text(topicInput.title, 240),
+        slug: text(topicInput.slug, 120) || null,
+        description: text(topicInput.description, 2_000) || null,
+        purpose: text(topicInput.purpose, 2_000) || null,
+        keywords: Array.isArray(topicInput.keywords) ? topicInput.keywords.map((item) => text(item, 120)).filter(Boolean).slice(0, 30) : [],
+        confidence: Math.round(topicConfidence * 100),
+        source_id: post.id,
+        rationale: text(relationInput?.rationale || topicInput.rationale, 4_000) || null
+    };
     if (!topic) {
-        const slug = topicInput.slug || `hermes-${post.id.slice(0, 12)}`;
-        const { data, error } = await supabaseClient
-            .from('collection_topics')
-            .insert({
-                user_id: post.user_id,
-                slug,
-                title: topicInput.title,
-                description: topicInput.description || null,
-                purpose: topicInput.purpose || null,
-                keywords: topicInput.keywords || [],
-                origin: 'agent_auto',
-                status: 'active',
-                agent_confidence: Math.round(topicConfidence * 100),
-                proposal_evidence: { source_ids: [post.id], rationale: topicInput.rationale || null }
-            })
-            .select('id, user_id, slug, title, status, origin')
-            .single();
-        if (error?.code === '23505') {
-            const recovered = await supabaseClient
-                .from('collection_topics')
-                .select('id, user_id, slug, title, status, origin')
-                .eq('user_id', post.user_id)
-                .eq('slug', slug)
-                .maybeSingle();
-            if (recovered.error) throw new Error(`Topic recovery lookup failed: ${recovered.error.message}`);
-            topic = recovered.data;
-        } else if (error) {
-            throw new Error(`Topic creation failed: ${error.message}`);
-        } else {
-            topic = data;
-        }
+        return { topic: null, match: null, deferred: true, reason: 'no_user_topic_selected', proposal };
+    }
+    if (topic.origin !== 'user' || topic.status !== 'active') {
+        return { topic: null, match: null, deferred: true, reason: 'topic_not_user_active', proposal };
     }
 
     if (!topic?.id) return { topic: null, match: null };
@@ -184,12 +167,12 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             rationale: text(relationInput?.rationale || topicInput.rationale || 'Hermes autonomous topic assignment', 4_000),
             matched_terms: topicInput.keywords || [],
             matched_by: 'agent',
-            status: score >= 85 ? 'accepted' : 'suggested'
+            status: 'suggested'
         }, { onConflict: 'topic_id,source_id' })
         .select('id, topic_id, source_id, match_type, score, status')
         .single();
     if (matchError) throw new Error(`Topic match persistence failed: ${matchError.message}`);
-    return { topic, match };
+    return { topic, match, deferred: true, reason: 'user_acceptance_required', proposal };
 }
 
 export async function persistFolderDecision(workflow, folderInput, supabaseClient, options = {}) {

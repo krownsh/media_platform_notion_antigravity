@@ -19,6 +19,7 @@ import {
 } from '../../server/services/postWorkflowService.js';
 import { writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
 import { runPocWorkflow } from '../../server/services/pocService.js';
+import { getAcceptedTopicsForSource } from '../../server/services/topicGovernanceService.js';
 import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
 import { storePreparedContentDraft } from '../../server/services/contentRouteService.js';
 import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
@@ -195,14 +196,20 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             result.folder.domain = folderPersistence.collection.name;
         }
 
+        const acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
         let pocResult = null;
         if (result.poc?.auto_execute
             && result.autonomy.outcome !== 'review_pending'
             && !result.poc.network_required
             && !result.poc.secrets_required
-            && result.poc.artifact) {
+            && result.poc.artifact
+            && acceptedTopics.length > 0) {
             try {
-                pocResult = await runPocWorkflow({ postData: post, artifact: result.poc.artifact }, { supabaseClient: supabase });
+                pocResult = await runPocWorkflow({
+                    postData: post,
+                    artifact: result.poc.artifact,
+                    acceptedTopics
+                }, { supabaseClient: supabase });
                 result.poc.result = compactPocResult(pocResult);
             } catch (error) {
                 pocResult = compactPocResult(error.pocResult) || { status: 'error', error: error.message };
@@ -212,6 +219,11 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                     result.autonomy.reason = 'offline_poc_failed';
                 }
             }
+        } else if (result.poc?.auto_execute && acceptedTopics.length === 0) {
+            result.poc.result = {
+                status: 'blocked',
+                reason: 'accepted_topic_match_required'
+            };
         }
 
         let contentDraft = null;
@@ -247,6 +259,13 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             const context = buildAutomationContext(result, {
                 source_identity: persistence,
                 topic_persistence: topicPersistence,
+                accepted_topics: acceptedTopics.map(({ topic, score, rationale }) => ({
+                    id: topic.id,
+                    title: topic.title,
+                    slug: topic.slug,
+                    score,
+                    rationale
+                })),
                 folder_persistence: folderPersistence,
                 vault: { status: 'pending', relative_path: null },
                 vault_sync: {
@@ -296,6 +315,13 @@ export async function preprocessWorkflow(workflowId, options = {}) {
         const context = buildAutomationContext(result, {
             source_identity: persistence,
             topic_persistence: topicPersistence,
+            accepted_topics: acceptedTopics.map(({ topic, score, rationale }) => ({
+                id: topic.id,
+                title: topic.title,
+                slug: topic.slug,
+                score,
+                rationale
+            })),
             folder_persistence: folderPersistence,
             vault: vaultOutcome,
             source_url: sourceUrl(post)

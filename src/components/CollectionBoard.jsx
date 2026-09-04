@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
-import { reorderPosts, fetchPosts, createCollection, movePostToCollection, deletePost } from '../features/postsSlice';
+import { reorderPosts, createCollection, movePostToCollection, deletePost } from '../features/postsSlice';
 import SortablePostCard from './SortablePostCard';
 import PostCard from './PostCard';
 import CollectionFolder from './CollectionFolder';
@@ -31,7 +31,7 @@ const CreateFolderInput = ({ onCreate, onCancel }) => {
 };
 
 const CollectionBoard = ({ onRemix }) => {
-    const { items, collections, loading, initialized, tasks } = useSelector((state) => state.posts);
+    const { items, collections, loading, tasks } = useSelector((state) => state.posts);
     console.log('CollectionBoard items:', items);
     
     const dispatch = useDispatch();
@@ -102,13 +102,6 @@ const CollectionBoard = ({ onRemix }) => {
 
         return () => observer.disconnect();
     }, [uncategorizedPosts]);
-
-    useEffect(() => {
-        // Only fetch if we haven't initialized yet and aren't currently loading
-        if (!initialized && !loading) {
-            dispatch(fetchPosts());
-        }
-    }, [dispatch, initialized, loading]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {

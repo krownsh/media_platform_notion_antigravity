@@ -12,7 +12,19 @@ function normalizeIdentity(value) {
 export async function stageCodexPreprocessWorkflow(input = {}, supabaseClient = supabase) {
     const workflowId = String(input.workflowId || '').trim();
     if (!workflowId) throw new Error('workflowId is required');
-    const result = normalizePreprocessInput(input.result || {});
+    const normalized = normalizePreprocessInput(input.result || {});
+    // Stage M predates project-first governance and creates agent_auto topics
+    // when p_result.topic is present. Keep the model proposal as auditable
+    // context, but never pass it to that write path.
+    const topicProposal = normalized.topic?.title
+        ? { topic: normalized.topic, relation: normalized.relation || null }
+        : null;
+    const result = {
+        ...normalized,
+        topic: null,
+        relation: null,
+        topic_proposal: topicProposal
+    };
     const agentId = normalizeIdentity(input.agentId);
     const { data, error } = await supabaseClient.rpc('codex_stage_collection_preprocess', {
         p_workflow_id: workflowId,

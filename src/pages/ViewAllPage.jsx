@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchPosts } from '../features/postsSlice';
 import PostCard from '../components/PostCard';
 import { Search, Filter, SearchX } from 'lucide-react';
 
@@ -14,23 +13,19 @@ const CATEGORIES = [
     { value: 'opinion', label: '觀點評論' },
     { value: 'research', label: '深度研究' },
     { value: 'launch', label: '產品發布' },
+    { value: 'productivity', label: '生產力' },
+    { value: 'design', label: '設計' },
+    { value: 'crypto', label: '加密資產' },
     { value: 'other', label: '其他' }
 ];
 
 const ViewAllPage = ({ onRemix }) => {
-    const { items, collections, loading, initialized } = useSelector((state) => state.posts);
-    const dispatch = useDispatch();
+    const { items, collections, loading } = useSelector((state) => state.posts);
     const { collectionId } = useParams();
     const navigate = useNavigate();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
-
-    useEffect(() => {
-        if (!initialized && !loading) {
-            dispatch(fetchPosts());
-        }
-    }, [dispatch, initialized, loading]);
 
     // 1. Base Filter (Collection)
     let displayedPosts = items;

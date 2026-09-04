@@ -146,22 +146,17 @@ const PostCard = ({
                 </div>
             </div>
 
-            {/* Image */}
-            <div className={`flex-shrink-0 w-full bg-[var(--surface-muted)] overflow-hidden flex items-center justify-center relative border-b notion-whisper-border ${isCompact ? 'aspect-[16/8]' : 'aspect-[16/7.5]'}`}>
-                {images.length > 0 ? (
+            {/* Show media only when a usable preview exists. */}
+            {images.length > 0 && (
+                <div className={`flex-shrink-0 w-full bg-[var(--surface-muted)] overflow-hidden flex items-center justify-center relative border-b notion-whisper-border ${isCompact ? 'aspect-[16/8]' : 'aspect-[16/7.5]'}`}>
                     <img src={proxyImage(images[currentImageIndex])} className="w-full h-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]" alt="Post content" />
-                ) : (
-                    <div className="flex items-center gap-2 text-xs text-[#615d59]">
-                        <ImageIcon size={16} />
-                        <span>沒有可預覽的圖片</span>
-                    </div>
-                )}
-                {hasMultipleImages && (
-                    <div className="absolute top-2 right-2 px-1.5 py-1 rounded-md bg-black/45 text-[9px] text-white tabular-nums">
-                        {currentImageIndex + 1} / {images.length}
-                    </div>
-                )}
-            </div>
+                    {hasMultipleImages && (
+                        <div className="absolute top-2 right-2 px-1.5 py-1 rounded-md bg-black/45 text-[9px] text-white tabular-nums">
+                            {currentImageIndex + 1} / {images.length}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Action Bar */}
             <div className="flex-shrink-0 px-3 sm:px-4 py-1 flex items-center justify-end border-b notion-whisper-border bg-surface-raised">

@@ -1,5 +1,5 @@
 const MAX_TEXT = 8_000;
-export const AUTONOMY_POLICY_VERSION = 'preprocess-v1';
+export const AUTONOMY_POLICY_VERSION = 'preprocess-v2';
 export const AUTONOMY_CONFIDENCE_THRESHOLD = 0.85;
 export const AUTONOMY_OUTCOMES = new Set(['complete', 'research_pending', 'review_pending']);
 export const AUTONOMY_RISK_LEVELS = new Set(['low', 'medium', 'high']);
@@ -177,7 +177,7 @@ export function normalizePreprocessInput(input = {}) {
     const autonomy = normalizeAutonomyDecision(input);
 
     const normalized = {
-        schema_version: 1,
+        schema_version: 2,
         autonomy,
         analysis: {
             primary_category: text(analysis.primary_category || 'other', 80),
@@ -207,7 +207,8 @@ export function normalizePreprocessInput(input = {}) {
         topic: topic ? {
             topic_id: text(topic.topic_id, 80) || null,
             slug: text(topic.slug, 120) || null,
-            title: text(topic.title, 240) || null,
+            // Legacy title is a non-persistent suggestion, never a create command.
+            suggested_title: text(topic.suggested_title || topic.title, 240) || null,
             description: text(topic.description, 2_000),
             purpose: text(topic.purpose, 2_000),
             keywords: Array.isArray(topic.keywords) ? topic.keywords.map(item => text(item, 120)).filter(Boolean).slice(0, 30) : [],
@@ -215,7 +216,10 @@ export function normalizePreprocessInput(input = {}) {
             match_type: text(topic.match_type || 'related', 40)
         } : null,
         folder: folder ? {
-            domain: text(folder.domain, 200) || '待整理',
+            collection_id: text(folder.collection_id, 80) || null,
+            suggested_name: text(folder.suggested_name || folder.domain, 200) || null,
+            // Keep domain for old readers; it is never used to create a folder.
+            domain: text(folder.suggested_name || folder.domain, 200) || '待整理',
             note_title: text(folder.note_title, 240),
             confidence: number(folder.confidence ?? autonomy.confidence.folder ?? autonomy.confidence.overall),
             rationale: text(folder.rationale, 2_000),
@@ -244,11 +248,8 @@ export function normalizePreprocessInput(input = {}) {
         content_output: normalizeContentOutput(input.content_output || input.content)
     };
 
-    if (normalized.folder.confidence < AUTONOMY_CONFIDENCE_THRESHOLD) {
-        normalized.folder.domain = '待整理';
-        if (autonomy.outcome === 'review_pending') {
-            normalized.review_request ||= normalizeReviewRequest(null, 'folder_confidence_low');
-        }
+    if (normalized.folder.confidence < AUTONOMY_CONFIDENCE_THRESHOLD && autonomy.outcome === 'review_pending') {
+        normalized.review_request ||= normalizeReviewRequest(null, 'folder_confidence_low');
     }
     if (autonomy.outcome === 'review_pending') {
         normalized.review_request ||= normalizeReviewRequest(null, autonomy.reason || 'user_confirmation_required');
@@ -260,6 +261,8 @@ export function normalizePreprocessInput(input = {}) {
 }
 
 export function buildAutomationContext(result, extra = {}) {
+    const topicWasLinked = Boolean(extra.topic_persistence?.topic?.id);
+    const folderWasAssigned = Boolean(extra.folder_persistence?.assigned);
     return {
         ...extra,
         automation: {
@@ -287,6 +290,17 @@ export function buildAutomationContext(result, extra = {}) {
                 auto_execute: result.poc.auto_execute,
                 result: result.poc.result
             } : null
+        },
+        classification_suggestions: {
+            topic: topicWasLinked ? null : (result.topic?.suggested_title ? {
+                suggested_title: result.topic.suggested_title,
+                slug: result.topic.slug,
+                confidence: result.topic.confidence
+            } : null),
+            folder: folderWasAssigned ? null : (result.folder?.suggested_name ? {
+                suggested_name: result.folder.suggested_name,
+                confidence: result.folder.confidence
+            } : null)
         },
         search: result.search,
         content_output: result.content_output,

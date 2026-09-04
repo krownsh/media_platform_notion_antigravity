@@ -105,12 +105,18 @@ export async function persistSourceIdentity(workflow, supabaseClient) {
 
 export async function persistTopicDecision(workflow, topicInput, relationInput, supabaseClient) {
     const post = sourcePost(workflow);
-    if (!topicInput?.title || !post?.user_id || !supabaseClient) return { topic: null, match: null };
-    const topicConfidence = Number(topicInput.confidence || 0);
-    if (!Number.isFinite(topicConfidence) || topicConfidence < 0.85) {
-        return { topic: null, match: null, deferred: true, reason: 'topic_confidence_low' };
-    }
-
+    if (!post?.user_id || !supabaseClient) return { topic: null, match: null, reason: 'missing_topic_context' };
+    topicInput ||= {};
+    const proposal = {
+        suggested_title: text(topicInput.suggested_title || topicInput.title, 240) || null,
+        slug: text(topicInput.slug, 120) || null,
+        description: text(topicInput.description, 2_000) || null,
+        purpose: text(topicInput.purpose, 2_000) || null,
+        keywords: Array.isArray(topicInput.keywords) ? topicInput.keywords.map(item => text(item, 120)).filter(Boolean).slice(0, 30) : [],
+        confidence: Math.round(Math.min(1, Math.max(0, Number(topicInput.confidence) || 0)) * 100),
+        source_id: post.id,
+        rationale: text(relationInput?.rationale || topicInput.rationale, 4_000) || null
+    };
     let topic = null;
     if (topicInput.topic_id) {
         const { data, error } = await supabaseClient
@@ -129,29 +135,18 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             .select('id, user_id, slug, title, status, origin')
             .eq('user_id', post.user_id)
             .eq('slug', topicInput.slug)
+            .eq('status', 'active')
             .maybeSingle();
         if (error) throw new Error(`Topic slug lookup failed: ${error.message}`);
         topic = data;
     }
 
-    const proposal = {
-        title: text(topicInput.title, 240),
-        slug: text(topicInput.slug, 120) || null,
-        description: text(topicInput.description, 2_000) || null,
-        purpose: text(topicInput.purpose, 2_000) || null,
-        keywords: Array.isArray(topicInput.keywords) ? topicInput.keywords.map((item) => text(item, 120)).filter(Boolean).slice(0, 30) : [],
-        confidence: Math.round(topicConfidence * 100),
-        source_id: post.id,
-        rationale: text(relationInput?.rationale || topicInput.rationale, 4_000) || null
-    };
-    if (!topic) {
-        return { topic: null, match: null, deferred: true, reason: 'no_user_topic_selected', proposal };
-    }
+    if (!topic?.id) return { topic: null, match: null, deferred: true, reason: 'no_existing_topic', proposal };
+    // Legacy agent_auto Topics are not owner-approved workspaces. Never let a
+    // new source revive them merely because a caller supplied their ID or slug.
     if (topic.origin !== 'user' || topic.status !== 'active') {
         return { topic: null, match: null, deferred: true, reason: 'topic_not_user_active', proposal };
     }
-
-    if (!topic?.id) return { topic: null, match: null };
     const matchType = ['duplicate', 'supports', 'extends', 'contradicts', 'related'].includes(relationInput?.kind)
         ? relationInput.kind
         : topicInput.match_type;
@@ -165,9 +160,10 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
             match_type: matchType || 'related',
             score,
             rationale: text(relationInput?.rationale || topicInput.rationale || 'Hermes autonomous topic assignment', 4_000),
-            matched_terms: topicInput.keywords || [],
+            matched_terms: topicInput?.keywords || [],
             matched_by: 'agent',
-            status: 'suggested'
+            status: 'suggested',
+            decision_source: 'agent'
         }, { onConflict: 'topic_id,source_id' })
         .select('id, topic_id, source_id, match_type, score, status')
         .single();
@@ -229,26 +225,16 @@ export async function persistFolderDecision(workflow, folderInput, supabaseClien
             inherited_from_related: options.duplicate?.id ? null : inheritedSourceId
         };
     }
-    if (!folderInput?.domain || folderInput.domain === '待整理') {
-        return { collection: null, assigned: false };
-    }
-    const name = text(folderInput.domain, 255);
-    let { data: collection, error } = await supabaseClient
+    const collectionId = text(folderInput?.collection_id, 80);
+    if (!collectionId) return { collection: null, assigned: false, reason: 'no_existing_collection' };
+    const { data: collection, error } = await supabaseClient
         .from('collection_collections')
         .select('id, user_id, name, description')
         .eq('user_id', post.user_id)
-        .eq('name', name)
+        .eq('id', collectionId)
         .maybeSingle();
     if (error) throw new Error(`Collection lookup failed: ${error.message}`);
-    if (!collection) {
-        const created = await supabaseClient
-            .from('collection_collections')
-            .insert({ user_id: post.user_id, name, description: 'Hermes 自動建立的媒體分類資料夾' })
-            .select('id, user_id, name, description')
-            .single();
-        if (created.error) throw new Error(`Collection creation failed: ${created.error.message}`);
-        collection = created.data;
-    }
+    if (!collection) return { collection: null, assigned: false, reason: 'collection_not_found' };
     const updated = await supabaseClient
         .from('collection_posts')
         .update({ collection_id: collection.id })

@@ -194,8 +194,10 @@ function* handleDeletePost(action) {
   const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(postId);
   if (isUuid) {
     try {
+      const { data: { user } } = yield call(() => supabase.auth.getUser());
+      if (!user) throw new Error('User not authenticated');
       const { error } = yield call(() =>
-        supabase.from('collection_posts').delete().eq('id', postId)
+        supabase.from('collection_posts').delete().eq('id', postId).eq('user_id', user.id)
       );
       if (error) {
         console.error('[Saga] Background DB delete failed (silent):', error);
@@ -237,19 +239,23 @@ function* handleCreateCollection(action) {
 function* handleDeleteCollection(action) {
   try {
     const collectionId = action.payload;
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+
+    if (!user) throw new Error('User not authenticated');
 
     // First, update all posts in this collection to have collection_id = null
     const { error: updateError } = yield call(() =>
       supabase.from('collection_posts')
         .update({ collection_id: null })
         .eq('collection_id', collectionId)
+        .eq('user_id', user.id)
     );
 
     if (updateError) throw updateError;
 
     // Then delete the collection
     const { error: deleteError } = yield call(() =>
-      supabase.from('collection_collections').delete().eq('id', collectionId)
+      supabase.from('collection_collections').delete().eq('id', collectionId).eq('user_id', user.id)
     );
 
     if (deleteError) throw deleteError;
@@ -267,11 +273,15 @@ function* handleDeleteCollection(action) {
 function* handleMovePostToCollection(action) {
   try {
     const { postId, collectionId } = action.payload;
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+
+    if (!user) throw new Error('User not authenticated');
 
     const { error } = yield call(() =>
       supabase.from('collection_posts')
         .update({ collection_id: collectionId })
         .eq('id', postId)
+        .eq('user_id', user.id)
     );
 
     if (error) throw error;
@@ -288,11 +298,15 @@ function* handleMovePostToCollection(action) {
 function* handleUpdateCollectionName(action) {
   try {
     const { collectionId, name } = action.payload;
+    const { data: { user } } = yield call(() => supabase.auth.getUser());
+
+    if (!user) throw new Error('User not authenticated');
 
     const { error } = yield call(() =>
       supabase.from('collection_collections')
         .update({ name })
         .eq('id', collectionId)
+        .eq('user_id', user.id)
     );
 
     if (error) throw error;

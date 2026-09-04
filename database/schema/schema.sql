@@ -22,7 +22,7 @@ CREATE TABLE public.collection_posts (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     full_json JSONB,
     source_domains TEXT[] NOT NULL DEFAULT '{}', -- Normalized outbound hostnames discovered during capture
-    collection_id UUID, -- Optional linkage to a collection
+    collection_id UUID, -- Optional linkage to a same-owner collection
     CONSTRAINT collection_posts_user_original_url_key UNIQUE (user_id, original_url)
 );
 
@@ -37,16 +37,21 @@ COMMENT ON COLUMN public.collection_posts.source_domains IS 'Normalized source h
 ALTER TABLE public.collection_posts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own posts" ON public.collection_posts
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own posts" ON public.collection_posts
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+    FOR INSERT TO authenticated
+    WITH CHECK ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own posts" ON public.collection_posts
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id)
+    WITH CHECK ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own posts" ON public.collection_posts
-    FOR DELETE USING (auth.uid() = user_id);
+    FOR DELETE TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 
 -- -----------------------------------------------------------------------------
@@ -210,7 +215,8 @@ CREATE TABLE public.collection_collections (
     cover_image_url TEXT,
     is_public BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT collection_collections_id_user_unique UNIQUE (id, user_id)
 );
 
 COMMENT ON TABLE public.collection_collections IS 'User collections for organizing posts.';
@@ -219,16 +225,32 @@ COMMENT ON TABLE public.collection_collections IS 'User collections for organizi
 ALTER TABLE public.collection_collections ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view their own collections" ON public.collection_collections
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can insert their own collections" ON public.collection_collections
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+    FOR INSERT TO authenticated
+    WITH CHECK ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can update their own collections" ON public.collection_collections
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id)
+    WITH CHECK ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
 
 CREATE POLICY "Users can delete their own collections" ON public.collection_collections
-    FOR DELETE USING (auth.uid() = user_id);
+    FOR DELETE TO authenticated
+    USING ((SELECT auth.uid()) IS NOT NULL AND (SELECT auth.uid()) = user_id);
+
+ALTER TABLE public.collection_posts
+    ADD CONSTRAINT collection_posts_collection_owner_fkey
+    FOREIGN KEY (collection_id, user_id)
+    REFERENCES public.collection_collections (id, user_id)
+    ON DELETE SET NULL (collection_id);
+
+REVOKE ALL ON TABLE public.collection_posts, public.collection_collections
+    FROM PUBLIC, anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.collection_posts, public.collection_collections
+    TO authenticated, service_role;
 
 
 -- -----------------------------------------------------------------------------

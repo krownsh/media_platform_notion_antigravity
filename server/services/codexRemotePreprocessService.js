@@ -16,7 +16,7 @@ export async function stageCodexPreprocessWorkflow(input = {}, supabaseClient = 
     // Stage M predates project-first governance and creates agent_auto topics
     // when p_result.topic is present. Keep the model proposal as auditable
     // context, but never pass it to that write path.
-    const topicProposal = normalized.topic?.title
+    const topicProposal = normalized.topic?.suggested_title
         ? { topic: normalized.topic, relation: normalized.relation || null }
         : null;
     const result = {

@@ -31,8 +31,8 @@ test('Hermes keeps an unmatched model topic as a proposal and never inserts it',
 
     assert.equal(insertCalled, false);
     assert.equal(result.deferred, true);
-    assert.equal(result.reason, 'no_user_topic_selected');
-    assert.equal(result.proposal.title, 'Automatic topic candidate');
+    assert.equal(result.reason, 'no_existing_topic');
+    assert.equal(result.proposal.suggested_title, 'Automatic topic candidate');
 });
 
 test('remote Codex preprocessing stores a proposal in context but strips the unsafe topic write input', async () => {
@@ -54,5 +54,5 @@ test('remote Codex preprocessing stores a proposal in context but strips the uns
     assert.equal(response.workflow_id, 'workflow-1');
     assert.equal(params.p_result.topic, null);
     assert.equal(params.p_result.relation, null);
-    assert.equal(params.p_result.topic_proposal.topic.title, 'Candidate');
+    assert.equal(params.p_result.topic_proposal.topic.suggested_title, 'Candidate');
 });

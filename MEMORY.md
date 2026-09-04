@@ -17,3 +17,7 @@
 - 使用者質疑既有主題來源時，必須先以唯讀 Supabase 查詢確認，不得只依早期 MVP 文件或前端 API 推論。
 - 本專案實際資料庫有後續 Stage K／M 的自動預處理：Hermes／Codex preprocess 會建立 `origin = agent_auto` 的 active topic，並依分數自動接受部分來源匹配。
 - 2026-09-04 盤點結果為 60 個 topic、單一 owner、全部 `agent_auto`；其中 35 個來源匹配已被 agent 自動標為 `accepted`。後續改造前必須保留稽核軌跡、停止自動接受，且不得直接刪除既有資料。
+
+## 2026-09-04：Schema patch 定位
+
+- 修改 SQL schema 時，不能以重複出現的欄位尾端作為唯一 patch context；必須以目標 `CREATE TABLE` 區塊錨定，並以契約測試確認 constraint 位於正確資料表。曾在未提交草稿中把 `collection_collections_id_user_unique` 錯放到 `collection_post_comments`；已在部署前修正，未影響任何資料庫。

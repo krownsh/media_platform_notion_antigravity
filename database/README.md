@@ -40,6 +40,19 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_o_topic_project_governance.sql` — adds the active GitHub
   project registry and project × domain topics; blocks future `agent_auto`
   topic creation. It intentionally does not modify existing topic data.
+- `deployments/stage_o_stop_auto_container_creation.sql` — preserves the Stage M
+  DB-only lifecycle while preventing unattended Collection and Topic creation;
+  free-text candidates remain workflow suggestions.
+- `deployments/stage_p_collection_rls_hardening.sql` — enables owner-only RLS
+  for `collection_posts` and `collection_collections`, removes anonymous
+  access, and enforces same-owner post-to-Collection links. It was applied to
+  project `dcyjictvatixbflfrsfg` as migration `20260904175657` after a
+  no-cross-tenant-link preflight. The production owner-read and grants checks
+  passed; no separate paid test branch was created.
+- `deployments/stage_q_topic_match_governance_hardening.sql` — makes the
+  database fail closed when an agent writes a Topic source match: only active
+  user-owned Topics qualify, and the match remains `suggested` until a user
+  decision. It is prepared but not deployed.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the
@@ -47,6 +60,25 @@ does **not** execute SQL or create Supabase migration history.
 
 Stage H/I deployment files remain as historical source records only. They must
 not be re-applied after Stage J; the active Hermes integration is Cron Pull.
+
+## Legacy auto-container dry-run (read-only)
+
+Create the migration manifest only after the live schema has the link-only Stage O
+function. The script needs an explicitly named local environment file; it never
+loads credentials implicitly from another worktree and performs only `SELECT`
+queries before writing artifact files.
+
+```powershell
+node scripts/maintenance/audit-auto-containers.js `
+  --env-file G:\media_platform_notion_antigravity\server\.env `
+  --output artifacts/container-migration/<timestamp>
+node scripts/maintenance/plan-auto-container-migration.js `
+  --output artifacts/container-migration/<timestamp>
+```
+
+The manifest does not modify the database or Vault. Every proposed row has a
+zero confidence score and requires explicit Owner confirmation before any
+migration can run.
 
 ## Deployment rules
 

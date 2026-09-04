@@ -5,7 +5,6 @@ Traditional-Chinese names when the user has not supplied them.
 
 ```json
 {
-  "domain": "個人品牌",
   "note_title": "Wallpets 深度研究與複製規劃",
   "summary": "我們確認過的來源重點與判斷",
   "original_content": "可省略；省略時由 CLI 從資料庫貼文讀取完整內容",
@@ -34,16 +33,14 @@ Traditional-Chinese names when the user has not supplied them.
 The source note is written to:
 
 ```text
-<Vault>/wiki/domains/<domain>/<note_title>.md
+<Vault>/wiki/threads/<platform>/<YYYY-MM-DD>-<title>--<post-id前8碼>.md
 ```
 
-When `replication_plan` is approved, the isolated handoff is written to:
+When `replication_plan` is approved, its content is appended to `## 復刻方案`
+inside the same source note. Only an explicit Owner sideproject decision may
+create a formal Project directory.
 
-```text
-<Vault>/domain/<domain>/<replication.project_name>/復刻規劃.md
-```
-
-Both files include the database `collection_posts.id`, workflow ID, and source
+The source note includes the database `collection_posts.id`, workflow ID, and source
 URL. A managed block is replaced idempotently on retry; text outside the block
 is preserved. The write uses a temporary file plus rename, so a partial note is
 never presented as successful.

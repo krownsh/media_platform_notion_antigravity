@@ -9,7 +9,11 @@ goal the user actually cares about.
 ## Ownership model
 
 - A user-created Topic is immediately `active`.
-- An Agent may create only an `agent_proposal` with `status = proposed`.
+- Unattended preprocess may not create a Topic. It may only link a user-owned
+  existing Topic by ID (or an existing active canonical slug) and otherwise
+  saves a suggestion in workflow context.
+- A future Agent proposal may create only an `agent_proposal` with `status = proposed`
+  after evidence from at least three different sources; it may never auto-create an active Topic.
 - A source match starts as `suggested`; it never becomes accepted without the
   user.
 

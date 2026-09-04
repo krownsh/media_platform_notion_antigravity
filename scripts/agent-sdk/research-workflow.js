@@ -7,6 +7,7 @@ import { normalizeAutonomyDecision } from '../../server/services/autonomyPolicyS
 import { getWorkflowPost, loadWorkflow, transitionWorkflow } from '../../server/services/postWorkflowService.js';
 import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
 import { writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
+import { getAcceptedTopicsForSource } from '../../server/services/topicGovernanceService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,10 @@ export async function researchWorkflow(workflowId, options = {}) {
         const result = await readResearch(options.file);
         const post = getWorkflowPost(workflow);
         if (!post) throw new Error(`Workflow ${workflow.id} has no source post`);
+        const acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
+        if (acceptedTopics.length === 0) {
+            throw new Error('Research requires an accepted match to an active user-owned topic');
+        }
         const autonomy = normalizeAutonomyDecision({
             outcome: result.requires_confirmation ? 'review_pending' : 'complete',
             confidence: result.confidence,
@@ -102,6 +107,7 @@ export async function researchWorkflow(workflowId, options = {}) {
                 verified_claims: Array.isArray(result.verified_claims) ? result.verified_claims.slice(0, 30) : [],
                 citations: Array.isArray(result.citations) ? result.citations.slice(0, 30) : [],
                 limitations: Array.isArray(result.limitations) ? result.limitations.slice(0, 30) : [],
+                accepted_topics: acceptedTopics.map(({ topic, score }) => ({ id: topic.id, title: topic.title, score })),
                 autonomy,
                 review_request: reviewRequest,
                 vault: vaultOutcome

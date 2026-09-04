@@ -4,6 +4,7 @@ const initialState = {
     items: [], // List of posts (uncategorized or all, depending on view)
     collections: [], // List of collections (folders)
     loading: false,
+    refreshing: false, // Background refresh must never replace a populated page with a skeleton.
     initialized: false, // Track if initial fetch has completed
     analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
@@ -37,17 +38,20 @@ const postsSlice = createSlice({
         },
         // Fetch all posts and collections
         fetchPosts(state) {
-            state.loading = true;
+            state.loading = !state.initialized;
+            state.refreshing = state.initialized;
             state.error = null;
         },
         fetchPostsSuccess(state, action) {
             state.loading = false;
+            state.refreshing = false;
             state.initialized = true;
             state.items = action.payload.posts;
             state.collections = action.payload.collections;
         },
         fetchPostsFailure(state, action) {
             state.loading = false;
+            state.refreshing = false;
             state.initialized = true; // Mark as initialized even on error so we don't loop
             state.error = action.payload;
         },

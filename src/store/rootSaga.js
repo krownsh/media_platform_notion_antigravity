@@ -1,4 +1,4 @@
-import { all, takeLatest, takeEvery, call, put, delay } from 'redux-saga/effects';
+import { all, takeLeading, takeLatest, takeEvery, call, put, delay } from 'redux-saga/effects';
 import {
   addPostByUrl,
   monitorCapture,
@@ -308,7 +308,9 @@ function* handleUpdateCollectionName(action) {
 function* watchPosts() {
   yield takeEvery(addPostByUrl.type, handleFetchPost);
   yield takeEvery(monitorCapture.type, handleMonitorCapture);
-  yield takeLatest(fetchPosts.type, handleFetchPosts);
+  // Ignore overlapping reads. takeLatest cancels the saga task but cannot
+  // cancel a browser fetch that has already reached /api/posts.
+  yield takeLeading(fetchPosts.type, handleFetchPosts);
   yield takeLatest(fetchCaptureHistory.type, handleFetchCaptureHistory);
   yield takeLatest(addAnnotation.type, handleAddAnnotation);
   yield takeLatest(deletePost.type, handleDeletePost);

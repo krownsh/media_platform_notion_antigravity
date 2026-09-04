@@ -9,6 +9,7 @@ import {
     getWorkflowPost,
     loadWorkflow
 } from '../../server/services/postWorkflowService.js';
+import { getAcceptedTopicsForSource } from '../../server/services/topicGovernanceService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -46,6 +47,10 @@ export async function runWorkflowPoc(workflowId, options = {}) {
     }
     const post = getWorkflowPost(workflow);
     if (!post) throw new Error('Workflow post was not found');
+    const acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
+    if (acceptedTopics.length === 0) {
+        throw new Error('POC execution requires an accepted match to an active user-owned topic');
+    }
     const proposalAction = (workflow.action_plan?.actions || []).find(item => item?.type === 'poc_proposal');
     const testPlan = proposalAction?.outcome?.test_plan;
     if (!testPlan) {
@@ -57,7 +62,8 @@ export async function runWorkflowPoc(workflowId, options = {}) {
             postData: post,
             enrichedContext: options.enrichedContext || '',
             applicationCase,
-            testPlan
+            testPlan,
+            acceptedTopics
         }, { supabaseClient: supabase });
         const completed = await completeWorkflowAction({
             workflowId,

@@ -18,6 +18,7 @@ import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './su
 import * as statsService from './services/statsService.js';
 import { batchClassify } from './services/batchProcessor.js';
 import { suggestTopicMatches } from './services/topicAgent.js';
+import { normalizeProjectTarget, normalizeTopicDomain, TOPIC_DOMAIN_OPTIONS } from './services/topicGovernanceService.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
 import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
@@ -206,6 +207,7 @@ app.use('/api/image-workflow', requireSupabaseJwt);
 app.use('/api/publish', requireSupabaseJwt);
 app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
+app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
 
 function normalizeTopicTextList(value) {
@@ -213,6 +215,73 @@ function normalizeTopicTextList(value) {
         ? value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 30)
         : [];
 }
+
+function isGovernanceSchemaError(error) {
+    return ['42P01', '42703', 'PGRST200', 'PGRST205'].includes(error?.code);
+}
+
+function topicWithProject(topic) {
+    const project = Array.isArray(topic?.collection_projects)
+        ? topic.collection_projects[0]
+        : topic?.collection_projects || null;
+    const { collection_projects: _project, ...rest } = topic || {};
+    return { ...rest, project };
+}
+
+app.get('/api/projects', async (req, res) => {
+    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
+    try {
+        const { data, error } = await supabase
+            .from('collection_projects')
+            .select('*')
+            .eq('user_id', getAuthenticatedUserId(req))
+            .order('updated_at', { ascending: false });
+        if (error) throw error;
+        return res.json({ projects: data || [] });
+    } catch (error) {
+        if (isGovernanceSchemaError(error)) {
+            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
+        }
+        console.error('[Projects] list failed:', error.message);
+        return res.status(500).json({ error: 'Failed to list projects' });
+    }
+});
+
+app.post('/api/projects', async (req, res) => {
+    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
+    const { title, slug, repository_target: repositoryTarget, description = null } = req.body || {};
+    if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
+        return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
+    }
+    if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(slug)) {
+        return res.status(400).json({ error: 'slug must be 2-80 letters, numbers, underscores, or hyphens' });
+    }
+    const target = normalizeProjectTarget(repositoryTarget);
+    if (!target) return res.status(400).json({ error: 'repository_target must be github:owner/repository' });
+    try {
+        const { data, error } = await supabase
+            .from('collection_projects')
+            .insert({
+                user_id: getAuthenticatedUserId(req),
+                title: title.trim(),
+                slug: slug.toLowerCase(),
+                repository_target: target,
+                description: typeof description === 'string' ? description.trim() || null : null,
+                status: 'active'
+            })
+            .select()
+            .single();
+        if (error) throw error;
+        return res.status(201).json({ project: data });
+    } catch (error) {
+        if (isGovernanceSchemaError(error)) {
+            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
+        }
+        if (error.code === '23505') return res.status(409).json({ error: '這個專案或 GitHub repository 已存在' });
+        console.error('[Projects] create failed:', error.message);
+        return res.status(500).json({ error: 'Failed to create project' });
+    }
+});
 
 // Topic workspaces are user-created working contexts. Agent proposals and
 // source-match acceptance are intentionally separate future actions.
@@ -222,14 +291,23 @@ app.get('/api/topics', async (req, res) => {
     }
 
     try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('collection_topics')
-            .select('*')
+            .select('*, collection_projects (id, title, slug, repository_target, status)')
             .eq('user_id', getAuthenticatedUserId(req))
             .order('updated_at', { ascending: false });
 
+        // Keep the page readable until the explicit Stage O deployment happens.
+        if (error && isGovernanceSchemaError(error)) {
+            ({ data, error } = await supabase
+                .from('collection_topics')
+                .select('*')
+                .eq('user_id', getAuthenticatedUserId(req))
+                .order('updated_at', { ascending: false }));
+        }
+
         if (error) throw error;
-        return res.json({ topics: data || [] });
+        return res.json({ topics: (data || []).map(topicWithProject), domains: TOPIC_DOMAIN_OPTIONS });
     } catch (error) {
         console.error('[Topics] list failed:', error.message);
         return res.status(500).json({ error: 'Failed to list topics' });
@@ -241,19 +319,33 @@ app.post('/api/topics', async (req, res) => {
         return res.status(503).json({ error: 'Database service is not configured' });
     }
 
-    const { title, slug, description = null, purpose = null, desired_outcomes, keywords } = req.body || {};
+    const { title, slug, project_id: projectId, domain_key: domainKey, description = null, purpose = null, desired_outcomes, keywords } = req.body || {};
     if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
         return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
     }
     if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(slug)) {
         return res.status(400).json({ error: 'slug must be 2-80 letters, numbers, underscores, or hyphens' });
     }
+    if (typeof projectId !== 'string' || !projectId) return res.status(400).json({ error: 'project_id is required' });
+    const domain = normalizeTopicDomain(domainKey);
+    if (!domain) return res.status(400).json({ error: 'domain_key is not supported' });
 
     try {
+        const { data: project, error: projectError } = await supabase
+            .from('collection_projects')
+            .select('id')
+            .eq('id', projectId)
+            .eq('user_id', getAuthenticatedUserId(req))
+            .eq('status', 'active')
+            .maybeSingle();
+        if (projectError) throw projectError;
+        if (!project) return res.status(404).json({ error: 'Active project was not found' });
         const { data, error } = await supabase
             .from('collection_topics')
             .insert({
                 user_id: getAuthenticatedUserId(req),
+                project_id: projectId,
+                domain_key: domain,
                 title: title.trim(),
                 slug: slug.toLowerCase(),
                 description: typeof description === 'string' ? description.trim() || null : null,
@@ -269,6 +361,10 @@ app.post('/api/topics', async (req, res) => {
         if (error) throw error;
         return res.status(201).json({ topic: data });
     } catch (error) {
+        if (isGovernanceSchemaError(error)) {
+            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
+        }
+        if (error.code === '23505') return res.status(409).json({ error: '此專案的這個領域已經有啟用中的主題' });
         console.error('[Topics] create failed:', error.message);
         return res.status(500).json({ error: 'Failed to create topic' });
     }
@@ -295,9 +391,10 @@ app.post('/api/topics/matches/dry-run', async (req, res) => {
                 .single(),
             supabase
                 .from('collection_topics')
-                .select('id, title, description, keywords, status')
+                .select('id, title, description, keywords, status, origin, project_id, domain_key')
                 .eq('user_id', userId)
                 .eq('status', 'active')
+                .eq('origin', 'user')
         ]);
 
         if (sourceError) throw sourceError;
@@ -306,6 +403,50 @@ app.post('/api/topics/matches/dry-run', async (req, res) => {
     } catch (error) {
         console.error('[Topics] dry-run failed:', error.message);
         return res.status(500).json({ error: 'Failed to match source to topics' });
+    }
+});
+
+app.post('/api/topics/:topicId/matches/:sourceId/decision', async (req, res) => {
+    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
+    const { topicId, sourceId } = req.params;
+    const status = String(req.body?.status || '').toLowerCase();
+    if (!['accepted', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be accepted or rejected' });
+    const userId = getAuthenticatedUserId(req);
+    try {
+        const [{ data: topic, error: topicError }, { data: source, error: sourceError }, { data: existing, error: matchError }] = await Promise.all([
+            supabase.from('collection_topics').select('id, title, description, keywords, status, origin').eq('id', topicId).eq('user_id', userId).eq('origin', 'user').eq('status', 'active').maybeSingle(),
+            supabase.from('collection_posts').select('id, content, original_url, source_domains').eq('id', sourceId).eq('user_id', userId).maybeSingle(),
+            supabase.from('collection_topic_source_matches').select('*').eq('topic_id', topicId).eq('source_id', sourceId).eq('user_id', userId).maybeSingle()
+        ]);
+        if (topicError || sourceError || matchError) throw topicError || sourceError || matchError;
+        if (!topic || !source) return res.status(404).json({ error: 'Topic or source was not found' });
+        const candidate = suggestTopicMatches(source, [topic])[0];
+        if (!existing && !candidate) return res.status(400).json({ error: '這篇貼文沒有可接受的主題匹配' });
+        const payload = {
+            user_id: userId,
+            topic_id: topicId,
+            source_id: sourceId,
+            match_type: existing?.match_type || candidate?.match_type || 'related',
+            score: existing?.score || candidate?.score || 0,
+            rationale: existing?.rationale || candidate?.rationale || 'User reviewed topic match',
+            matched_terms: existing?.matched_terms || candidate?.matched_terms || [],
+            matched_by: existing?.matched_by || 'agent',
+            status,
+            decision_source: 'user'
+        };
+        const { data, error } = await supabase
+            .from('collection_topic_source_matches')
+            .upsert(payload, { onConflict: 'topic_id,source_id' })
+            .select()
+            .single();
+        if (error) throw error;
+        return res.json({ match: data });
+    } catch (error) {
+        if (isGovernanceSchemaError(error)) {
+            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
+        }
+        console.error('[Topics] match decision failed:', error.message);
+        return res.status(500).json({ error: 'Failed to save match decision' });
     }
 });
 

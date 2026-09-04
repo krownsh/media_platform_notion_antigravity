@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library, Image as ImageIcon } from 'lucide-react';
-import { addAnnotation, fetchPosts } from '../features/postsSlice';
+import { addAnnotation } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
@@ -113,13 +113,6 @@ const PostDetailView = ({ onRemix }) => {
     const { items, loading, initialized } = useSelector(state => state.posts);
     const post = items.find(p => p.id === postId || p.dbId === postId);
 
-    // Fetch posts if not found (e.g., direct link or refresh)
-    useEffect(() => {
-        if (!post && !loading && !initialized) {
-            dispatch(fetchPosts());
-        }
-    }, [post, loading, initialized, dispatch]);
-
     // Handle keyboard navigation
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -138,7 +131,7 @@ const PostDetailView = ({ onRemix }) => {
     }, [currentImageIndex, zoomedImage, post, navigate, isNoteOpen]);
 
     if (!post) {
-        if (loading) {
+        if (loading || !initialized) {
             return (
                 <div className="flex items-center justify-center h-full p-6" aria-busy="true">
                     <div className="flow-surface w-full max-w-md p-5 space-y-3">

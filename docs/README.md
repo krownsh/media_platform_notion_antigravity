@@ -20,7 +20,9 @@
 
 - [Design system](frontend/design_system.md)
 - [Art direction](frontend/art_direction.md)
+- [Frontend data loading](frontend/data_loading.md)
 - [UI theme implementation update](ui_theme_update.md)
+- [Topic workspace governance plan](topic_workspace_governance_plan.md)
 
 ## Project reference
 

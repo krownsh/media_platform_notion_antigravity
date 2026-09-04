@@ -22,6 +22,14 @@ adds `collection_topics`, `collection_topic_source_matches`, and
 `server/services/topicAgent.js` performs deterministic, explainable dry-run
 matching. It does not call an LLM, write to Supabase, or create topics.
 
+## 現行 runtime 與 MVP 的差異
+
+後續 Stage K／M 的 Hermes／Codex preprocess 另加入了 `agent_auto` 路徑：高信心
+結果會直接建立 active topic，並可能自動接受來源匹配。這與本 MVP 原本的人工確認
+模型衝突，且已造成過度零碎的 topic。後續治理改造必須讓 runtime 回到：Agent 僅建立
+`proposed` 候選與 `suggested` 匹配；只有使用者動作能建立 active topic 或把匹配設為
+`accepted`。
+
 ## Authenticated API
 
 All endpoints require a Supabase user JWT; n8n's capture API key cannot call

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -36,6 +36,7 @@ function App() {
   const [remixPost, setRemixPost] = useState(null);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const loadedUserId = useRef(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -54,22 +55,17 @@ function App() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (user?.id) {
-      dispatch(fetchPosts());
-      dispatch(fetchCaptureHistory());
+    if (!user?.id) {
+      loadedUserId.current = null;
+      return;
     }
-  }, [user?.id, dispatch]);
 
-  // Hermes runs outside the browser. Refresh compact workflow state while the
-  // user is signed in so image analysis and later triage do not require a
-  // manual page refresh.
-  useEffect(() => {
-    if (!user?.id) return undefined;
-    const intervalId = window.setInterval(() => {
-      dispatch(fetchPosts());
-      dispatch(fetchCaptureHistory());
-    }, 15000);
-    return () => window.clearInterval(intervalId);
+    // App owns the initial source load. Route components only consume this
+    // shared store, preventing each screen from requesting /api/posts again.
+    if (loadedUserId.current === user.id) return;
+    loadedUserId.current = user.id;
+    dispatch(fetchPosts());
+    dispatch(fetchCaptureHistory());
   }, [user?.id, dispatch]);
 
   return (

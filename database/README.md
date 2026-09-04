@@ -37,6 +37,9 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_k_hermes_review_backfill.sql` and
   `deployments/stage_k_hermes_review_reconcile.sql` — move legacy strategy
   pauses to persisted `review/awaiting_user` records.
+- `deployments/stage_o_topic_project_governance.sql` — adds the active GitHub
+  project registry and project × domain topics; blocks future `agent_auto`
+  topic creation. It intentionally does not modify existing topic data.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

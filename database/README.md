@@ -52,7 +52,9 @@ does **not** execute SQL or create Supabase migration history.
 - `deployments/stage_q_topic_match_governance_hardening.sql` — makes the
   database fail closed when an agent writes a Topic source match: only active
   user-owned Topics qualify, and the match remains `suggested` until a user
-  decision. It is prepared but not deployed.
+  decision. It was applied to project `dcyjictvatixbflfrsfg` as migration
+  `20260904190651`; the transactional smoke test passed without retaining test
+  data, and the existing 60 Topic matches were unchanged.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

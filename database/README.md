@@ -39,8 +39,10 @@ does **not** execute SQL or create Supabase migration history.
   pauses to persisted `review/awaiting_user` records.
 - `deployments/stage_p_collection_rls_hardening.sql` — enables owner-only RLS
   for `collection_posts` and `collection_collections`, removes anonymous
-  access, and enforces same-owner post-to-Collection links. It requires a
-  two-user verification plan before production deployment.
+  access, and enforces same-owner post-to-Collection links. It was applied to
+  project `dcyjictvatixbflfrsfg` as migration `20260904175657` after a
+  no-cross-tenant-link preflight. The production owner-read and grants checks
+  passed; no separate paid test branch was created.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

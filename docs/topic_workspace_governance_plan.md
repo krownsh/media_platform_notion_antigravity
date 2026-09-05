@@ -19,6 +19,7 @@
 - Topic 是 `Project × 受控領域` 的多對多研究索引，不產生來源筆記副本或每篇資料夾。
 - 已完成的 Vault write 會沿用已記錄且存在的 `relative_path`；Collection 改名不會在重試時悄悄複製出第二份來源筆記。實際搬移必須由已核准的 migration manifest 執行。
 - 收斂 dry-run 僅能把 Hermes Collection 指向名稱完全匹配的既有 Owner Collection；沒有明確規則的資料一律維持未分類並進 `wiki/inbox/`，禁止自行創造新的收納類別。
+- Legacy `agent_auto` Topic 的 dry-run 使用精確標題對照至 `github repository × domain_key`；未命中的 Topic 僅列為封存候選，來源 match 保留，絕不靠模糊關鍵字硬掛到 6 個 Repo。
 
 ## Active project registry
 

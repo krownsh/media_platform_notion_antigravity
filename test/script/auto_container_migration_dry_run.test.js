@@ -30,7 +30,7 @@ test('container migration dry-run is read-only and emits reviewable per-post man
                     { id: 'foreign-agent-tools', user_id: 'user-2', name: 'agent工具', description: null, created_at: '2026-01-01T00:00:00Z' },
                     { id: 'owner-agent-tools', user_id: 'user-1', name: 'agent工具', description: null, created_at: '2026-01-01T00:00:00Z' }
                 ],
-                collection_topics: [{ id: 'topic-1', user_id: 'user-1', slug: 'agent-auto', title: 'Agent auto', origin: 'agent_auto', status: 'active', created_at: '2026-09-04T00:00:00Z' }],
+                collection_topics: [{ id: 'topic-1', user_id: 'user-1', slug: 'agent-auto', title: 'Claude Code 工具鏈', origin: 'agent_auto', status: 'active', created_at: '2026-09-04T00:00:00Z' }],
                 collection_topic_source_matches: [{ topic_id: 'topic-1', source_id: 'post-1', user_id: 'user-1', status: 'accepted', created_at: '2026-09-04T00:00:00Z' }]
             })
         });
@@ -51,6 +51,8 @@ test('container migration dry-run is read-only and emits reviewable per-post man
         }
         assert.match(collectionPlan, /owner-agent-tools:agent工具/);
         assert.match(collectionPlan, /owner_review_relink_to_existing_collection/);
+        assert.match(topicPlan, /github:krownsh\/media_platform_notion_antigravity#agent_workflow/);
+        assert.match(topicPlan, /owner_review_relink_to_project_topic/);
         assert.match(vaultPlan, /wiki\/collections\/agent工具\/2026-09-04-A B test--post-1\.md/);
         assert.equal(unresolved.read_only, true);
         assert.equal(unresolved.collections[0].requires_owner_confirmation, 'true');

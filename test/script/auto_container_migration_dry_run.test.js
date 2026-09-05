@@ -25,13 +25,18 @@ test('container migration dry-run is read-only and emits reviewable per-post man
             output,
             supabase: fakeSupabase({
                 collection_posts: [{ id: 'post-1', user_id: 'user-1', collection_id: 'collection-1', platform: 'threads', title: 'A/B test', created_at: '2026-09-04T00:00:00Z' }],
-                collection_collections: [{ id: 'collection-1', user_id: 'user-1', name: 'Hermes 自動建立', description: 'Hermes 自動建立', created_at: '2026-09-04T00:00:00Z' }],
+                collection_collections: [
+                    { id: 'collection-1', user_id: 'user-1', name: 'AI 工具', description: 'Hermes 自動建立', created_at: '2026-09-04T00:00:00Z' },
+                    { id: 'foreign-agent-tools', user_id: 'user-2', name: 'agent工具', description: null, created_at: '2026-01-01T00:00:00Z' },
+                    { id: 'owner-agent-tools', user_id: 'user-1', name: 'agent工具', description: null, created_at: '2026-01-01T00:00:00Z' }
+                ],
                 collection_topics: [{ id: 'topic-1', user_id: 'user-1', slug: 'agent-auto', title: 'Agent auto', origin: 'agent_auto', status: 'active', created_at: '2026-09-04T00:00:00Z' }],
                 collection_topic_source_matches: [{ topic_id: 'topic-1', source_id: 'post-1', user_id: 'user-1', status: 'accepted', created_at: '2026-09-04T00:00:00Z' }]
             })
         });
         assert.equal(baseline.read_only, true);
         assert.deepEqual(baseline.auto_collections[0].post_ids, ['post-1']);
+        assert.equal(baseline.owner_collections[0].name, 'agent工具');
         assert.deepEqual(baseline.auto_topics[0].source_ids, ['post-1']);
 
         await planAutoContainerMigration(output);
@@ -44,7 +49,9 @@ test('container migration dry-run is read-only and emits reviewable per-post man
             assert.match(file, /post-1/);
             assert.match(file, /true/);
         }
-        assert.match(vaultPlan, /wiki\/threads\/threads\/2026-09-04-A B test--post-1\.md/);
+        assert.match(collectionPlan, /owner-agent-tools:agent工具/);
+        assert.match(collectionPlan, /owner_review_relink_to_existing_collection/);
+        assert.match(vaultPlan, /wiki\/collections\/agent工具\/2026-09-04-A B test--post-1\.md/);
         assert.equal(unresolved.read_only, true);
         assert.equal(unresolved.collections[0].requires_owner_confirmation, 'true');
     } finally {

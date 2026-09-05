@@ -95,6 +95,13 @@ function postFromWorkflow(workflow) {
         : workflow?.collection_posts;
 }
 
+function collectionFromPost(post) {
+    const collection = Array.isArray(post?.collection_collections)
+        ? post.collection_collections[0]
+        : post?.collection_collections;
+    return collection?.id && collection?.name ? collection : null;
+}
+
 function analysisFromPost(post) {
     return Array.isArray(post?.collection_post_analysis)
         ? post.collection_post_analysis[0]
@@ -112,6 +119,33 @@ function actionFromWorkflow(workflow, type) {
     return actions.find(action => action?.type === type) || null;
 }
 
+async function existingWikiPath(root, workflow, postId) {
+    const vaultAction = actionFromWorkflow(workflow, 'vault_note');
+    const candidates = [
+        workflow?.context?.vault?.relative_path,
+        workflow?.context?.vault_sync?.relative_path,
+        vaultAction?.outcome?.relative_path
+    ];
+    const suffix = `--${safeSegment(String(postId || '').slice(0, 8), 'unknown', 'post id')}.md`;
+    for (const candidate of candidates) {
+        const relativePath = String(candidate || '').trim().replace(/\\/g, '/');
+        if (!relativePath.startsWith('wiki/') || !relativePath.endsWith(suffix)) continue;
+        const absolutePath = path.resolve(root, ...relativePath.split('/'));
+        try {
+            assertInside(root, absolutePath);
+            if ((await fs.stat(absolutePath)).isFile()) {
+                return {
+                    relative_path: relativePath,
+                    path: absolutePath
+                };
+            }
+        } catch {
+            // A missing or malformed historical outcome must not block a new write.
+        }
+    }
+    return null;
+}
+
 function formatList(items, maxItems = 20) {
     if (!Array.isArray(items)) return '- （無）';
     const values = items.map(item => boundedText(item, 500)).filter(Boolean).slice(0, maxItems);
@@ -119,6 +153,7 @@ function formatList(items, maxItems = 20) {
 }
 
 function buildManagedBlock({ workflow, noteInput, post, analysis, replication }) {
+    const collection = collectionFromPost(post);
     const sourceContent = markdownText(
         post?.platform === 'image' ? (noteInput.original_content ?? capturedContent(post)) : capturedContent(post),
         MAX_SOURCE_CONTENT_LENGTH
@@ -143,6 +178,8 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         `- database_post_id: ${yamlText(post?.id)}`,
         `- source_url: ${yamlText(sourceUrl)}`,
         `- source_platform: ${yamlText(post?.platform || '') || 'unknown'}`,
+        `- collection_id: ${yamlText(collection?.id || '') || '（未分類）'}`,
+        `- collection_name: ${yamlText(collection?.name || '') || '（未分類）'}`,
         `- updated_at: ${new Date().toISOString()}`,
         '',
         '## 來源摘要',
@@ -230,11 +267,21 @@ export function buildVaultNotePaths(root, noteInput, post, _options = {}) {
     const noteTitle = safeSegment(noteInput.note_title || post?.title, `貼文-${post?.id?.slice(0, 8) || '未命名'}`, 'note_title');
     const postDate = String(post?.posted_at || post?.created_at || new Date().toISOString()).slice(0, 10);
     const postId = safeSegment(String(post?.id || '').slice(0, 8), 'unknown', 'post id');
-    const wikiDirectory = path.resolve(root, 'wiki', 'threads', platform);
+    const collection = collectionFromPost(post);
+    const classificationDirectory = collection
+        ? safeSegment(collection.name, '未命名資料夾', 'collection name')
+        : 'inbox';
+    const wikiDirectory = collection
+        ? path.resolve(root, 'wiki', 'collections', classificationDirectory)
+        : path.resolve(root, 'wiki', 'inbox');
     const wikiPath = path.resolve(wikiDirectory, `${postDate}-${noteTitle}--${postId}.md`);
     assertInside(root, wikiPath);
     return {
         platform,
+        collection: collection
+            ? { id: collection.id, name: collection.name, directory: classificationDirectory }
+            : null,
+        classification_directory: classificationDirectory,
         note_title: noteTitle,
         wiki: {
             relative_path: path.relative(root, wikiPath).split(path.sep).join('/'),
@@ -254,7 +301,11 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     const effectiveNoteInput = replicationAction && !noteInput.replication
         ? { ...noteInput, replication: { project_name: replicationAction.project_name || noteInput.replication_project } }
         : noteInput;
-    const paths = buildVaultNotePaths(root, effectiveNoteInput, post);
+    const plannedPaths = buildVaultNotePaths(root, effectiveNoteInput, post);
+    const previousWiki = await existingWikiPath(root, workflow, post.id);
+    const paths = previousWiki
+        ? { ...plannedPaths, wiki: previousWiki }
+        : plannedPaths;
     const replication = effectiveNoteInput.replication && typeof effectiveNoteInput.replication === 'object'
         ? effectiveNoteInput.replication
         : null;
@@ -268,7 +319,7 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     if (draft?.body) {
         draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
         draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
-        draftFile = path.resolve(root, 'content', 'drafts', paths.platform, draftFormat, `${draftTitle}.md`);
+        draftFile = path.resolve(root, 'content', 'drafts', paths.classification_directory, draftFormat, `${draftTitle}.md`);
         assertInside(root, draftFile);
         draftPath = path.relative(root, draftFile).split(path.sep).join('/');
         effectiveNoteInput.content_draft.relative_path = draftPath;

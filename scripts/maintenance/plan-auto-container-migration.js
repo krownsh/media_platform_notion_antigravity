@@ -15,15 +15,53 @@ function safePathSegment(value, fallback) {
     return normalized || fallback;
 }
 
-function proposedVaultPath(post) {
+const AUTO_COLLECTION_TARGETS = new Map([
+    ['AI工具', 'agent工具'],
+    ['AI 工具', 'agent工具'],
+    ['AI 工具与应用', 'agent工具'],
+    ['AI 工具與應用', 'agent工具'],
+    ['人工智慧', 'agent工具'],
+    ['人工智慧工具', 'agent工具'],
+    ['AI代理人與自動化開發', 'agent工具'],
+    ['AI 程式代理人', 'agent工具'],
+    ['AI 工具與工作流', 'agent工具'],
+    ['AI 與知識管理', 'agent工具'],
+    ['數位工作流與工具', 'agent工具'],
+    ['開發工具', '工程師開發優化'],
+    ['遊戲開發', '工程師開發優化'],
+    ['人工智慧與本機開發', '工程師開發優化'],
+    ['人工智慧與資安', '工程師開發優化'],
+    ['AI 開發工具', '工程師開發優化'],
+    ['前端開發', '工程師開發優化'],
+    ['AI 與軟體開發', '工程師開發優化'],
+    ['開發與資安', '工程師開發優化'],
+    ['AI 與前端開發', '工程師開發優化'],
+    ['人工智慧與創作工具', 'ai圖片+影片'],
+    ['AI繪圖與視覺創作', 'ai圖片+影片'],
+    ['AI內容製作', 'ai圖片+影片'],
+    ['AI創作與貼圖設計', 'ai圖片+影片'],
+    ['生成式 AI', 'ai圖片+影片'],
+    ['金融市場', '投資'],
+    ['創業與產品營運', '副業'],
+    ['AI與產品策略', '副業'],
+    ['產品策略', '副業'],
+    ['獨立開發', '副業'],
+    ['職涯與遠端工作', '副業'],
+    ['教育與校園', '教學']
+]);
+
+function ownerTargetFor(autoCollection, ownerCollections) {
+    const targetName = AUTO_COLLECTION_TARGETS.get(autoCollection.name);
+    if (!targetName) return null;
+    return ownerCollections.find(collection => collection.user_id === autoCollection.user_id && collection.name === targetName) || null;
+}
+
+function proposedVaultPath(post, target) {
     if (!post?.id) return null;
-    const platform = ['instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github', 'image']
-        .includes(String(post.platform || '').toLowerCase())
-        ? String(post.platform).toLowerCase()
-        : 'generic';
     const date = String(post.posted_at || post.created_at || '').slice(0, 10) || 'unknown-date';
     const title = safePathSegment(post.title, `貼文-${String(post.id).slice(0, 8)}`);
-    return `wiki/threads/${platform}/${date}-${title}--${String(post.id).slice(0, 8)}.md`;
+    const folder = target ? `wiki/collections/${safePathSegment(target.name, '未命名資料夾')}` : 'wiki/inbox';
+    return `${folder}/${date}-${title}--${String(post.id).slice(0, 8)}.md`;
 }
 
 function reviewRows(containers, postIdsField, details) {
@@ -44,10 +82,28 @@ function reviewRows(containers, postIdsField, details) {
 
 export async function planAutoContainerMigration(output) {
     const baseline = JSON.parse(await readFile(path.join(output, 'baseline.json'), 'utf8'));
+    const ownerCollections = baseline.owner_collections || [];
+    const collectionTargetByPost = new Map();
     const collections = reviewRows(baseline.auto_collections || [], 'post_ids', {
-        action: row => row.post_count <= 1 ? 'owner_review_unfiled_or_relink' : 'owner_review_canonical_collection',
-        evidence: row => `legacy Hermes auto-collection; assigned_post_count=${row.post_count || 0}; no semantic merge inferred`
+        action: row => ownerTargetFor(row, ownerCollections)
+            ? 'owner_review_relink_to_existing_collection'
+            : 'owner_review_unfiled',
+        evidence: row => {
+            const target = ownerTargetFor(row, ownerCollections);
+            return target
+                ? `legacy Hermes auto-collection; exact closed-map target=${target.name} (${target.id}); assigned_post_count=${row.post_count || 0}`
+                : `legacy Hermes auto-collection; no approved owner Collection target for name=${row.name}; keep post unfiled`;
+        }
     });
+    for (const autoCollection of baseline.auto_collections || []) {
+        const target = ownerTargetFor(autoCollection, ownerCollections);
+        for (const postId of autoCollection.post_ids || []) collectionTargetByPost.set(postId, target);
+    }
+    for (const row of collections) {
+        const target = collectionTargetByPost.get(row.post_id);
+        row.suggested_target = target ? `${target.id}:${target.name}` : '';
+        row.confidence = target ? '0.90' : '0';
+    }
     const topics = reviewRows(baseline.auto_topics || [], 'source_ids', {
         action: row => row.source_count <= 1 ? 'owner_review_archive_or_relink' : 'owner_review_canonical_topic',
         evidence: row => `legacy agent_auto topic; source_match_count=${row.source_count || 0}; no semantic merge inferred`
@@ -56,10 +112,12 @@ export async function planAutoContainerMigration(output) {
         old_id: '',
         old_path: 'unknown_not_scanned',
         post_id: post.id,
-        suggested_target: proposedVaultPath(post),
+        suggested_target: proposedVaultPath(post, collectionTargetByPost.get(post.id)),
         proposed_action: 'owner_review_vault_move_after_mapping_approval',
-        evidence: 'derived from affected post metadata only; no Vault files read or moved',
-        confidence: '0',
+        evidence: collectionTargetByPost.get(post.id)
+            ? `derived from explicit owner Collection mapping=${collectionTargetByPost.get(post.id).name}; no Vault files read or moved`
+            : 'no approved owner Collection mapping; proposed inbox path only; no Vault files read or moved',
+        confidence: collectionTargetByPost.get(post.id) ? '0.90' : '0',
         requires_owner_confirmation: 'true'
     }));
     const unresolved = {

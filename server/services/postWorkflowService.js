@@ -22,6 +22,7 @@ const WORKFLOW_SELECT = `
     collection_posts (
     id, user_id, platform, original_url, canonical_url, content_hash, platform_post_id,
     title, author_name, content, full_json, collection_id,
+    collection_collections (id, name),
     collection_post_media (*),
     collection_post_analysis (*)
   )

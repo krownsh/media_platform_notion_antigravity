@@ -2,6 +2,10 @@ import { access, mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import dotenv from 'dotenv';
 
+function isAutoCollection(row) {
+    return /Hermes 自動|agent_auto/i.test(row.description || '');
+}
+
 function outputDirectory(args) {
     const index = args.indexOf('--output');
     const value = index >= 0 ? args[index + 1] : process.env.CONTAINER_MIGRATION_OUTPUT;
@@ -53,7 +57,11 @@ export async function auditAutoContainers({ supabase, output }) {
     const baseline = {
         generated_at: new Date().toISOString(), read_only: true,
         posts: postRows.length, collections: collectionRows.length, topics: topicRows.length,
-        auto_collections: collectionRows.filter(row => /Hermes 自動|agent_auto/i.test(row.description || '')).map(row => ({
+        owner_collections: collectionRows.filter(row => !isAutoCollection(row)).map(row => ({
+            ...row,
+            post_count: postCount.get(row.id) || 0
+        })),
+        auto_collections: collectionRows.filter(isAutoCollection).map(row => ({
             ...row,
             post_count: postCount.get(row.id) || 0,
             post_ids: (postsByCollection.get(row.id) || []).map(post => post.id)
@@ -64,7 +72,7 @@ export async function auditAutoContainers({ supabase, output }) {
             source_ids: (matchesByTopic.get(row.id) || []).map(match => match.source_id)
         })),
         affected_posts: [...new Set([
-            ...collectionRows.filter(row => /Hermes 自動|agent_auto/i.test(row.description || '')).flatMap(row => (postsByCollection.get(row.id) || []).map(post => post.id)),
+            ...collectionRows.filter(isAutoCollection).flatMap(row => (postsByCollection.get(row.id) || []).map(post => post.id)),
             ...topicRows.filter(row => row.origin === 'agent_auto').flatMap(row => (matchesByTopic.get(row.id) || []).map(match => match.source_id))
         ])].map(id => postById.get(id)).filter(Boolean)
     };

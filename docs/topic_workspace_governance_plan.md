@@ -9,6 +9,17 @@
 - 只納入 GitHub 近 30 天有更新的 repo 作為 active project；其他資料只可留在收件匣或封存，不得自動建立 active topic。
 - Agent 與 Hermes 可以提出候選，但不得建立 active topic 或自動接受來源匹配。
 
+## Collection 與 Vault 實體歸檔（2026-09-05）
+
+- Owner 建立的 Collection 一律保留，不改名、不刪除、不自動重新掛載其中貼文。
+- 只有 description 明確標示為 `Hermes 自動建立的媒體分類資料夾` 的 Collection，才列入收斂與遷移候選。
+- 一篇來源筆記只會有一個 Vault 實體位置：有既有 Collection 時寫入
+  `wiki/collections/<Collection 名稱>/`；尚未分類時寫入 `wiki/inbox/`。
+- 平台只保留在筆記 metadata，不能再決定來源筆記的資料夾路徑。
+- Topic 是 `Project × 受控領域` 的多對多研究索引，不產生來源筆記副本或每篇資料夾。
+- 已完成的 Vault write 會沿用已記錄且存在的 `relative_path`；Collection 改名不會在重試時悄悄複製出第二份來源筆記。實際搬移必須由已核准的 migration manifest 執行。
+- 收斂 dry-run 僅能把 Hermes Collection 指向名稱完全匹配的既有 Owner Collection；沒有明確規則的資料一律維持未分類並進 `wiki/inbox/`，禁止自行創造新的收納類別。
+
 ## Active project registry
 
 GitHub 查詢條件：`user:krownsh pushed:>=2026-08-05`。

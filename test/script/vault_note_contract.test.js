@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { verifyVaultRoot, writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
+import { buildVaultNotePaths, verifyVaultRoot, writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
 import { formatWorkflow } from '../../scripts/agent-sdk/next-workflow.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -26,6 +26,7 @@ function fixtureWorkflow() {
             original_url: 'https://example.test/posts/123',
             title: '來源貼文',
             content: '這是完整原文內容。',
+            collection_collections: { id: 'collection-agent-tools', name: 'agent工具' },
             collection_post_analysis: {
                 primary_category: '個人品牌',
                 summary: '來源摘要',
@@ -56,12 +57,13 @@ test('Vault note writes one source note and keeps replication in its managed blo
     });
 
     assert.equal(result.post_id, 'post-123');
-    assert.equal(result.relative_path, 'wiki/threads/threads/2026-09-03-Wallpets 深度研究與複製規劃--post-123.md');
+    assert.equal(result.relative_path, 'wiki/collections/agent工具/2026-09-03-Wallpets 深度研究與複製規劃--post-123.md');
     assert.equal(result.replication_path, null);
     const source = await fs.readFile(path.join(root, result.relative_path), 'utf8');
     assert.match(source, /database_post_id: post-123/);
     assert.match(source, /https:\/\/example\.test\/posts\/123/);
     assert.match(source, /完整原文內容/);
+    assert.match(source, /collection_name: agent工具/);
     assert.match(source, /## 復刻方案/);
     assert.match(source, /Wallpets 復刻項目/);
 });
@@ -76,14 +78,30 @@ test('Vault note retry preserves text outside the managed block', async () => {
     };
     const workflow = fixtureWorkflow();
     workflow.action_plan.actions = [{ type: 'vault_note', status: 'approved' }];
-    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
-    const filePath = path.join(root, 'wiki', 'threads', 'threads', '2026-09-03-保留人工內容--post-123.md');
+    const firstOutcome = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+    const filePath = path.join(root, 'wiki', 'collections', 'agent工具', '2026-09-03-保留人工內容--post-123.md');
     await fs.appendFile(filePath, '\n\n## 人工補充\n不要覆蓋我\n');
+    workflow.context = { vault: { relative_path: firstOutcome.relative_path } };
     workflow.collection_posts.content = '第二次內容';
+    workflow.collection_posts.collection_collections.name = '重新命名的資料夾';
     await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
     const content = await fs.readFile(filePath, 'utf8');
     assert.match(content, /第二次內容/);
     assert.match(content, /不要覆蓋我/);
+    await assert.rejects(fs.stat(path.join(root, 'wiki', 'collections', '重新命名的資料夾')));
+});
+
+test('Vault source notes use content Collection folders and keep unfiled sources in inbox', () => {
+    const root = path.join(os.tmpdir(), 'media-vault-path-contract');
+    const filed = buildVaultNotePaths(root, { note_title: '內容分類' }, fixtureWorkflow().collection_posts);
+    assert.equal(filed.wiki.relative_path, 'wiki/collections/agent工具/2026-09-03-內容分類--post-123.md');
+    assert.equal(filed.platform, 'threads');
+    assert.equal(filed.collection.name, 'agent工具');
+
+    const unfiledPost = { ...fixtureWorkflow().collection_posts, collection_collections: null };
+    const unfiled = buildVaultNotePaths(root, { note_title: '未分類內容' }, unfiledPost);
+    assert.equal(unfiled.wiki.relative_path, 'wiki/inbox/2026-09-03-未分類內容--post-123.md');
+    assert.equal(unfiled.collection, null);
 });
 
 test('skill and CLI expose bounded source preview and mandatory note action', async () => {

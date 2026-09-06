@@ -1,14 +1,25 @@
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 
-// PM2 must always run the deployed copy under ~/Projects. Do not fall back to
-// the directory containing this config: an old checkout there can otherwise
-// start successfully while serving stale code.
-const projectRoot = path.join(os.homedir(), 'Projects', 'media_platform_notion_antigravity');
+// Do not infer the deployed checkout from this file or a home-directory
+// convention. The Mac host must name its intended checkout explicitly, so an
+// old clone can never start successfully while serving stale code.
+const configuredRoot = process.env.MEDIA_PLATFORM_PROJECT_ROOT;
+if (!configuredRoot) {
+    throw new Error('Set MEDIA_PLATFORM_PROJECT_ROOT to the deployed repository before starting PM2');
+}
+
+const projectRoot = path.resolve(configuredRoot);
 
 if (!fs.existsSync(projectRoot) || !fs.statSync(projectRoot).isDirectory()) {
     throw new Error(`PM2 project directory does not exist: ${projectRoot}`);
+}
+
+for (const requiredPath of ['server/index.js', 'server/scripts/workers/run_capture_worker.js', 'server/.env']) {
+    const absolutePath = path.join(projectRoot, requiredPath);
+    if (!fs.existsSync(absolutePath)) {
+        throw new Error(`PM2 deployment is incomplete; missing ${absolutePath}`);
+    }
 }
 
 module.exports = {

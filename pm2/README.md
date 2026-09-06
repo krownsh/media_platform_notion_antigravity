@@ -11,11 +11,25 @@ API port 不在這裡設定，會繼續使用 `server/.env` 的 `PORT`。
 
 ## 啟動
 
-在專案根目錄執行：
+在 Mac 的實際部署 checkout 執行。`MEDIA_PLATFORM_PROJECT_ROOT` 必填；它必須
+指向有 `server/.env` 的已部署專案，設定檔會驗證 API 與 Capture Worker 腳本都存在。
 
 ```bash
-pm2 start pm2/ecosystem.config.cjs
+export MEDIA_PLATFORM_PROJECT_ROOT="/實際/部署/checkout/media_platform_notion_antigravity"
+cd "$MEDIA_PLATFORM_PROJECT_ROOT"
+git pull --ff-only origin main
+npm ci
+npm run build
+pm2 startOrRestart pm2/ecosystem.config.cjs --update-env
 pm2 status
+```
+
+若只需在已確認同一路徑更新既有程序，可執行：
+
+```bash
+export MEDIA_PLATFORM_PROJECT_ROOT="/實際/部署/checkout/media_platform_notion_antigravity"
+pm2 restart media-collection-server --update-env
+pm2 restart media-collection-capture-worker --update-env
 ```
 
 查看輸出：

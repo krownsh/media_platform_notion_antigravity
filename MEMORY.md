@@ -21,3 +21,9 @@
 ## 2026-09-04：Schema patch 定位
 
 - 修改 SQL schema 時，不能以重複出現的欄位尾端作為唯一 patch context；必須以目標 `CREATE TABLE` 區塊錨定，並以契約測試確認 constraint 位於正確資料表。曾在未提交草稿中把 `collection_collections_id_user_unique` 錯放到 `collection_post_comments`；已在部署前修正，未影響任何資料庫。
+
+## 2026-09-06：批次分類資料寫入
+
+- 同一批資料若同時更新貼文歸屬與搜尋投影，move mapping 只能定義一次並由兩個 update 共用；禁止手寫兩份 VALUES 清單，以免 target UUID 漂移。
+- 資料庫成功回傳空結果不等於驗收完成。每次 batch 必須明確核對：預期筆數、目標 Collection、搜尋投影一致性、總貼文不變與 inbox 差額。
+- tenant-aware foreign key 擋下錯誤目標後，先以唯讀查詢確認完整 rollback，才能修正並重送；不得假設失敗交易沒有局部影響。

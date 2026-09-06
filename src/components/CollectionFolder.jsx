@@ -7,13 +7,14 @@ import { deleteCollection, updateCollectionName } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 
 
-const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = [], isMenuOpen = false, onMenuToggle }) => {
+const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = [], isMenuOpen = false, onMenuToggle, readOnly = false }) => {
     const dispatch = useDispatch();
     const [isEditing, setIsEditing] = useState(false);
     const [newName, setNewName] = useState(collection.name);
 
     const { setNodeRef, isOver } = useDroppable({
         id: collection.id,
+        disabled: readOnly,
         data: { type: 'collection', collection }
     });
 
@@ -99,7 +100,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                 </div>
 
                 {/* Menu Button - Placed in the top right empty space */}
-                <button
+                {!readOnly && <button
                     ref={buttonRef}
                     onClick={handleMenuClick}
                     className={`flow-icon-button absolute -top-1 -right-1 min-h-7 min-w-7 z-20 bg-surface-raised shadow-[0_1px_3px_rgba(23,31,26,0.1)] ${isMenuOpen ? 'text-[var(--accent)] border-[var(--accent)]' : ''}`}
@@ -107,7 +108,7 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                     aria-expanded={isMenuOpen}
                 >
                     <MoreVertical size={14} />
-                </button>
+                </button>}
             </div>
 
             {/* Folder Name */}
@@ -128,13 +129,13 @@ const CollectionFolder = ({ collection, onClick, postCount = 0, previewImages = 
                         {collection.name}
                     </span>
                     <span className="text-[10px] text-[#615d59]">
-                        {postCount} 個項目
+                        {readOnly ? `歷史 · ${postCount} 個項目` : `${postCount} 個項目`}
                     </span>
                 </div>
             )}
 
             {/* Context Menu using React Portal to escape z-index stacking context completely */}
-            {isMenuOpen && createPortal(
+            {!readOnly && isMenuOpen && createPortal(
                 <>
                     <div
                         className="fixed inset-0 z-[9999]"

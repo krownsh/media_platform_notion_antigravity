@@ -4,10 +4,11 @@ import { useDroppable } from '@dnd-kit/core';
 import SortablePostCard from './SortablePostCard';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 
-const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) => {
+const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix, readOnly = false }) => {
     // Drop zone for removing items
     const { setNodeRef: setRemoveRef, isOver: isOverRemove } = useDroppable({
         id: 'remove-zone',
+        disabled: readOnly,
         data: { type: 'remove-zone' }
     });
 
@@ -23,7 +24,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                         </div>
                         <div className="min-w-0 flex flex-row items-baseline gap-2">
                             <h2 className="text-base sm:text-lg font-bold text-[rgba(0,0,0,0.95)] truncate max-w-[56vw] sm:max-w-none">{collection.name}</h2>
-                            <p className="text-xs text-[#615d59] flex-shrink-0">{posts.length} 個項目</p>
+                            <p className="text-xs text-[#615d59] flex-shrink-0">{readOnly ? `歷史唯讀 · ${posts.length} 個項目` : `${posts.length} 個項目`}</p>
                         </div>
                     </div>
                     <button
@@ -40,7 +41,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                     {posts.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-[#615d59] px-6">
                             <p className="text-lg font-semibold text-[rgba(0,0,0,0.95)]">此資料夾目前是空的</p>
-                            <p className="mt-2 text-sm">從收件匣拖曳貼文進來，就能在這裡持續整理。</p>
+                            <p className="mt-2 text-sm">{readOnly ? '這是保留的歷史分類紀錄，不接受新的貼文。' : '從收件匣拖曳貼文進來，就能在這裡持續整理。'}</p>
                         </div>
                     ) : (
                         <SortableContext items={posts.map(p => p.id)} strategy={rectSortingStrategy}>
@@ -55,6 +56,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                                         onDelete={() => { }}
                                         onRename={() => { }}
                                         isCompact={true}
+                                        disabled={readOnly}
                                     />
                                 ))}
                             </div>
@@ -63,7 +65,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                 </div>
 
                 {/* Remove Zone (Footer) */}
-                <div
+                {!readOnly && <div
                     ref={setRemoveRef}
                     className={`
                         py-3 px-4 sm:py-4 sm:px-6 transition-all duration-300 text-center border-dashed border mx-4 mb-4 mt-2 sm:mx-6 sm:mb-6 sm:mt-2 rounded-[0.75rem]
@@ -73,7 +75,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix }) =
                     `}
                 >
                     <p className="font-medium text-sm">拖曳項目到此處以從資料夾移除</p>
-                </div>
+                </div>}
             </div>
         </div>
     );

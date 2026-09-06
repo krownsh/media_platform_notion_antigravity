@@ -45,6 +45,19 @@ async function responseData(response) {
     return data;
 }
 
+const TopicCard = ({ topic, domainLabel }) => (
+    <article className="notion-card p-5">
+        <div className="flex items-start justify-between gap-3">
+            <h4 className="font-semibold text-lg">{topic.title}</h4>
+            <span className="notion-badge shrink-0">{topic.status}</span>
+        </div>
+        <p className="mt-2 text-xs text-[#615d59]">{topic.project?.title || '尚未遷移的舊主題'} · {domainLabel(topic.domain_key)}</p>
+        {topic.purpose && <p className="mt-3 text-sm text-[#615d59]">{topic.purpose}</p>}
+        {topic.description && <p className="mt-2 text-sm text-[#615d59]/80">{topic.description}</p>}
+        {topic.keywords?.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{topic.keywords.map((keyword) => <span key={keyword} className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#615d59]">#{keyword}</span>)}</div>}
+    </article>
+);
+
 const TopicsPage = () => {
     const [topics, setTopics] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -56,6 +69,7 @@ const TopicsPage = () => {
     const [sourceId, setSourceId] = useState('');
     const [matchResults, setMatchResults] = useState([]);
     const [matchBusy, setMatchBusy] = useState(false);
+    const [showArchivedTopics, setShowArchivedTopics] = useState(false);
     const [form, setForm] = useState({ projectId: '', domainKey: '', title: '', slug: '', description: '', purpose: '', keywords: '', desiredOutcomes: '' });
 
     const loadTopics = useCallback(async () => {
@@ -63,8 +77,8 @@ const TopicsPage = () => {
         setError(null);
         try {
             const [topicData, projectData] = await Promise.all([
-                responseData(authenticatedFetch(`${API_BASE_URL}/api/topics`)),
-                responseData(authenticatedFetch(`${API_BASE_URL}/api/projects`))
+                responseData(await authenticatedFetch(`${API_BASE_URL}/api/topics`)),
+                responseData(await authenticatedFetch(`${API_BASE_URL}/api/projects`))
             ]);
             setTopics(topicData.topics || []);
             setDomains(topicData.domains || FALLBACK_DOMAINS);
@@ -159,6 +173,13 @@ const TopicsPage = () => {
 
     const availablePresets = PROJECT_PRESETS.filter((preset) => !projects.some((project) => project.repository_target?.toLowerCase() === preset.repository_target.toLowerCase()));
     const domainLabel = (key) => domains.find((domain) => domain.key === key)?.label || key || '未分類';
+    const activeTopics = topics.filter((topic) => topic.origin === 'user' && topic.status === 'active');
+    const historicalTopics = topics.filter((topic) => !activeTopics.includes(topic));
+    const activeTopicGroups = projects.map((project) => ({
+        project,
+        topics: activeTopics.filter((topic) => topic.project_id === project.id || topic.project?.id === project.id)
+    })).filter((group) => group.topics.length > 0);
+    const ungroupedActiveTopics = activeTopics.filter((topic) => !activeTopicGroups.some((group) => group.topics.includes(topic)));
 
     return (
         <div className="flow-page max-w-6xl px-1 sm:px-2">
@@ -174,7 +195,7 @@ const TopicsPage = () => {
             {error && <div className="mb-6 p-4 rounded-[0.75rem] bg-destructive/10 border border-destructive/25 flex items-center gap-3 text-destructive"><AlertCircle size={17} /><span className="text-sm">{error}</span></div>}
 
             <section className="mb-6 flow-surface p-5 sm:p-6">
-                <div className="flex items-start gap-3 mb-4"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.65rem] bg-[var(--accent-soft)] text-[var(--accent)]"><FolderGit2 size={18} /></div><div><h3 className="font-semibold text-[rgba(0,0,0,0.95)]">進行中的 GitHub 專案</h3><p className="mt-1 text-xs leading-5 text-[#615d59]">以下是近 30 天有更新的 repo。按一次才會加入你的工作區，不會自動寫入資料庫。</p></div></div>
+                <div className="flex items-start gap-3 mb-4"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.65rem] bg-[var(--accent-soft)] text-[var(--accent)]"><FolderGit2 size={18} /></div><div><h3 className="font-semibold text-[rgba(0,0,0,0.95)]">已確認的 GitHub 專案</h3><p className="mt-1 text-xs leading-5 text-[#615d59]">這裡只顯示已建立的專案；不會因為發現新 repo 自動建立 Project。</p></div></div>
                 <div className="flex flex-wrap gap-2">
                     {projects.map((project) => <span key={project.id} className="rounded-md bg-[var(--surface-muted)] px-2.5 py-1.5 text-xs text-[#615d59]">{project.title}</span>)}
                     {availablePresets.map((preset) => <button key={preset.repository_target} type="button" disabled={submitting} onClick={() => addProject(preset)} className="rounded-md border notion-whisper-border px-2.5 py-1.5 text-xs hover:bg-[var(--surface-muted)] disabled:opacity-50">+ {preset.title}</button>)}
@@ -202,7 +223,11 @@ const TopicsPage = () => {
                 {matchResults.length > 0 && <div className="mt-4 space-y-2">{matchResults.map((match) => <div key={match.topic_id} className="rounded-lg border notion-whisper-border p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><p className="text-sm font-medium">{match.topic_title} <span className="text-[#615d59]">{match.score} 分</span></p><p className="mt-1 text-xs text-[#615d59]">{match.rationale}</p></div><div className="flex gap-2"><button type="button" disabled={matchBusy} onClick={() => decideMatch(match.topic_id, 'accepted')} className="notion-btn-primary px-3 py-1.5 text-xs flex items-center gap-1"><Check size={13} />{match.status === 'accepted' ? '已接受' : '接受'}</button><button type="button" disabled={matchBusy} onClick={() => decideMatch(match.topic_id, 'rejected')} className="rounded-md border notion-whisper-border px-3 py-1.5 text-xs flex items-center gap-1"><X size={13} />略過</button></div></div>)}</div>}
             </section>
 
-            <section><div className="mb-4"><p className="flow-kicker mb-1.5">持續推進</p><h3 className="text-xl font-bold tracking-[-0.035em]">目前主題</h3></div>{loading ? <div className="flow-surface flow-shimmer h-44" /> : topics.length === 0 ? <div className="flow-panel border-dashed p-10 text-center text-sm text-[#615d59]">先加入進行中的專案，再建立一個真正要推進的主題。</div> : <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{topics.map((topic) => <article key={topic.id} className="notion-card p-5"><div className="flex items-start justify-between gap-3"><h4 className="font-semibold text-lg">{topic.title}</h4><span className="notion-badge shrink-0">{topic.status}</span></div><p className="mt-2 text-xs text-[#615d59]">{topic.project?.title || '尚未遷移的舊主題'} · {domainLabel(topic.domain_key)}</p>{topic.purpose && <p className="mt-3 text-sm text-[#615d59]">{topic.purpose}</p>}{topic.description && <p className="mt-2 text-sm text-[#615d59]/80">{topic.description}</p>}{topic.keywords?.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{topic.keywords.map((keyword) => <span key={keyword} className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#615d59]">#{keyword}</span>)}</div>}</article>)}</div>}</section>
+            <section>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="flow-kicker mb-1.5">持續推進</p><h3 className="text-xl font-bold tracking-[-0.035em]">進行中的主題</h3></div>{historicalTopics.length > 0 && <button type="button" onClick={() => setShowArchivedTopics((current) => !current)} className="self-start rounded-md border notion-whisper-border px-3 py-1.5 text-xs text-[#615d59] hover:bg-[var(--surface-muted)]">{showArchivedTopics ? `隱藏歷史主題（${historicalTopics.length}）` : `查看歷史主題（${historicalTopics.length}）`}</button>}</div>
+                {loading ? <div className="flow-surface flow-shimmer h-44" /> : activeTopics.length === 0 ? <div className="flow-panel border-dashed p-10 text-center text-sm text-[#615d59]">尚未建立進行中的主題。</div> : <div className="space-y-7">{activeTopicGroups.map((group) => <section key={group.project.id}><h4 className="mb-3 text-sm font-semibold text-[#615d59]">{group.project.title}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{group.topics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>)}{ungroupedActiveTopics.length > 0 && <section><h4 className="mb-3 text-sm font-semibold text-[#615d59]">尚未關聯專案</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{ungroupedActiveTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>}</div>}
+                {showArchivedTopics && historicalTopics.length > 0 && <section className="mt-8 border-t notion-whisper-border pt-6"><p className="flow-kicker mb-1.5">僅供查閱</p><h3 className="text-lg font-semibold">歷史主題</h3><p className="mt-2 text-sm text-[#615d59]">封存主題不參與新的來源匹配、研究或 POC。</p><div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">{historicalTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>}
+            </section>
         </div>
     );
 };

@@ -9,7 +9,8 @@ const SortablePostCard = ({
     onClick,
     onDelete,
     isOverlay = false,
-    isCompact = false
+    isCompact = false,
+    disabled = false
 }) => {
     console.log('Rendering SortablePostCard:', post.id);
     const {
@@ -19,7 +20,7 @@ const SortablePostCard = ({
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: post.id });
+    } = useSortable({ id: post.id, disabled });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -43,7 +44,7 @@ const SortablePostCard = ({
     }
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="relative">
+        <div ref={setNodeRef} style={style} {...(disabled ? {} : attributes)} {...(disabled ? {} : listeners)} className="relative">
             <PostCard
                 post={post}
                 onRemix={onRemix}

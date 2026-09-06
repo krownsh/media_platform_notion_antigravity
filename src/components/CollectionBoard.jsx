@@ -13,6 +13,8 @@ import { Layers, Plus, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 
+const isLegacyAutoCollection = (collection) => String(collection.description || '').includes('Hermes 自動建立');
+
 const CreateFolderInput = ({ onCreate, onCancel }) => {
     const [name, setName] = useState('');
     return (
@@ -42,6 +44,7 @@ const CollectionBoard = ({ onRemix }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [isMobileScreen, setIsMobileScreen] = useState(window.innerWidth < 1024); // 使用 1024 (lg) 作為判斷點，更符合平板與手機的操作習慣
     const [activeMenuId, setActiveMenuId] = useState(null);
+    const [showLegacyCollections, setShowLegacyCollections] = useState(false);
 
     // Global click to close menu
     useEffect(() => {
@@ -81,9 +84,12 @@ const CollectionBoard = ({ onRemix }) => {
     }, [items]);
 
     const selectedCollection = collections.find(c => c.id === selectedCollectionId);
+    const selectedCollectionIsLegacy = selectedCollection && isLegacyAutoCollection(selectedCollection);
     const selectedCollectionPosts = selectedCollection
         ? (postsByCollection[selectedCollection.id] || [])
         : [];
+    const activeCollections = useMemo(() => collections.filter((collection) => !isLegacyAutoCollection(collection)), [collections]);
+    const legacyCollections = useMemo(() => collections.filter(isLegacyAutoCollection), [collections]);
 
     useEffect(() => {
         // Infinite scroll intersection observer
@@ -146,7 +152,7 @@ const CollectionBoard = ({ onRemix }) => {
         if (!over) return;
 
         // Case 1: Dragging a Post into a Collection Folder (Top Section)
-        if (over.data.current?.type === 'collection') {
+        if (over.data.current?.type === 'collection' && !isLegacyAutoCollection(over.data.current.collection)) {
             const collectionId = over.data.current.collection.id;
 
             // Trigger "Suck In" Animation
@@ -166,7 +172,7 @@ const CollectionBoard = ({ onRemix }) => {
         }
 
         // Case 2: Dragging a Post to "Remove Zone" (Inside Modal)
-        if (over.id === 'remove-zone') {
+        if (over.id === 'remove-zone' && !selectedCollectionIsLegacy) {
             dispatch(movePostToCollection({ postId: activeItemData.dbId || active.id, collectionId: null }));
             return;
         }
@@ -193,7 +199,31 @@ const CollectionBoard = ({ onRemix }) => {
     const activeItem = items.find(i => i.id === activeId);
 
     // Check if currently hovering over a collection folder
-    const isHoveringFolder = activeOverId && collections.some(c => c.id === activeOverId);
+    const isHoveringFolder = activeOverId && activeCollections.some(c => c.id === activeOverId);
+
+    const renderFolder = (collection, readOnly = false) => {
+        const folderPosts = postsByCollection[collection.id] || [];
+        const previewImages = folderPosts
+            .flatMap(p => p.images || [])
+            .slice(0, 4);
+        const isHovered = activeOverId === collection.id;
+
+        return (
+            <div key={collection.id} className={`relative min-w-[96px] ${isHovered ? 'z-50' : 'z-0'}`}>
+                <div className={`transition-transform duration-150 ease-out ${isHovered ? 'scale-110' : ''}`}>
+                    <CollectionFolder
+                        collection={collection}
+                        postCount={folderPosts.length}
+                        previewImages={previewImages}
+                        readOnly={readOnly}
+                        onClick={() => setSelectedCollectionId(collection.id)}
+                        isMenuOpen={!readOnly && activeMenuId === collection.id}
+                        onMenuToggle={!readOnly ? () => setActiveMenuId(activeMenuId === collection.id ? null : collection.id) : undefined}
+                    />
+                </div>
+            </div>
+        );
+    };
 
     const uncategorizedPostsGrid = useMemo(() => {
         if (uncategorizedPosts.length === 0 && tasks.length === 0 && !loading) {
@@ -317,36 +347,16 @@ const CollectionBoard = ({ onRemix }) => {
                                 />
                             )}
 
-                            {/* Folder List */}
-                            {collections.map(collection => {
-                                const folderPosts = postsByCollection[collection.id] || [];
-                                const previewImages = folderPosts
-                                    .flatMap(p => p.images || [])
-                                    .slice(0, 4);
-                                const isHovered = activeOverId === collection.id;
+                            {/* Owner collections remain in the normal workspace. */}
+                            {activeCollections.map((collection) => renderFolder(collection))}
 
-                                return (
-                                    <div key={collection.id} className={`relative min-w-[96px] ${isHovered ? 'z-50' : 'z-0'}`}>
-                                        <div className={`transition-transform duration-150 ease-out ${isHovered ? 'scale-110' : ''}`}>
-                                            <CollectionFolder
-                                                collection={collection}
-                                                postCount={folderPosts.length}
-                                                previewImages={previewImages}
-                                                onClick={() => setSelectedCollectionId(collection.id)}
-                                                isMenuOpen={activeMenuId === collection.id}
-                                                onMenuToggle={() => setActiveMenuId(activeMenuId === collection.id ? null : collection.id)}
-                                            />
-                                        </div>
-                                    </div>
-                                );
-                            })}
-
-                            {collections.length === 0 && !isCreating && (
+                            {activeCollections.length === 0 && !isCreating && (
                                 <div className="text-sm text-[#615d59] italic py-4">
                                     尚無收藏夾。建立一個來整理您的貼文。
                                 </div>
                             )}
                         </div>
+                        {legacyCollections.length > 0 && <div className="mt-1 border-t notion-whisper-border pt-2"><button type="button" onClick={() => setShowLegacyCollections((current) => !current)} className="text-xs text-[#615d59] hover:text-[rgba(0,0,0,0.95)]">{showLegacyCollections ? `隱藏已收斂歷史分類（${legacyCollections.length}）` : `查看已收斂歷史分類（${legacyCollections.length}）`}</button>{showLegacyCollections && <div className="mt-2"><p className="mb-2 text-[11px] text-[#615d59]">歷史分類僅供查閱，不能拖放、改名或刪除。</p><div className="flex gap-4 overflow-x-auto px-4 -mx-4 scrollbar-hide pt-1 pb-2">{legacyCollections.map((collection) => renderFolder(collection, true))}</div></div>}</div>}
                     </div>
                 </div>
 
@@ -368,6 +378,7 @@ const CollectionBoard = ({ onRemix }) => {
                         onClose={() => setSelectedCollectionId(null)}
                         onPostClick={(post) => navigate(`/post/${post.dbId || post.id}`)}
                         onRemix={onRemix}
+                        readOnly={selectedCollectionIsLegacy}
                     />
                 )}
 

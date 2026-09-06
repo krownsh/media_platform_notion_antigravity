@@ -26,6 +26,7 @@
     "agent:complete-action": "node scripts/agent-sdk/complete-workflow-action.js",
     "agent:vault-note": "node scripts/agent-sdk/write-vault-note.js",
     "agent:vault:check": "node scripts/agent-sdk/check-vault.js",
+    "vault:migrate-content-paths": "node scripts/maintenance/migrate-vault-content-paths.js",
     "agent:poc:propose": "node scripts/agent-sdk/record-poc-proposal.js",
     "agent:poc:run": "node scripts/agent-sdk/run-poc-workflow.js",
     "agent:create-draft": "node scripts/agent-sdk/create-workflow-draft.js",

@@ -54,8 +54,15 @@ GitHub 查詢條件：`user:krownsh pushed:>=2026-08-05`。
 1. 新增 project registry，topic 以 `project_id` 外鍵連結；topic 儲存單一受控 `domain_key`。
 2. 先建立六個 active project，並建立使用者確認的 `專案 × 領域` topic；不從舊資料自動猜測或合併。
 3. 現有 60 個 `agent_auto` topic 與其來源匹配保留稽核軌跡，不刪除。
-4. 使用者確認對照後，將保留來源移至新 topic；舊 topic 改為 `archived`。
-5. 目前 35 個 agent 自動 `accepted` 的 match 先降級為待人工覆核的 `suggested`，並保留原始分數、理由與 agent 來源。
+4. 使用者確認對照後，將保留來源移至新 topic；舊 topic 改為 `archived`。Stage R 將既有 `agent_auto` 的合法狀態擴為 `active` 或 `archived`，但 Stage O trigger 仍禁止新建或重新標記任何 `agent_auto` Topic。
+5. Stage Q 上線後，agent 新寫入的 match 一律維持 `suggested`；已由 Owner 核准的這次遷移，57 個精確對照 match 記為 `accepted`／`decision_source = user`，並保留原始分數、理由與 agent 來源。
+
+## 已套用的 legacy 資料收斂（2026-09-06）
+
+- 新建 6 個 Owner project 與 11 個受控的 `Project × Domain` Topic。
+- 57 個精確標題對照的 source match 已移到對應的 user-owned Topic，並標記為 Owner 接受。
+- 60 個 legacy `agent_auto` Topic 已封存；其中 3 個沒有安全 Repo 歸屬的 source match 保留在封存 Topic，未猜測性重掛。
+- 32 個 Hermes auto Collection 的 183 篇貼文已回連到既有 Owner Collection；`法律科技` 的 1 篇貼文回到未分類 inbox。33 個舊 Hermes Collection 保留為空白稽核紀錄，沒有刪除 Owner Collection、沒有搬 Vault 實體檔。
 
 ## Hermes 與工作流對齊
 

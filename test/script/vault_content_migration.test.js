@@ -16,6 +16,16 @@ test('database-only plan needs no Vault and never claims the path was applied', 
     assert.equal(manifest.rows[0].new_relative_path, 'wiki/sources/post-db.md');
 });
 
+test('shared legacy paths are blocked instead of being copied into multiple source notes', () => {
+    const sharedPath = 'wiki/entities/shared-note.md';
+    const manifest = planDatabaseVaultPaths({ workflows: [
+        { id: 'workflow-a', user_id: 'owner-1', post_id: 'post-a', updated_at: '2026-09-07T00:00:00.000Z', context: { vault: { relative_path: sharedPath } }, action_plan: {} },
+        { id: 'workflow-b', user_id: 'owner-1', post_id: 'post-b', updated_at: '2026-09-07T00:00:00.000Z', context: { vault: { relative_path: sharedPath } }, action_plan: {} }
+    ] });
+    assert.deepEqual(manifest.rows.map(row => row.status), ['blocked', 'blocked']);
+    assert.deepEqual(manifest.rows.map(row => row.reason), ['shared_legacy_path', 'shared_legacy_path']);
+});
+
 test('Vault migration copies, atomically repoints the workflow, then removes one verified legacy note', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'vault-content-migration-'));
     const oldPath = 'wiki/domains/AI 工具/2026-09-01-note--post-123.md';

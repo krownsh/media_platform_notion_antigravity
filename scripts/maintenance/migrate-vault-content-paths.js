@@ -48,6 +48,17 @@ function targetPath(workflow) {
     return postId ? `wiki/sources/${postId}.md` : null;
 }
 
+function blockSharedLegacyPaths(rows, readyStatus) {
+    const counts = new Map();
+    for (const row of rows) {
+        if (row.status !== readyStatus || !row.old_relative_path) continue;
+        counts.set(row.old_relative_path, (counts.get(row.old_relative_path) || 0) + 1);
+    }
+    return rows.map(row => counts.get(row.old_relative_path) > 1
+        ? { ...row, status: 'blocked', reason: 'shared_legacy_path' }
+        : row);
+}
+
 function replacePath(workflow, oldPath, newPath) {
     const context = structuredClone(workflow.context || {});
     const actionPlan = structuredClone(workflow.action_plan || {});
@@ -106,7 +117,7 @@ export async function planVaultContentMigration({ workflows, vaultRoot }) {
         }
         rows.push({ ...base, new_relative_path, old_sha256: await sha256(source), status: 'ready', reason: 'verified' });
     }
-    return { version: 1, generated_at: new Date().toISOString(), vault_root: root, rows };
+    return { version: 1, generated_at: new Date().toISOString(), vault_root: root, rows: blockSharedLegacyPaths(rows, 'ready') };
 }
 
 export function planDatabaseVaultPaths({ workflows }) {
@@ -140,7 +151,12 @@ export function planDatabaseVaultPaths({ workflows }) {
             reason: 'database_path_change_planned'
         });
     }
-    return { version: 1, scope: 'database_only', generated_at: new Date().toISOString(), rows };
+    return {
+        version: 1,
+        scope: 'database_only',
+        generated_at: new Date().toISOString(),
+        rows: blockSharedLegacyPaths(rows, 'ready_for_filesystem_verification')
+    };
 }
 
 async function currentWorkflow(supabase, row) {

@@ -9,6 +9,9 @@ workflow 的 `updated_at`。套用時先複製、更新同一筆 workflow 的三
 先在任何有專案環境檔、但不需要 Vault 的機器產生 DB-only manifest。它只讀取 workflow
 相對路徑，列出舊路徑與固定目標路徑；不會檢查檔案、不會更新 Supabase：
 
+若多個 workflow 指向同一份舊筆記，manifest 會標記為 `blocked/shared_legacy_path`；
+這通常是共用 entity 或人工筆記，不能自動複製成多篇來源。
+
 ```bash
 cd "$MEDIA_PLATFORM_PROJECT_ROOT"
 npm run vault:migrate-content-paths -- \

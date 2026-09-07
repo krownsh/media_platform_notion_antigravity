@@ -6,8 +6,6 @@ import path from 'path';
 export const DEFAULT_VAULT_ROOT = path.join(os.homedir(), '.hermes', 'claude-obsidian');
 export const VAULT_MANAGED_START = '<!-- BEGIN MEDIA WORKFLOW MANAGED -->';
 export const VAULT_MANAGED_END = '<!-- END MEDIA WORKFLOW MANAGED -->';
-const VAULT_INDEX_START = '<!-- BEGIN MEDIA COLLECTION INDEX -->';
-const VAULT_INDEX_END = '<!-- END MEDIA COLLECTION INDEX -->';
 const MAX_NOTE_INPUT_BYTES = 256 * 1024;
 const MAX_SOURCE_CONTENT_LENGTH = 1_000_000;
 
@@ -97,13 +95,6 @@ function postFromWorkflow(workflow) {
         : workflow?.collection_posts;
 }
 
-function collectionFromPost(post) {
-    const collection = Array.isArray(post?.collection_collections)
-        ? post.collection_collections[0]
-        : post?.collection_collections;
-    return collection?.id && collection?.name ? collection : null;
-}
-
 function analysisFromPost(post) {
     return Array.isArray(post?.collection_post_analysis)
         ? post.collection_post_analysis[0]
@@ -121,50 +112,6 @@ function actionFromWorkflow(workflow, type) {
     return actions.find(action => action?.type === type) || null;
 }
 
-function collectionIndexRelativePath(collectionId) {
-    return collectionId
-        ? `wiki/collections/${safeSegment(collectionId, null, 'collection id')}.md`
-        : 'wiki/inbox.md';
-}
-
-function collectionIndexLink(collection) {
-    const relativePath = collectionIndexRelativePath(collection?.id);
-    return `[[${relativePath.replace(/\.md$/, '')}|${collection?.name || '收件匣'}]]`;
-}
-
-function collectionIdFromManagedNote(content) {
-    const match = String(content || '').match(/^\s*- collection_id: (.+)$/m);
-    const value = match?.[1]?.trim();
-    return value && value !== '（未分類）' ? value : null;
-}
-
-async function existingWikiPath(root, workflow, postId) {
-    const vaultAction = actionFromWorkflow(workflow, 'vault_note');
-    const candidates = [
-        workflow?.context?.vault?.relative_path,
-        workflow?.context?.vault_sync?.relative_path,
-        vaultAction?.outcome?.relative_path
-    ];
-    const suffix = `--${safeSegment(String(postId || '').slice(0, 8), 'unknown', 'post id')}.md`;
-    for (const candidate of candidates) {
-        const relativePath = String(candidate || '').trim().replace(/\\/g, '/');
-        if (!relativePath.startsWith('wiki/') || !relativePath.endsWith(suffix)) continue;
-        const absolutePath = path.resolve(root, ...relativePath.split('/'));
-        try {
-            assertInside(root, absolutePath);
-            if ((await fs.stat(absolutePath)).isFile()) {
-                return {
-                    relative_path: relativePath,
-                    path: absolutePath
-                };
-            }
-        } catch {
-            // A missing or malformed historical outcome must not block a new write.
-        }
-    }
-    return null;
-}
-
 function formatList(items, maxItems = 20) {
     if (!Array.isArray(items)) return '- （無）';
     const values = items.map(item => boundedText(item, 500)).filter(Boolean).slice(0, maxItems);
@@ -172,7 +119,6 @@ function formatList(items, maxItems = 20) {
 }
 
 function buildManagedBlock({ workflow, noteInput, post, analysis, replication }) {
-    const collection = collectionFromPost(post);
     const sourceContent = markdownText(
         post?.platform === 'image' ? (noteInput.original_content ?? capturedContent(post)) : capturedContent(post),
         MAX_SOURCE_CONTENT_LENGTH
@@ -195,12 +141,8 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         VAULT_MANAGED_START,
         `- workflow_id: ${yamlText(workflow.id)}`,
         `- database_post_id: ${yamlText(post?.id)}`,
-        `- display_title: ${yamlText(noteInput.note_title || post?.title || analysis?.generated_title || '') || '（未命名）'}`,
         `- source_url: ${yamlText(sourceUrl)}`,
         `- source_platform: ${yamlText(post?.platform || '') || 'unknown'}`,
-        `- collection_id: ${yamlText(collection?.id || '') || '（未分類）'}`,
-        `- collection_name: ${yamlText(collection?.name || '') || '（未分類）'}`,
-        `- collection_index: ${collectionIndexLink(collection)}`,
         `- updated_at: ${new Date().toISOString()}`,
         '',
         '## 來源摘要',
@@ -258,48 +200,6 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
     return lines.join('\n');
 }
 
-function mergeIndexBlock(existing, managed) {
-    const start = existing.indexOf(VAULT_INDEX_START);
-    const end = existing.indexOf(VAULT_INDEX_END);
-    if (start >= 0 && end >= start) {
-        const afterEnd = end + VAULT_INDEX_END.length;
-        return `${existing.slice(0, start).trimEnd()}\n\n${managed}\n${existing.slice(afterEnd).trimStart()}`.trim() + '\n';
-    }
-    return `${existing.trimEnd()}\n\n${managed}\n`.trimStart();
-}
-
-async function updateCollectionIndex(root, collection, sourceRelativePath, postId, noteTitle, operation = 'upsert') {
-    const relativePath = collectionIndexRelativePath(collection?.id);
-    const filePath = path.resolve(root, ...relativePath.split('/'));
-    assertInside(root, filePath);
-    const existing = await fs.readFile(filePath, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
-    if (operation === 'remove' && !existing) return;
-    const marker = `<!-- media-post:${postId} -->`;
-    const oldLines = existing.includes(VAULT_INDEX_START) && existing.includes(VAULT_INDEX_END)
-        ? existing.slice(existing.indexOf(VAULT_INDEX_START) + VAULT_INDEX_START.length, existing.indexOf(VAULT_INDEX_END)).trim().split('\n').filter(Boolean)
-        : [];
-    const lines = oldLines.filter(line => !line.includes(marker));
-    if (operation === 'upsert') {
-        const target = sourceRelativePath.replace(/\.md$/, '');
-        lines.push(`- [[${target}|${noteTitle}]] ${marker}`);
-    }
-    const managed = [VAULT_INDEX_START, ...lines.sort((a, b) => a.localeCompare(b, 'zh-Hant')), VAULT_INDEX_END].join('\n');
-    const heading = collection?.name || '收件匣';
-    const initial = existing && operation === 'remove'
-        ? existing
-        : existing
-        ? (/^# .+$/m.test(existing) ? existing.replace(/^# .+$/m, `# ${heading}`) : `# ${heading}\n\n${existing}`)
-        : `# ${heading}\n`;
-    await atomicWrite(filePath, mergeIndexBlock(initial, managed));
-}
-
-async function syncCollectionIndexes(root, paths, previousCollectionId) {
-    if (previousCollectionId && previousCollectionId !== paths.collection?.id) {
-        await updateCollectionIndex(root, { id: previousCollectionId }, paths.wiki.relative_path, paths.post_id, paths.note_title, 'remove');
-    }
-    await updateCollectionIndex(root, paths.collection, paths.wiki.relative_path, paths.post_id, paths.note_title);
-}
-
 function mergeManagedBlock(existing, managed) {
     const start = existing.indexOf(VAULT_MANAGED_START);
     const end = existing.indexOf(VAULT_MANAGED_END);
@@ -328,18 +228,12 @@ export function buildVaultNotePaths(root, noteInput, post, _options = {}) {
         ? String(post.platform).toLowerCase()
         : 'generic';
     const noteTitle = safeSegment(noteInput.note_title || post?.title || analysisFromPost(post)?.generated_title, `貼文-${post?.id?.slice(0, 8) || '未命名'}`, 'note_title');
-    const postId = safeSegment(String(post?.id || ''), null, 'post id');
-    const collection = collectionFromPost(post);
-    const classificationDirectory = collection?.id || 'inbox';
-    const wikiPath = path.resolve(root, 'wiki', 'sources', `${postId}.md`);
+    const postDate = String(post?.posted_at || post?.created_at || new Date().toISOString()).slice(0, 10);
+    const postId = safeSegment(String(post?.id || '').slice(0, 8), 'unknown', 'post id');
+    const wikiPath = path.resolve(root, 'wiki', 'threads', platform, `${postDate}-${noteTitle}--${postId}.md`);
     assertInside(root, wikiPath);
     return {
         platform,
-        collection: collection
-            ? { id: collection.id, name: collection.name, directory: classificationDirectory }
-            : null,
-        classification_directory: classificationDirectory,
-        post_id: postId,
         note_title: noteTitle,
         wiki: {
             relative_path: path.relative(root, wikiPath).split(path.sep).join('/'),
@@ -367,11 +261,7 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
             }
         }
         : noteInput;
-    const plannedPaths = buildVaultNotePaths(root, effectiveNoteInput, post);
-    const previousWiki = await existingWikiPath(root, workflow, post.id);
-    const paths = previousWiki
-        ? { ...plannedPaths, wiki: previousWiki }
-        : plannedPaths;
+    const paths = buildVaultNotePaths(root, effectiveNoteInput, post);
     const replication = effectiveNoteInput.replication && typeof effectiveNoteInput.replication === 'object'
         ? effectiveNoteInput.replication
         : null;
@@ -385,19 +275,14 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     if (draft?.body) {
         draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
         draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
-        draftFile = path.resolve(root, 'content', 'drafts', paths.post_id, `${draftFormat}.md`);
+        draftFile = path.resolve(root, 'content', 'drafts', paths.platform, draftFormat, `${draftTitle}.md`);
         assertInside(root, draftFile);
         draftPath = path.relative(root, draftFile).split(path.sep).join('/');
         effectiveNoteInput.content_draft.relative_path = draftPath;
     }
     const wikiManaged = buildManagedBlock({ workflow, noteInput: effectiveNoteInput, post, analysis, replication });
     const existingWiki = await fs.readFile(paths.wiki.path, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
-    const previousCollectionId = collectionIdFromManagedNote(existingWiki);
-    const sourceNote = existingWiki
-        ? mergeManagedBlock(existingWiki, wikiManaged)
-        : `# ${paths.note_title}\n\n${wikiManaged}\n`;
-    await atomicWrite(paths.wiki.path, sourceNote);
-    await syncCollectionIndexes(root, paths, previousCollectionId);
+    await atomicWrite(paths.wiki.path, mergeManagedBlock(existingWiki, wikiManaged));
 
     if (draft?.body) {
         const draftNote = [

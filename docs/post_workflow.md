@@ -18,10 +18,10 @@ cannot become `complete/completed` until Hermes writes the source note to the
 real Claude-Obsidian Vault, including the database post ID and original URL.
 The default path is `~/.hermes/claude-obsidian`; a missing or unrecognised path
 is a user-confirmation blocker. Source notes use
-`wiki/sources/<post-id>.md`; Collection membership is represented by a stable
-`wiki/collections/<collection-id>.md` index or `wiki/inbox.md`. An approved
-replication plan remains in the same source note and never creates a Project
-folder without an explicit Owner decision.
+`wiki/threads/<platform>/<YYYY-MM-DD>-<title>--<post-id前8碼>.md`. Collection,
+Topic, AI domain, and Project suggestions remain workflow data and do not create
+or rename Vault folders. An approved replication plan remains in the same source
+note and never creates a Project folder without an explicit Owner decision.
 
 After Stage G is deployed, restart the existing PM2 processes:
 

@@ -9,23 +9,22 @@
 - 只納入 GitHub 近 30 天有更新的 repo 作為 active project；其他資料只可留在收件匣或封存，不得自動建立 active topic。
 - Agent 與 Hermes 可以提出候選，但不得建立 active topic 或自動接受來源匹配。
 
-## Collection 與 Vault 實體歸檔（2026-09-05）
+## Collection 與 Vault 實體歸檔（2026-09-05，Vault 部分已由 2026-09-07 決策取代）
 
 - Owner 建立的 Collection 一律保留，不改名、不刪除、不自動重新掛載其中貼文。
 - 只有 description 明確標示為 `Hermes 自動建立的媒體分類資料夾` 的 Collection，才列入收斂與遷移候選。
-- 一篇來源筆記只會有一個 Vault 實體位置：有既有 Collection 時寫入
-  `wiki/collections/<Collection 名稱>/`；尚未分類時寫入 `wiki/inbox/`。
-- 平台只保留在筆記 metadata，不能再決定來源筆記的資料夾路徑。
+- Collection 收斂只處理資料庫與前端分類，不產生 Vault 目標路徑。
+- Vault 仍由既有 platform 規則決定路徑，Collection 名稱不參與。
 - Topic 是 `Project × 受控領域` 的多對多研究索引，不產生來源筆記副本或每篇資料夾。
-- 已完成的 Vault write 會沿用已記錄且存在的 `relative_path`；Collection 改名不會在重試時悄悄複製出第二份來源筆記。實際搬移必須由已核准的 migration manifest 執行。
-- 收斂 dry-run 僅能把 Hermes Collection 指向名稱完全匹配的既有 Owner Collection；沒有明確規則的資料一律維持未分類並進 `wiki/inbox/`，禁止自行創造新的收納類別。
+- Collection 改名或貼文移動不觸發 Vault 搬移；不產生或執行 Vault migration manifest。
+- 收斂 dry-run 僅能把 Hermes Collection 指向名稱完全匹配的既有 Owner Collection；沒有明確規則的資料一律維持未分類，禁止自行創造新的收納類別。
 - Legacy `agent_auto` Topic 的 dry-run 使用精確標題對照至 `github repository × domain_key`；未命中的 Topic 僅列為封存候選，來源 match 保留，絕不靠模糊關鍵字硬掛到 6 個 Repo。
 
-### Vault 穩定來源路徑（2026-09-07）
+### Vault 路徑決策（2026-09-07 回復）
 
-- `wiki/collections/<Collection 名稱>/` 與 `wiki/inbox/` 的實體來源路徑設計已被取代；來源筆記固定為 `wiki/sources/<post-id>.md`。
-- Collection 是前端內容分類，也在 Vault 透過 `wiki/collections/<collection-id>.md` 索引呈現；未分類來源列在 `wiki/inbox.md`。
-- Collection 改名或貼文改分類只更新索引／managed metadata，不搬來源筆記；舊路徑改造必須由 manifest 驗證、人工核准後執行。
+- Vault 維持既有 `wiki/threads/<platform>/` 寫入規則，不執行內容分類路徑改造。
+- Collection 是資料庫與前端的內容分類，不建立 Vault Collection index，也不驅動來源筆記搬移。
+- 既有 workflow path 與真實 Vault 檔案維持原狀；不執行 DB-only manifest 或舊檔搬移。
 
 ## Active project registry
 

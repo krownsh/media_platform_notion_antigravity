@@ -1151,7 +1151,7 @@ sources、專案 runtime 或 Supabase 資料。舊的
 
 ```text
 .raw/social/<platform>/<post-id>.md       原始來源投影
-wiki/sources/...                          可閱讀來源頁
+wiki/threads/<platform>/...               可閱讀來源頁（維持既有路徑）
 wiki/entities/...                         工具、repo、人物、產品
 wiki/concepts/...                         方法與概念
 wiki/resources/...                        Topic Dossier

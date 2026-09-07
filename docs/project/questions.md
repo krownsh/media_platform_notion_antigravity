@@ -444,3 +444,9 @@ apply_poc
 - Collection 改名只改顯示名稱／hub 內容；貼文移動只改 DB 關聯與筆記分類連結，來源筆記路徑不變。
 - 前端貼文卡顯示復刻方案狀態 badge，詳細頁新增復刻方案區塊；未經 Owner 明確核准不得建立正式 Project。
 - 已確認並實作：來源筆記使用固定 `wiki/sources/<post-id>.md`；Collection 僅更新穩定索引與 metadata，不應據舊 `wiki/collections/<Collection 名稱>/...` 規則搬移既有 Vault。
+
+## 2026-09-07 後續決定
+
+- Obsidian 改造暫停，Vault 維持既有 platform 路徑；不需要先取得不在本機的 Vault。
+- Collection／Topic 分類仍留在資料庫與前端，但不建立 Vault Collection index，也不觸發筆記搬移。
+- 先前的 `wiki/sources` 與 DB-only migration 規劃不執行。

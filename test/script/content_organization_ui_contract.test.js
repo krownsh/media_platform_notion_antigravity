@@ -12,6 +12,7 @@ const collectionBoard = read('src/components/CollectionBoard.jsx');
 const collectionFolder = read('src/components/CollectionFolder.jsx');
 const collectionModal = read('src/components/CollectionModal.jsx');
 const sortablePostCard = read('src/components/SortablePostCard.jsx');
+const collectionVisibility = read('src/utils/collectionVisibility.js');
 
 test('topic workspace loads authenticated responses and keeps archived topics out of the active workspace', () => {
     assert.match(topicsPage, /responseData\(await authenticatedFetch\(`\$\{API_BASE_URL\}\/api\/topics`\)\)/);
@@ -23,8 +24,8 @@ test('topic workspace loads authenticated responses and keeps archived topics ou
 });
 
 test('legacy auto collections stay accessible but cannot receive or mutate posts', () => {
-    assert.match(collectionBoard, /includes\('Hermes 自動建立'\)/);
-    assert.match(collectionBoard, /const activeCollections = useMemo\(\(\) => collections\.filter\(\(collection\) => !isLegacyAutoCollection\(collection\)\)/);
+    assert.match(collectionVisibility, /includes\('Hermes 自動建立'\)/);
+    assert.match(collectionBoard, /const activeCollections = useMemo\(\(\) => visibleCollections\(collections\)/);
     assert.match(collectionBoard, /over\.data\.current\?\.type === 'collection' && !isLegacyAutoCollection\(over\.data\.current\.collection\)/);
     assert.match(collectionBoard, /readOnly=\{selectedCollectionIsLegacy\}/);
     assert.match(collectionFolder, /disabled: readOnly/);

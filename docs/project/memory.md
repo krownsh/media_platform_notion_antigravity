@@ -128,3 +128,9 @@
 2. 現行目標是來源筆記固定寫入 `wiki/sources/<post-id>.md`；既有 Collection／inbox 只以穩定的 `wiki/collections/<collection-id>.md`／`wiki/inbox.md` 索引表達，不得再把分類名稱、平台或 AI 文字當成來源路徑。
 3. 說明既有 Vault 遷移時，須清楚區分「舊 DB relative_path 可用作來源定位」與「目標路徑依 post ID 固定」；Collection 歸屬僅更新索引與 metadata，不搬來源筆記。
 4. 先以 Supabase workflow path 產生唯讀 DB-only manifest，再到實體 Vault 驗證 hash／檔案存在；不可把實體 Vault 根目錄當成 DB 盤點的前置條件。實際套用仍須以 copy → DB compare-and-update → 移除舊檔的順序，避免 DB 指向不存在的檔案。
+
+## 2026-09-07：取消 Obsidian 內容分類路徑改造
+
+1. Owner 決定 Obsidian 暫時保持原樣；前一節的 `wiki/sources`、Collection index 與 DB-only manifest 規劃停止執行。
+2. Vault writer 回復 `wiki/threads/<platform>/<日期>-<標題>--<post-id前8碼>.md`；Collection、Topic、AI domain 與 Project 建議不驅動 Vault 路徑。
+3. Collection／Topic 的資料庫與前端治理、AI 標題及復刻方案呈現仍保留；沒有修改真實 Vault 或既有 workflow path。

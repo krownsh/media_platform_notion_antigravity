@@ -53,7 +53,7 @@ test('container migration dry-run is read-only and emits reviewable per-post man
         assert.match(collectionPlan, /owner_review_relink_to_existing_collection/);
         assert.match(topicPlan, /github:krownsh\/media_platform_notion_antigravity#agent_workflow/);
         assert.match(topicPlan, /owner_review_relink_to_project_topic/);
-        assert.match(vaultPlan, /wiki\/collections\/agent工具\/2026-09-04-A B test--post-1\.md/);
+        assert.match(vaultPlan, /wiki\/threads\/threads\/2026-09-04-A B test--post-1\.md/);
         assert.equal(unresolved.read_only, true);
         assert.equal(unresolved.collections[0].requires_owner_confirmation, 'true');
     } finally {

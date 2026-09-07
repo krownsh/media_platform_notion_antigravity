@@ -121,12 +121,12 @@ export function topicTargetFor(topic) {
     return target ? { repository_target: target[0], domain_key: target[1] } : null;
 }
 
-function proposedVaultPath(post, target) {
+function proposedVaultPath(post) {
     if (!post?.id) return null;
     const date = String(post.posted_at || post.created_at || '').slice(0, 10) || 'unknown-date';
     const title = safePathSegment(post.title, `貼文-${String(post.id).slice(0, 8)}`);
-    const folder = target ? `wiki/collections/${safePathSegment(target.name, '未命名資料夾')}` : 'wiki/inbox';
-    return `${folder}/${date}-${title}--${String(post.id).slice(0, 8)}.md`;
+    const platform = safePathSegment(String(post.platform || 'generic').toLowerCase(), 'generic');
+    return `wiki/threads/${platform}/${date}-${title}--${String(post.id).slice(0, 8)}.md`;
 }
 
 function reviewRows(containers, postIdsField, details) {
@@ -190,7 +190,7 @@ export async function planAutoContainerMigration(output) {
         old_id: '',
         old_path: 'unknown_not_scanned',
         post_id: post.id,
-        suggested_target: proposedVaultPath(post, collectionTargetByPost.get(post.id)),
+        suggested_target: proposedVaultPath(post),
         proposed_action: 'owner_review_vault_move_after_mapping_approval',
         evidence: collectionTargetByPost.get(post.id)
             ? `derived from explicit owner Collection mapping=${collectionTargetByPost.get(post.id).name}; no Vault files read or moved`

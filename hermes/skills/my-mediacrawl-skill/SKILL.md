@@ -270,13 +270,11 @@ create a sideproject may create a formal Project workspace.
 The normal source note is stored at:
 
 ```text
-<Vault>/wiki/sources/<post-id>.md
+<Vault>/wiki/threads/<platform>/<YYYY-MM-DD>-<title>--<post-id前8碼>.md
 ```
 
-The source note is the only automatic artifact. Its path is permanent: Hermes
-must not derive it from platform, Collection name, model-produced domain,
-topic, or project text. Collection membership is represented by the stable
-`<Vault>/wiki/collections/<collection-id>.md` index (or `wiki/inbox.md`).
+The source note is the only automatic artifact. Hermes must not derive a
+directory from Collection, model-produced domain, topic, or project text.
 
 ## Content output and recall search
 

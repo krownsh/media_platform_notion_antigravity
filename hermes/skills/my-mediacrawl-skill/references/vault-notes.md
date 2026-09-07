@@ -33,7 +33,7 @@ Traditional-Chinese names when the user has not supplied them.
 The source note is written to:
 
 ```text
-<Vault>/wiki/sources/<post-id>.md
+<Vault>/wiki/threads/<platform>/<YYYY-MM-DD>-<title>--<post-id前8碼>.md
 ```
 
 When `replication_plan` is approved, its content is appended to `## 復刻方案`
@@ -41,8 +41,7 @@ inside the same source note. Only an explicit Owner sideproject decision may
 create a formal Project directory.
 
 The source note includes the database `collection_posts.id`, workflow ID, and source
-URL. Its Collection membership is shown through a stable
-`wiki/collections/<collection-id>.md` index (or `wiki/inbox.md`), so a folder
-rename or post move never renames the source note. A managed block is replaced
-idempotently on retry; text outside the block is preserved. The write uses a
-temporary file plus rename, so a partial note is never presented as successful.
+URL. Collection membership remains in the database and does not create or rename
+Vault folders. A managed block is replaced idempotently on retry; text outside
+the block is preserved. The write uses a temporary file plus rename, so a partial
+note is never presented as successful.

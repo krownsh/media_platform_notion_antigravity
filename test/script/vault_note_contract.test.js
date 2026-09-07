@@ -57,18 +57,14 @@ test('Vault note writes one source note and keeps replication in its managed blo
     });
 
     assert.equal(result.post_id, 'post-123');
-    assert.equal(result.relative_path, 'wiki/sources/post-123.md');
+    assert.equal(result.relative_path, 'wiki/threads/threads/2026-09-03-Wallpets 深度研究與複製規劃--post-123.md');
     assert.equal(result.replication_path, null);
     const source = await fs.readFile(path.join(root, result.relative_path), 'utf8');
     assert.match(source, /database_post_id: post-123/);
     assert.match(source, /https:\/\/example\.test\/posts\/123/);
     assert.match(source, /完整原文內容/);
-    assert.match(source, /collection_name: agent工具/);
     assert.match(source, /## 復刻方案/);
     assert.match(source, /Wallpets 復刻項目/);
-    const index = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
-    assert.match(index, /# agent工具/);
-    assert.match(index, /\[\[wiki\/sources\/post-123\|Wallpets 深度研究與複製規劃\]\]/);
 });
 
 test('Vault note retry preserves text outside the managed block', async () => {
@@ -81,47 +77,38 @@ test('Vault note retry preserves text outside the managed block', async () => {
     };
     const workflow = fixtureWorkflow();
     workflow.action_plan.actions = [{ type: 'vault_note', status: 'approved' }];
-    const firstOutcome = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
-    const filePath = path.join(root, 'wiki', 'sources', 'post-123.md');
+    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+    const filePath = path.join(root, 'wiki', 'threads', 'threads', '2026-09-03-保留人工內容--post-123.md');
     await fs.appendFile(filePath, '\n\n## 人工補充\n不要覆蓋我\n');
-    workflow.context = { vault: { relative_path: firstOutcome.relative_path } };
     workflow.collection_posts.content = '第二次內容';
     workflow.collection_posts.collection_collections.name = '重新命名的資料夾';
     await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
     const content = await fs.readFile(filePath, 'utf8');
     assert.match(content, /第二次內容/);
     assert.match(content, /不要覆蓋我/);
-    const index = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
-    assert.match(index, /# 重新命名的資料夾/);
+    await assert.rejects(fs.stat(path.join(root, 'wiki', 'collections')));
 });
 
-test('Vault source paths are stable while Collection remains a content index', () => {
+test('Vault source paths stay platform-based and ignore Collection classification', () => {
     const root = path.join(os.tmpdir(), 'media-vault-path-contract');
     const filed = buildVaultNotePaths(root, { note_title: '內容分類' }, fixtureWorkflow().collection_posts);
-    assert.equal(filed.wiki.relative_path, 'wiki/sources/post-123.md');
+    assert.equal(filed.wiki.relative_path, 'wiki/threads/threads/2026-09-03-內容分類--post-123.md');
     assert.equal(filed.platform, 'threads');
-    assert.equal(filed.collection.name, 'agent工具');
 
     const unfiledPost = { ...fixtureWorkflow().collection_posts, collection_collections: null };
     const unfiled = buildVaultNotePaths(root, { note_title: '未分類內容' }, unfiledPost);
-    assert.equal(unfiled.wiki.relative_path, 'wiki/sources/post-123.md');
-    assert.equal(unfiled.collection, null);
+    assert.equal(unfiled.wiki.relative_path, 'wiki/threads/threads/2026-09-03-未分類內容--post-123.md');
 });
 
-test('moving a post updates Collection indexes without moving its source note', async () => {
-    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
-    await fs.mkdir(path.join(root, '.obsidian'));
-    const workflow = fixtureWorkflow();
-    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '穩定來源' } });
-    workflow.context = { vault: { relative_path: 'wiki/sources/post-123.md' } };
-    workflow.collection_posts.collection_collections = { id: 'collection-research', name: '研究素材' };
-    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '穩定來源' } });
-    await fs.stat(path.join(root, 'wiki', 'sources', 'post-123.md'));
-    const oldIndex = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
-    const newIndex = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-research.md'), 'utf8');
-    assert.match(oldIndex, /# agent工具/);
-    assert.doesNotMatch(oldIndex, /media-post:post-123/);
-    assert.match(newIndex, /media-post:post-123/);
+test('AI title remains a fallback for a titleless platform note', () => {
+    const root = path.join(os.tmpdir(), 'media-vault-title-contract');
+    const post = {
+        ...fixtureWorkflow().collection_posts,
+        title: null,
+        collection_post_analysis: { generated_title: 'AI 補回標題' }
+    };
+    const result = buildVaultNotePaths(root, {}, post);
+    assert.equal(result.wiki.relative_path, 'wiki/threads/threads/2026-09-03-AI 補回標題--post-123.md');
 });
 
 test('skill and CLI expose bounded source preview and mandatory note action', async () => {

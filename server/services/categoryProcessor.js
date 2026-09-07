@@ -1,4 +1,3 @@
-import { aiService } from './aiService.js';
 import { supabase } from '../supabaseClient.js';
 
 /**
@@ -108,23 +107,8 @@ ${content.substring(0, 500)}`;
         try {
             let aiResponse = 'other';
 
-            // MiniMax is the only LLM fallback. If it is unavailable, retain the
-            // deterministic rule-based "other" result instead of using a mock.
-            if (aiService.minimaxApiKey) {
-                // 直接調用 aiService 的統一部分析方法，確保認證資訊一致
-                const aiResult = await aiService.analyzeWithMinimax(
-                    { content: content.substring(0, 500) },
-                    prompt,
-                    aiService.currentFreeModel
-                );
-
-                if (aiResult && aiResult.structured) {
-                    // LLM 可能在 structured 中回傳分類
-                    aiResponse = aiResult.structured.primary_category || aiResult.structured.category || JSON.stringify(aiResult.structured);
-                } else if (aiResult && aiResult.summary) {
-                    aiResponse = typeof aiResult.summary === 'string' ? aiResult.summary : JSON.stringify(aiResult.summary);
-                }
-            }
+            // Server LLM providers are retired. Keep deterministic category
+            // handling rather than pretending Hermes/Codex is a local API.
 
             // 動態處理 AI 回應：移除空格與換行，並轉為小寫
             const lowered = aiResponse.toLowerCase();

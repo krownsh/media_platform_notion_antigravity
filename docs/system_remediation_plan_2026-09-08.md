@@ -4,6 +4,10 @@
 
 執行更新（2026-09-08）：第一、二批的本機修正已完成並合併至本機 `main`；尚未 push／部署、未連線 Supabase 或實際 Vault。供應商撤銷、Git 歷史清除、MiniMax 替代 runtime 與 worktree 實體清理仍未執行。
 
+Owner 決定（2026-09-08）：MiniMax 已無訂閱，視為永久退役；不執行撤銷或 Git 歷史重寫，也不擅自接入付費替代模型。Hermes agent 執行 Codex 是獨立的 agent 工作流，不等同於既有 server API 的 LLM provider；現有 server 入口需改為明確交由 Hermes 處理，不能再嘗試 MiniMax。
+
+第三批執行更新（2026-09-08）：`aiService` 已移除 MiniMax HTTP 呼叫與環境變數讀取；分析、改寫與 Remix HTTP 入口回傳 `503 HERMES_AGENT_REQUIRED`，Remix UI 改顯示 Hermes Codex agent。擷取與 deterministic 分類保留；背景 AI 分析失敗維持 `pending`，不標成完成。POC 與內容路由仍保留其既有的可恢復／規則式 fallback，不冒充 server 模型可用。
+
 ## 盤點結論與覆核
 
 - Terra 已交付 system_audit_report_2026-09-08.md 與 worktree_disposition_2026-09-08.md。11 個 worktrees 的分支皆已納入 main 歷史，沒有已發現的獨有未合併 commit；不代表 ignored/untracked 產物已保存。

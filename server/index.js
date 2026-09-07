@@ -12,7 +12,6 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { aiService } from './services/aiService.js';
 import { socialMediaService } from './services/socialMediaService.js';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
@@ -496,6 +495,11 @@ app.post('/api/process', requireApiAuth, async (req, res) => {
     }
 });
 
+const hermesAgentRequired = (res) => res.status(503).json({
+    error: 'Server AI is retired. Run the Hermes Codex agent for this task.',
+    code: 'HERMES_AGENT_REQUIRED'
+});
+
 // Analyze Post Endpoint
 app.post('/api/analyze-post', async (req, res) => {
     const { fullJson } = req.body;
@@ -504,13 +508,7 @@ app.post('/api/analyze-post', async (req, res) => {
         return res.status(400).json({ error: 'fullJson data is required' });
     }
 
-    try {
-        const result = await aiService.analyzeThreadsPost(fullJson);
-        res.json(result);
-    } catch (error) {
-        console.error('Error analyzing post:', error);
-        res.status(500).json({ error: error.message });
-    }
+    return hermesAgentRequired(res);
 });
 
 // Rewrite Content Endpoint
@@ -521,36 +519,23 @@ app.post('/api/rewrite', async (req, res) => {
         return res.status(400).json({ error: 'content and style are required' });
     }
 
-    try {
-        const result = await aiService.rewriteContent(content, style);
-        res.json({ result });
-    } catch (error) {
-        console.error('Error rewriting content:', error);
-        res.status(500).json({ error: error.message });
-    }
+    return hermesAgentRequired(res);
 });
 
 // Remix Content Endpoint (New)
 // Remix Content Endpoint (New)
 app.post('/api/remix', async (req, res) => {
-    const { sourceJson, sourceImages, userParams } = req.body;
+    const { sourceJson } = req.body;
 
     if (!sourceJson) {
         return res.status(400).json({ error: 'sourceJson is required' });
     }
 
-    try {
-        const result = await aiService.remixContent(sourceJson, sourceImages, userParams || {});
-        res.json({ result });
-    } catch (error) {
-        console.error('Error remixing content:', error);
-        res.status(500).json({ error: error.message });
-    }
+    return hermesAgentRequired(res);
 });
 
-// Model discovery used a removed provider. There is no user-selectable
-// provider registry for MiniMax yet, so keep the former route explicit instead
-// of failing with an undefined service method.
+// There is no user-selectable server LLM provider. Hermes/Codex is an external
+// agent workflow, not an HTTP provider registry.
 app.get('/api/models', async (req, res) => {
     res.status(410).json({
         error: 'Model discovery is unavailable while no selectable provider registry is configured.'

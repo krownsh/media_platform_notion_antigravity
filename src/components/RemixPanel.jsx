@@ -5,21 +5,9 @@ import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
 import MarkdownRenderer from './MarkdownRenderer';
 
-// Supported text-remix providers.
-const MODELS = [
-    {
-        id: 'minimax-m2.7',
-        name: 'MiniMax M2.7',
-        type: 'minimax',
-        capabilities: ['text'],
-        desc: 'Server-side MiniMax text model'
-    }
-];
-
 const IMAGE_GENERATION_AVAILABLE = false;
 
 const RemixPanel = ({ post, onClose }) => {
-    const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
     const [params, setParams] = useState({
         style: '',
         focus: '',
@@ -102,54 +90,8 @@ const RemixPanel = ({ post, onClose }) => {
         }
     };
 
-    const handleRemix = async () => {
-        setLoading(true);
-        setResult(null);
-        try {
-            let sourceJson;
-            try {
-                sourceJson = JSON.parse(editableJson);
-            } catch {
-                alert('JSON 格式無效。請檢查您的編輯。');
-                setLoading(false);
-                return;
-            }
-
-            const response = await authenticatedFetch(`${API_BASE_URL}/api/remix`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    sourceJson: sourceJson,
-                    // sourceImages: activeImages, // Removed as per request to not use images for text remix
-                    userParams: {
-                        ...params,
-                        model: selectedModel
-                    }
-                })
-            });
-
-            if (!response.ok) {
-                throw new Error('Remix failed');
-            }
-
-            const data = await response.json();
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            setResult(data.result);
-
-            // If the AI returned a suggested prompt, maybe we update our default? 
-            if (data.result.image_prompt) {
-                setImagePrompt(data.result.image_prompt);
-            }
-
-        } catch (error) {
-            console.error('Remix failed:', error);
-            alert(`Remix failed: ${error.message}`);
-        } finally {
-            setLoading(false);
-        }
+    const handleRemix = () => {
+        alert('伺服器 AI 已退役。請把這篇貼文交給 Hermes Codex agent 處理復刻。');
     };
 
     const handleGenerateImage = async (index) => {
@@ -333,30 +275,14 @@ const RemixPanel = ({ post, onClose }) => {
                         {/* Main Content Area - Flex Column with Ratios */}
                         <div className="flex-1 flex flex-col overflow-hidden">
 
-                            {/* Top 10%: Model Selection */}
+                            {/* Top 10%: Execution handoff */}
                             <div className="lg:h-[10%] px-4 sm:px-5 border-b border-[var(--border)] flex flex-col justify-center shrink-0 py-3 lg:py-0">
                                 <div className="flex items-center gap-3">
                                     <label className="flex items-center gap-2 text-xs font-medium text-[#615d59] shrink-0">
                                         <Brain size={14} className="text-[#0075de]" />
-                                        模型
+                                        執行方式
                                     </label>
-                                    <div className="relative flex-1">
-                                        <select
-                                            value={selectedModel}
-                                            onChange={(e) => setSelectedModel(e.target.value)}
-                                            className="w-full bg-[var(--surface-raised)] border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] appearance-none cursor-pointer transition-colors shadow-soft-card"
-                                        >
-                                            {MODELS.map(model => (
-                                                <option key={model.id} value={model.id} className="bg-white text-[rgba(0,0,0,0.95)]">
-                                                    [MiniMax] 
-                                                    {model.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#615d59]">
-                                            <ChevronRight size={12} className="rotate-90" />
-                                        </div>
-                                    </div>
+                                    <span className="text-xs text-[#615d59]">交由 Hermes Codex agent</span>
                                 </div>
                             </div>
 

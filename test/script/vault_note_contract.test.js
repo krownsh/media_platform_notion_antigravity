@@ -89,6 +89,36 @@ test('Vault note retry preserves text outside the managed block', async () => {
     await assert.rejects(fs.stat(path.join(root, 'wiki', 'collections')));
 });
 
+test('Vault retry reuses its recorded note when title or date changes', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    const first = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '原始標題' } });
+    const filePath = path.join(root, first.relative_path);
+    await fs.appendFile(filePath, '\n\n## 人工補充\n保留這段\n');
+    workflow.context = { vault: { relative_path: first.relative_path } };
+    workflow.collection_posts.created_at = '2026-09-04T10:00:00.000Z';
+    workflow.collection_posts.title = '更新後來源標題';
+    const retry = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '更新後顯示標題' } });
+
+    assert.equal(retry.relative_path, first.relative_path);
+    assert.match(await fs.readFile(filePath, 'utf8'), /保留這段/);
+    await assert.rejects(fs.stat(path.join(root, 'wiki', 'threads', 'threads', '2026-09-04-更新後顯示標題--post-123.md')));
+});
+
+test('Vault retry fails instead of creating a second note when its recorded path is missing', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    workflow.context = { vault: { relative_path: 'wiki/threads/threads/missing--post-123.md' } };
+
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '不應建立' } }),
+        error => error.code === 'VAULT_RECORDED_PATH_UNAVAILABLE'
+    );
+    await assert.rejects(fs.stat(path.join(root, 'wiki', 'threads', 'threads', '2026-09-03-不應建立--post-123.md')));
+});
+
 test('Vault source paths stay platform-based and ignore Collection classification', () => {
     const root = path.join(os.tmpdir(), 'media-vault-path-contract');
     const filed = buildVaultNotePaths(root, { note_title: '內容分類' }, fixtureWorkflow().collection_posts);

@@ -42,9 +42,8 @@ test('container migration dry-run is read-only and emits reviewable per-post man
         await planAutoContainerMigration(output);
         const collectionPlan = await readFile(path.join(output, 'collection-plan.csv'), 'utf8');
         const topicPlan = await readFile(path.join(output, 'topic-plan.csv'), 'utf8');
-        const vaultPlan = await readFile(path.join(output, 'vault-plan.csv'), 'utf8');
         const unresolved = JSON.parse(await readFile(path.join(output, 'unresolved.json'), 'utf8'));
-        for (const file of [collectionPlan, topicPlan, vaultPlan]) {
+        for (const file of [collectionPlan, topicPlan]) {
             assert.match(file, /old_id,old_path,post_id,suggested_target,proposed_action,evidence,confidence,requires_owner_confirmation/);
             assert.match(file, /post-1/);
             assert.match(file, /true/);
@@ -53,9 +52,10 @@ test('container migration dry-run is read-only and emits reviewable per-post man
         assert.match(collectionPlan, /owner_review_relink_to_existing_collection/);
         assert.match(topicPlan, /github:krownsh\/media_platform_notion_antigravity#agent_workflow/);
         assert.match(topicPlan, /owner_review_relink_to_project_topic/);
-        assert.match(vaultPlan, /wiki\/threads\/threads\/2026-09-04-A B test--post-1\.md/);
         assert.equal(unresolved.read_only, true);
         assert.equal(unresolved.collections[0].requires_owner_confirmation, 'true');
+        assert.equal('vault' in unresolved, false);
+        await assert.rejects(readFile(path.join(output, 'vault-plan.csv'), 'utf8'));
     } finally {
         await rm(output, { recursive: true, force: true });
     }

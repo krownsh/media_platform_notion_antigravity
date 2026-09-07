@@ -6,15 +6,6 @@ function csv(rows, headers) {
     return [headers.join(','), ...rows.map(row => headers.map(header => quote(row[header])).join(','))].join('\n') + '\n';
 }
 
-function safePathSegment(value, fallback) {
-    const normalized = String(value || '')
-        .normalize('NFKC')
-        .replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    return normalized || fallback;
-}
-
 const AUTO_COLLECTION_TARGETS = new Map([
     ['AI工具', 'agent工具'],
     ['AI 工具', 'agent工具'],
@@ -121,14 +112,6 @@ export function topicTargetFor(topic) {
     return target ? { repository_target: target[0], domain_key: target[1] } : null;
 }
 
-function proposedVaultPath(post) {
-    if (!post?.id) return null;
-    const date = String(post.posted_at || post.created_at || '').slice(0, 10) || 'unknown-date';
-    const title = safePathSegment(post.title, `貼文-${String(post.id).slice(0, 8)}`);
-    const platform = safePathSegment(String(post.platform || 'generic').toLowerCase(), 'generic');
-    return `wiki/threads/${platform}/${date}-${title}--${String(post.id).slice(0, 8)}.md`;
-}
-
 function reviewRows(containers, postIdsField, details) {
     return containers.flatMap(container => {
         const postIds = container[postIdsField]?.length ? container[postIdsField] : [null];
@@ -186,31 +169,17 @@ export async function planAutoContainerMigration(output) {
         row.suggested_target = target ? `${target.repository_target}#${target.domain_key}` : '';
         row.confidence = target ? '0.75' : '0';
     }
-    const vault = (baseline.affected_posts || []).map(post => ({
-        old_id: '',
-        old_path: 'unknown_not_scanned',
-        post_id: post.id,
-        suggested_target: proposedVaultPath(post),
-        proposed_action: 'owner_review_vault_move_after_mapping_approval',
-        evidence: collectionTargetByPost.get(post.id)
-            ? `derived from explicit owner Collection mapping=${collectionTargetByPost.get(post.id).name}; no Vault files read or moved`
-            : 'no approved owner Collection mapping; proposed inbox path only; no Vault files read or moved',
-        confidence: collectionTargetByPost.get(post.id) ? '0.90' : '0',
-        requires_owner_confirmation: 'true'
-    }));
     const unresolved = {
         generated_at: new Date().toISOString(),
         read_only: true,
         collections: collections.filter(row => row.requires_owner_confirmation === 'true'),
         topics: topics.filter(row => row.requires_owner_confirmation === 'true'),
-        vault,
-        note: 'No semantic merge, database update, Vault read, or Vault move was performed.'
+        note: 'No semantic merge, database update, Vault read, or Vault move was performed. Vault move planning is retired.'
     };
     const headers = ['old_id', 'old_path', 'post_id', 'suggested_target', 'proposed_action', 'evidence', 'confidence', 'requires_owner_confirmation'];
     await Promise.all([
         writeFile(path.join(output, 'collection-plan.csv'), csv(collections, headers), 'utf8'),
         writeFile(path.join(output, 'topic-plan.csv'), csv(topics, headers), 'utf8'),
-        writeFile(path.join(output, 'vault-plan.csv'), csv(vault, headers), 'utf8'),
         writeFile(path.join(output, 'unresolved.json'), `${JSON.stringify(unresolved, null, 2)}\n`, 'utf8')
     ]);
     return { collections: collections.length, topics: topics.length, unresolved: unresolved.collections.length + unresolved.topics.length };

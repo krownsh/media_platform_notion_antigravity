@@ -112,6 +112,45 @@ function actionFromWorkflow(workflow, type) {
     return actions.find(action => action?.type === type) || null;
 }
 
+async function recordedWikiPath(root, workflow, postId) {
+    const vaultAction = actionFromWorkflow(workflow, 'vault_note');
+    const paths = [...new Set([
+        workflow?.context?.vault?.relative_path,
+        workflow?.context?.vault_sync?.relative_path,
+        vaultAction?.outcome?.relative_path
+    ].map(value => String(value || '').trim().replace(/\\/g, '/')).filter(Boolean))];
+    if (!paths.length) return null;
+
+    const existing = [];
+    const missing = [];
+    for (const relativePath of paths) {
+        if (!relativePath.startsWith('wiki/')) {
+            const error = new Error(`Recorded Vault path is outside wiki: ${relativePath}`);
+            error.code = 'VAULT_RECORDED_PATH_INVALID';
+            throw error;
+        }
+        const filePath = path.resolve(root, ...relativePath.split('/'));
+        assertInside(root, filePath);
+        const content = await fs.readFile(filePath, 'utf8').catch(error => error.code === 'ENOENT' ? null : Promise.reject(error));
+        if (content === null) {
+            missing.push(relativePath);
+            continue;
+        }
+        if (!content.includes(`- database_post_id: ${postId}`)) {
+            const error = new Error(`Recorded Vault note belongs to a different post: ${relativePath}`);
+            error.code = 'VAULT_RECORDED_PATH_CONFLICT';
+            throw error;
+        }
+        existing.push({ relative_path: relativePath, path: filePath });
+    }
+    if (missing.length || existing.length !== 1) {
+        const error = new Error(`Recorded Vault note cannot be safely reused: ${[...missing, ...existing.map(item => item.relative_path)].join(', ')}`);
+        error.code = 'VAULT_RECORDED_PATH_UNAVAILABLE';
+        throw error;
+    }
+    return existing[0];
+}
+
 function formatList(items, maxItems = 20) {
     if (!Array.isArray(items)) return '- （無）';
     const values = items.map(item => boundedText(item, 500)).filter(Boolean).slice(0, maxItems);
@@ -261,7 +300,9 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
             }
         }
         : noteInput;
-    const paths = buildVaultNotePaths(root, effectiveNoteInput, post);
+    const plannedPaths = buildVaultNotePaths(root, effectiveNoteInput, post);
+    const existingPath = await recordedWikiPath(root, workflow, post.id);
+    const paths = existingPath ? { ...plannedPaths, wiki: existingPath } : plannedPaths;
     const replication = effectiveNoteInput.replication && typeof effectiveNoteInput.replication === 'object'
         ? effectiveNoteInput.replication
         : null;

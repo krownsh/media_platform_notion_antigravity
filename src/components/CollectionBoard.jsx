@@ -12,8 +12,7 @@ import CollectionModal from './CollectionModal';
 import { Layers, Plus, Loader2 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-
-const isLegacyAutoCollection = (collection) => String(collection.description || '').includes('Hermes 自動建立');
+import { isLegacyAutoCollection, visibleCollections } from '../utils/collectionVisibility';
 
 const CreateFolderInput = ({ onCreate, onCancel }) => {
     const [name, setName] = useState('');
@@ -44,7 +43,6 @@ const CollectionBoard = ({ onRemix }) => {
     const [isCreating, setIsCreating] = useState(false);
     const [isMobileScreen, setIsMobileScreen] = useState(window.innerWidth < 1024); // 使用 1024 (lg) 作為判斷點，更符合平板與手機的操作習慣
     const [activeMenuId, setActiveMenuId] = useState(null);
-    const [showLegacyCollections, setShowLegacyCollections] = useState(false);
 
     // Global click to close menu
     useEffect(() => {
@@ -88,8 +86,7 @@ const CollectionBoard = ({ onRemix }) => {
     const selectedCollectionPosts = selectedCollection
         ? (postsByCollection[selectedCollection.id] || [])
         : [];
-    const activeCollections = useMemo(() => collections.filter((collection) => !isLegacyAutoCollection(collection)), [collections]);
-    const legacyCollections = useMemo(() => collections.filter(isLegacyAutoCollection), [collections]);
+    const activeCollections = useMemo(() => visibleCollections(collections), [collections]);
 
     useEffect(() => {
         // Infinite scroll intersection observer
@@ -356,7 +353,6 @@ const CollectionBoard = ({ onRemix }) => {
                                 </div>
                             )}
                         </div>
-                        {legacyCollections.length > 0 && <div className="mt-1 border-t notion-whisper-border pt-2"><button type="button" onClick={() => setShowLegacyCollections((current) => !current)} className="text-xs text-[#615d59] hover:text-[rgba(0,0,0,0.95)]">{showLegacyCollections ? `隱藏已收斂歷史分類（${legacyCollections.length}）` : `查看已收斂歷史分類（${legacyCollections.length}）`}</button>{showLegacyCollections && <div className="mt-2"><p className="mb-2 text-[11px] text-[#615d59]">歷史分類僅供查閱，不能拖放、改名或刪除。</p><div className="flex gap-4 overflow-x-auto px-4 -mx-4 scrollbar-hide pt-1 pb-2">{legacyCollections.map((collection) => renderFolder(collection, true))}</div></div>}</div>}
                     </div>
                 </div>
 

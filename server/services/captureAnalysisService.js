@@ -13,6 +13,11 @@ function boundedError(error) {
     return String(error?.message || error || 'Unknown analysis error').slice(0, 1000);
 }
 
+function hasMeaningfulSummary(summary) {
+    if (typeof summary === 'string') return summary.trim().length > 0;
+    return Boolean(summary && typeof summary === 'object' && Object.keys(summary).length > 0);
+}
+
 /**
  * Restores the pre-queue URL analysis contract inside the background worker.
  * Analysis failures intentionally do not fail the capture: Hermes can resume
@@ -41,13 +46,13 @@ export async function analyzeCapturedUrl(data, dependencies = {}) {
             aiResult = await ai.analyzeGenericPost(data);
         }
 
-        if (aiResult) {
+        if (aiResult && hasMeaningfulSummary(aiResult.summary)) {
             analysis.summary = aiResult.summary;
             analysis.raw = aiResult.raw;
             analysis.tags = aiResult.structured?.tags || [];
             analysis.topics = aiResult.structured?.topics || [];
         } else if (data?.content) {
-            throw new Error('AI analysis returned no results');
+            throw new Error('AI analysis returned no usable summary');
         }
     } catch (error) {
         errors.push({ stage: 'summary', message: boundedError(error) });
@@ -64,4 +69,3 @@ export async function analyzeCapturedUrl(data, dependencies = {}) {
         }
     };
 }
-

@@ -48,6 +48,7 @@ const PocWorkbenchPanel = ({ postId }) => {
     );
   }
   if (!state?.eligible_for_proposal && !state?.successful_run) return null;
+  const canExecute = Boolean(state?.execute_action && ['approved', 'pending', 'failed'].includes(state.execute_action.status));
 
   return (
     <section className="mt-4 rounded-xl border border-[#0075de]/20 bg-[#0075de]/5 p-4">
@@ -73,9 +74,9 @@ const PocWorkbenchPanel = ({ postId }) => {
         {state?.route?.status === 'approved' && (
           <p className="w-full text-xs text-[#615d59]">POC 提案由 Hermes 在策略討論中產生；這裡只提供明確核准後的執行入口。</p>
         )}
-        <button type="button" disabled={status === 'running' || Boolean(state?.successful_run)} onClick={() => run('execute')} className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[#0075de] px-3 text-xs font-medium text-white disabled:opacity-50">
+        {canExecute ? <button type="button" disabled={status === 'running' || Boolean(state?.successful_run)} onClick={() => run('execute')} className="inline-flex min-h-10 items-center gap-1 rounded-md bg-[#0075de] px-3 text-xs font-medium text-white disabled:opacity-50">
           {status === 'running' ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} 執行 POC
-        </button>
+        </button> : !state?.successful_run && <p className="text-xs text-[#615d59]">目前只有提案，尚未取得可執行的 POC action。</p>}
       </div>
     </section>
   );

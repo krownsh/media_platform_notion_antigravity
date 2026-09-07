@@ -11,6 +11,7 @@ import { toggleTaskCenter } from '../features/uiSlice';
 import { useDispatch } from 'react-redux';
 import { Activity } from 'lucide-react';
 import { createCollection } from '../features/postsSlice';
+import { visibleCollections } from '../utils/collectionVisibility';
 
 const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu, expanded, collapsed }) => (
     <Motion.button
@@ -45,6 +46,7 @@ const Layout = ({ children }) => {
     const location = useLocation();
     const [user, setUser] = useState(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const activeCollections = visibleCollections(collections);
 
     React.useEffect(() => {
         // Check active session
@@ -184,7 +186,7 @@ const Layout = ({ children }) => {
 
                                 {isCollectionsExpanded && (
                                     <div className="pl-4 space-y-1 mt-1">
-                                        {collections.map(collection => {
+                                        {activeCollections.map(collection => {
                                             const isActive = location.pathname === `/collection/${collection.id}`;
                                             return (
                                                 <div
@@ -346,7 +348,7 @@ const Layout = ({ children }) => {
                                 className="overflow-hidden"
                             >
                                 <div className="pl-4 space-y-1 mb-2 mt-1">
-                                    {collections.map(collection => {
+                                    {activeCollections.map(collection => {
                                         const isActive = location.pathname === `/collection/${collection.id}`;
                                         return (
                                             <div key={collection.id}>
@@ -363,7 +365,7 @@ const Layout = ({ children }) => {
                                             </div>
                                         );
                                     })}
-                                    {collections.length === 0 && (
+                                    {activeCollections.length === 0 && (
                                         <div className="px-3 py-1.5 text-xs text-[#615d59]/60 italic">
                                             尚無收藏夾
                                         </div>

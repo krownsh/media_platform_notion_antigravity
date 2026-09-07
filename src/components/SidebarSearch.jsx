@@ -80,7 +80,7 @@ const SidebarSearch = ({ collapsed, onExpand, onSearchSelect }) => {
                             <div className="py-2">
                                 {results.map((result) => <button type="button" key={result.post_id} onClick={() => handleSelect(result.post_id)} className="w-full px-4 sm:px-5 py-3 text-left hover:bg-[var(--accent-soft)] border-b notion-whisper-border last:border-0">
                                     <div className="flex items-center gap-2 text-[10px] text-[#615d59]"><span>{result.platform}</span><Sparkles size={10} className="text-[var(--accent)]" /></div>
-                                    <p className="mt-1 text-sm font-semibold truncate">{result.title || '未命名貼文'}</p>
+                                    <p className="mt-1 text-sm font-semibold truncate">{result.title || '來源未提供標題'}</p>
                                     <p className="mt-1 text-xs text-[#615d59] line-clamp-2">{result.preview}</p>
                                 </button>)}
                                 <button type="button" onClick={openSearch} className="w-full px-4 sm:px-5 py-3 text-center text-xs font-semibold text-[var(--accent)] hover:bg-[var(--accent-soft)]">查看全部搜尋結果</button>

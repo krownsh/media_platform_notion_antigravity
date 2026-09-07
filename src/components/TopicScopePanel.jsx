@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FolderCog, Save } from 'lucide-react';
 import { supabase } from '../api/supabaseClient';
+import { visibleCollections } from '../utils/collectionVisibility';
 
 const UNFILED_SCOPE_KEY = '__unfiled__';
 
@@ -34,7 +35,7 @@ const TopicScopePanel = ({ userId }) => {
       setStatus('error');
       return;
     }
-    setCollections(folderData || []);
+    setCollections(visibleCollections(folderData));
     setScopes(Object.fromEntries((scopeData || []).map(scope => [scope.collection_id || UNFILED_SCOPE_KEY, scope])));
     setStatus('ready');
   }, [userId]);

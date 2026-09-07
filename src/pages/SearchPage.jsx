@@ -5,7 +5,7 @@ import { searchLibrary } from '../api/searchApi';
 
 const STATUS_LABELS = {
     completed: '已完成',
-    awaiting_user: '等候確認',
+    awaiting_user: '需要你確認',
     pending: '待處理',
     processing: '處理中',
     failed: '失敗'
@@ -20,7 +20,7 @@ function SearchResultCard({ result, onOpen }) {
                         <span className="uppercase tracking-[0.08em]">{result.platform || 'generic'}</span>
                         {result.workflow_status && <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-[var(--accent)]">{STATUS_LABELS[result.workflow_status] || result.workflow_status}</span>}
                     </div>
-                    <h2 className="mt-2 font-semibold text-[rgba(0,0,0,0.95)] line-clamp-2">{result.title || '未命名貼文'}</h2>
+                    <h2 className="mt-2 font-semibold text-[rgba(0,0,0,0.95)] line-clamp-2">{result.title || '來源未提供標題'}</h2>
                     {result.author_name && <p className="mt-1 text-xs text-[#615d59]">作者：{result.author_name}</p>}
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-[#615d59]/70">{Math.round(Number(result.score || 0))}</span>
@@ -91,7 +91,7 @@ export default function SearchPage() {
                     <select value={status} onChange={(event) => setStatus(event.target.value)} className="rounded-md border border-black/10 bg-transparent px-3 py-3 text-sm focus:border-[var(--accent)] focus:outline-none">
                         <option value="">所有狀態</option>
                         <option value="completed">已完成</option>
-                        <option value="awaiting_user">等候確認</option>
+                        <option value="awaiting_user">需要你確認</option>
                         <option value="pending">待處理</option>
                     </select>
                     <button type="submit" className="notion-btn-primary px-5 py-3">搜尋</button>

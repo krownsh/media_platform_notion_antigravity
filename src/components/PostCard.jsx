@@ -5,6 +5,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
+import { visibleCollections } from '../utils/collectionVisibility';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
@@ -32,7 +33,8 @@ const PostCard = ({
 
     const dispatch = useDispatch();
     const { collections } = useSelector(state => state.posts);
-    const folderSuggestions = suggestFolders(post, collections);
+    const activeCollections = visibleCollections(collections);
+    const folderSuggestions = suggestFolders(post, activeCollections);
     const topFolderSuggestion = folderSuggestions[0] || null;
 
     const workflowLabel = (workflow) => {
@@ -48,11 +50,15 @@ const PostCard = ({
             actions: '執行後續工作中',
             complete: '處理完成'
         };
+        if (workflow.status === 'awaiting_user') return '需要你確認';
         if (workflow.status === 'failed') return `待重試：${labels[workflow.stage] || '處理失敗'}`;
         if (workflow.status === 'blocked') return '需要你協助處理';
         return labels[workflow.stage] || '背景處理中';
     };
     const workflowText = workflowLabel(post.workflow);
+    const pocActions = Array.isArray(post.workflow?.action_plan?.actions) ? post.workflow.action_plan.actions : [];
+    const hasPocProposal = pocActions.some(action => action?.type === 'poc_proposal');
+    const hasPocResult = Array.isArray(analysis?.insights) && analysis.insights.some(item => item?.type === 'poc_run' && item?.status === 'success');
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -109,7 +115,7 @@ const PostCard = ({
                     <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
                     <span className="text-[10px] sm:text-[11px] max-w-[140px] text-[#615d59]/80 font-medium leading-none truncate" title={topFolderSuggestion ? `建議放入：${topFolderSuggestion.collection.name}` : undefined}>
                         {post.collectionId
-                            ? collections.find(c => c.id === post.collectionId)?.name || '未分類'
+                            ? activeCollections.find(c => c.id === post.collectionId)?.name || '未分類'
                             : topFolderSuggestion ? `建議：${topFolderSuggestion.collection.name}` : '未分類'}
                     </span>
                     {workflowText && (
@@ -124,6 +130,12 @@ const PostCard = ({
                         <>
                             <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
                             <span className="rounded-full bg-amber-50 px-1.5 py-1 text-[10px] font-medium text-amber-700" title="已有 Hermes 自動草稿">草稿</span>
+                        </>
+                    )}
+                    {(hasPocResult || hasPocProposal) && (
+                        <>
+                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
+                            <span className={`rounded-full px-1.5 py-1 text-[10px] font-medium ${hasPocResult ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`} title={hasPocResult ? '已有 POC 驗證結果' : '已有 POC 提案'}>{hasPocResult ? 'POC 完成' : 'POC 提案'}</span>
                         </>
                     )}
                 </div>
@@ -213,7 +225,10 @@ const PostCard = ({
 
                     {/* Final Bottom Row */}
                     <div className="flex items-center justify-between flex-shrink-0 gap-3">
-                        <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysisPending ? '待分析' : (analysis?.primary_category || '尚未分類')}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                            <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysisPending ? '待分析' : (analysis?.primary_category || '尚未分類')}</span>
+                            {workflowText && <span className={`truncate rounded-full border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-1.5 py-1 font-medium text-[var(--accent)] ${isCompact ? 'text-[9px]' : 'text-[10px]'}`} title={post.workflow?.last_error || workflowText}>{workflowText}</span>}
+                        </div>
                         <div className={`text-[#615d59] opacity-80 font-medium leading-none tabular-nums ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>
                 </div>
@@ -268,7 +283,7 @@ const PostCard = ({
                                     >
                                         <FolderMinus size={16} /> 取消分類
                                     </button>
-                                    {collections.map(c => (
+                                    {activeCollections.map(c => (
                                         <button 
                                             key={c.id}
                                             className="flex items-center gap-2 p-2 hover:bg-black/5 rounded-lg text-sm text-left w-full"

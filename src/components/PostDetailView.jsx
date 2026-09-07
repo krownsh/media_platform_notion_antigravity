@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library, Image as ImageIcon } from 'lucide-react';
+import { X, Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, ChevronLeft, ChevronRight, Instagram, Twitter, ArrowLeft, Library, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import { addAnnotation } from '../features/postsSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
@@ -240,6 +240,10 @@ const PostDetailView = ({ onRemix }) => {
                         <Sparkles size={16} />
                         AI 改寫
                     </button>
+                    {post.originalUrl && <a href={post.originalUrl} target="_blank" rel="noopener noreferrer" className="notion-btn-secondary flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm" aria-label="在新分頁開啟原始貼文">
+                        <ExternalLink size={16} />
+                        <span>原始貼文</span>
+                    </a>}
                     <button
                         onClick={() => setIsNoteOpen(true)}
                         className="notion-btn-primary flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"
@@ -333,7 +337,7 @@ const PostDetailView = ({ onRemix }) => {
                                 </div>
                             </div>
 
-                            <h1 className="text-lg font-bold text-[var(--foreground)] mb-4">{title}</h1>
+                            <h1 className="text-lg font-bold text-[var(--foreground)] mb-4">{title || '來源未提供標題'}</h1>
 
                             <p className="text-base text-[var(--foreground)]/90 leading-relaxed whitespace-pre-wrap mb-6">
                                 {(() => {

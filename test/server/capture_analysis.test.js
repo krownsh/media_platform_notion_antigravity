@@ -36,3 +36,14 @@ test('capture URL analysis retains the source and defers failed AI work to Herme
   assert.equal(result.baseAnalysis.errors.length, 2);
 });
 
+test('capture URL analysis does not mark an empty AI summary as complete', async () => {
+  const result = await analyzeCapturedUrl({ platform: 'generic', content: 'source content' }, {
+    categoryProcessor: { classify: async () => 'tool' },
+    aiService: { analyzeGenericPost: async () => ({ summary: '   ', structured: {} }) },
+    logger: { warn() {} }
+  });
+
+  assert.equal(result.baseAnalysis.status, 'pending');
+  assert.equal(result.data.analysis.summary, undefined);
+  assert.match(result.baseAnalysis.errors[0].message, /no usable summary/);
+});

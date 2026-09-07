@@ -13,8 +13,8 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix, rea
     });
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-[#17201d]/25 backdrop-blur-[3px] p-0 sm:p-4">
-            <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-[95vw] bg-surface-raised border notion-whisper-border rounded-none sm:rounded-[1rem] flex flex-col overflow-hidden shadow-deep">
+        <div className="fixed inset-0 z-[70] flex items-stretch sm:items-center justify-center bg-[#17201d]/25 backdrop-blur-[3px] p-0 sm:p-4" onClick={onClose}>
+            <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-[95vw] bg-surface-raised border notion-whisper-border rounded-none sm:rounded-[1rem] flex flex-col overflow-hidden shadow-deep" onClick={(event) => event.stopPropagation()}>
 
                 {/* Header */}
                 <div className="py-3 px-4 sm:py-4 sm:px-6 border-b notion-whisper-border flex items-center justify-between bg-surface-raised z-10 gap-3">
@@ -45,7 +45,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix, rea
                         </div>
                     ) : (
                         <SortableContext items={posts.map(p => p.id)} strategy={rectSortingStrategy}>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                            <div className="grid justify-center gap-4 sm:gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,320px))]">
                                 {posts.map(post => (
                                     <SortablePostCard
                                         key={post.id}

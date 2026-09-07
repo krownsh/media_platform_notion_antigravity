@@ -429,3 +429,18 @@ apply_poc
 ### 下一次討論入口
 
 直接規劃 MVP 分期與驗收標準，並確認第一批可被 Project Auditor 掃描的 allowlisted 專案；不需要重新梳理產品目標。
+# 2026-09-07：Vault 內容分類與永久路徑
+
+## 提問
+
+- Collection 是否就是前端分類資料夾？
+- 復刻方案如何在前端呈現？
+- Collection 改名或貼文移動時，如何避免 Vault 路徑與 Wiki 連結失效？
+
+## 待 Owner 確認的方向
+
+- Collection 是前端的內容分類資料夾，但不再作為來源筆記的實體父目錄。
+- 來源筆記改用不可變路徑 `wiki/sources/<post-id>.md`；內容分類以 `collection_id`、穩定 Collection hub 連結與 managed metadata 表達。
+- Collection 改名只改顯示名稱／hub 內容；貼文移動只改 DB 關聯與筆記分類連結，來源筆記路徑不變。
+- 前端貼文卡顯示復刻方案狀態 badge，詳細頁新增復刻方案區塊；未經 Owner 明確核准不得建立正式 Project。
+- 現行 `wiki/collections/<Collection 名稱>/...` writer 在此方向確認前不視為最終長期契約，也不應據此搬移既有 Vault。

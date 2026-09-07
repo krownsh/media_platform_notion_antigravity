@@ -29,6 +29,7 @@ function normalizedText(post) {
   const analysis = post?.analysis || {};
   return [
     post?.title,
+    analysis?.generated_title,
     post?.content,
     post?.originalUrl,
     analysis?.primary_category,

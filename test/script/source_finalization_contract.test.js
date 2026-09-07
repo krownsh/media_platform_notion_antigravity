@@ -14,6 +14,7 @@ const orchestratorSource = fs.readFileSync(path.join(projectRoot, 'server', 'ser
 const completeItemSource = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'complete-item.js'), 'utf8');
 const routeStateSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'outboxRouteStateService.js'), 'utf8');
 const articleTitleSql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'stage_d_2_article_title.sql'), 'utf8');
+const generatedTitleSql = fs.readFileSync(path.join(projectRoot, 'database', 'deployments', 'stage_s_ai_generated_post_titles.sql'), 'utf8');
 
 test('Stage B finalization is one database transaction with an idempotent source outbox', () => {
     assert.match(sql, /^begin;/m);
@@ -54,6 +55,13 @@ test('article titles use an additive deployment without mutating the deployed St
     assert.match(articleTitleSql, /grant execute on function public\.finalize_collection_capture[\s\S]+to service_role/);
     assert.match(finalizationSource, /title: data\.title \|\| null/);
     assert.doesNotMatch(sql, /add column if not exists title text/);
+});
+
+test('generated-title deployment preserves an existing source title on titleless recapture', () => {
+    assert.match(generatedTitleSql, /add column if not exists generated_title text/);
+    assert.match(generatedTitleSql, /before update of title on public\.collection_posts/);
+    assert.match(generatedTitleSql, /new\.title := old\.title/);
+    assert.match(generatedTitleSql, /revoke all on function public\.collection_preserve_source_title/);
 });
 
 test('interactive completion finalizes one route and preserves the shared outbox lifecycle', () => {

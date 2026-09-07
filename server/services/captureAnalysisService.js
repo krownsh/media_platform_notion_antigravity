@@ -51,6 +51,8 @@ export async function analyzeCapturedUrl(data, dependencies = {}) {
             analysis.raw = aiResult.raw;
             analysis.tags = aiResult.structured?.tags || [];
             analysis.topics = aiResult.structured?.topics || [];
+            const generatedTitle = String(aiResult.generated_title || aiResult.structured?.generated_title || '').trim().slice(0, 80);
+            if (!String(data?.title || '').trim() && generatedTitle) analysis.generated_title = generatedTitle;
         } else if (data?.content) {
             throw new Error('AI analysis returned no usable summary');
         }

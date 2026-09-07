@@ -10,6 +10,32 @@ function sourcePost(workflow) {
         : workflow?.collection_posts;
 }
 
+export async function persistGeneratedTitle(post, generatedTitle, supabaseClient, source = 'hermes_preprocess') {
+    const title = text(generatedTitle, 80).replace(/\s+/g, ' ');
+    if (!post?.id || !post?.user_id || !title) return { persisted: false, reason: 'missing_input' };
+    if (text(post.title, 500)) return { persisted: false, reason: 'source_title_present' };
+
+    const { data, error } = await supabaseClient
+        .from('collection_post_analysis')
+        .update({
+            generated_title: title,
+            title_generated_at: new Date().toISOString(),
+            title_generation_source: source
+        })
+        .eq('post_id', post.id)
+        .eq('user_id', post.user_id)
+        .is('generated_title', null)
+        .select('id, generated_title')
+        .maybeSingle();
+    // Rolling deploys must keep the durable capture path available before the
+    // additive Stage S columns are installed.
+    if (error?.code === '42703') return { persisted: false, reason: 'schema_not_deployed' };
+    if (error) throw new Error(`Generated title update failed: ${error.message}`);
+    return data?.id
+        ? { persisted: true, title: data.generated_title }
+        : { persisted: false, reason: 'title_already_present' };
+}
+
 export function canonicalizeSourceUrl(value) {
     const raw = text(value, 4_000);
     if (!raw) return null;

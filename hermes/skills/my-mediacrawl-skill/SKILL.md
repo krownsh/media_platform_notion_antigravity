@@ -138,7 +138,7 @@ the policy can distinguish safe automatic completion from deferred work:
     "confidence": {"content": 0.95, "relation": 0.90, "topic": 0.88, "folder": 0.86},
     "risk_level": "low"
   },
-  "analysis": {"primary_category": "tool", "summary": "...", "tags": [], "topics": [], "claims": []},
+  "analysis": {"generated_title": "12 至 32 字的繁體中文標題（僅在來源沒有 title 時提供）", "primary_category": "tool", "summary": "...", "tags": [], "topics": [], "claims": []},
   "relation": {"kind": "related", "confidence": 0.90, "rationale": "..."},
   "topic": {"topic_id": null, "suggested_title": "...", "confidence": 0.88, "keywords": []},
   "folder": {"collection_id": null, "suggested_name": "繁體中文領域", "confidence": 0.86},

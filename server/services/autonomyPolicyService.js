@@ -180,6 +180,7 @@ export function normalizePreprocessInput(input = {}) {
         schema_version: 2,
         autonomy,
         analysis: {
+            generated_title: text(analysis.generated_title, 80).replace(/\s+/g, ' ') || null,
             primary_category: text(analysis.primary_category || 'other', 80),
             summary: text(analysis.summary, 12_000),
             tags: Array.isArray(analysis.tags) ? analysis.tags.map(item => text(item, 120)).filter(Boolean).slice(0, 30) : [],

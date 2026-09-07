@@ -38,3 +38,22 @@ use `agent:poc:run` after explicit `EXECUTE_POC` confirmation.
 
 The browser shows post workflow state via `/api/posts`; it refreshes while a
 user is signed in so Hermes updates appear without a manual reload.
+
+## AI display titles
+
+Stage S adds `generated_title`, `title_generated_at`, and
+`title_generation_source` to `collection_post_analysis`. A generated title is
+only a display fallback: `collection_posts.title` remains the unmodified source
+title and always wins. Capture AI and both Hermes preprocess paths may persist
+the fallback title; a rolling deploy without Stage S merely logs that title
+persistence is deferred and never fails the durable capture.
+
+Before any historical backfill, run the read-only dry-run with an explicit env
+file and an artifact directory outside the repository:
+
+```bash
+npm run titles:backfill:dry-run -- --env-file server/.env --output C:\\temp\\media-title-audit --limit 10
+```
+
+It writes no rows and makes no model calls. Applying Stage S or running actual
+title generation requires separate owner approval.

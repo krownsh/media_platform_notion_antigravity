@@ -6,6 +6,16 @@ import { classifyByRules, normalizeCategorySlug } from './categoryRules.js';
 
 dotenv.config();
 
+export function normalizeGeneratedTitle(value) {
+    const title = String(value ?? '')
+        .normalize('NFKC')
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/^[「『"']+|[」』"']+$/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return title.length >= 4 ? title.slice(0, 80) : null;
+}
+
 /**
  * AI Service (Server-side only)
  * Handles interactions with MiniMax for analysis and rewriting.
@@ -189,10 +199,15 @@ class AiService {
             primaryCategory = classifyByRules(originalContent);
         }
 
+        const generatedTitle = normalizeGeneratedTitle(parsedData.generated_title);
+        if (generatedTitle) parsedData.generated_title = generatedTitle;
+        else delete parsedData.generated_title;
+
         return {
             summary: parsedData,
             structured: parsedData,
             primary_category: primaryCategory || 'other',
+            generated_title: generatedTitle,
             model: modelName,
             raw: rawData
         };

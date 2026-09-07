@@ -9,6 +9,7 @@ import {
 } from '../../server/services/autonomyPolicyService.js';
 import {
     persistFolderDecision,
+    persistGeneratedTitle,
     persistSourceIdentity,
     persistTopicDecision
 } from '../../server/services/autonomousKnowledgeService.js';
@@ -120,7 +121,7 @@ function toNoteInput(result, post, persistence, pocResult, folderPersistence, co
             ? '預處理已完成，等待 Research Cron 進一步研究。'
             : '預處理已完成，部分高風險或低信心項目等待後續確認。';
     return {
-        note_title: result.folder.note_title || post.title || `貼文-${post.id.slice(0, 8)}`,
+        note_title: result.folder.note_title || post.title || result.analysis.generated_title || `貼文-${post.id.slice(0, 8)}`,
         summary: result.analysis.summary,
         original_content: post.platform === 'image' ? (post.content || '') : undefined,
         discussion: [
@@ -176,6 +177,9 @@ export async function preprocessWorkflow(workflowId, options = {}) {
         const result = await readResult(options.file);
         const post = getWorkflowPost(workflow);
         if (!post) throw new Error(`Workflow ${workflow.id} has no source post`);
+
+        await persistGeneratedTitle(post, result.analysis.generated_title, supabase, 'hermes_preprocess')
+            .catch(error => console.warn(`[Hermes Preprocess] Generated title persistence deferred: ${error.message}`));
 
         const persistence = await persistSourceIdentity(workflow, supabase);
         const topicPersistence = await persistTopicDecision(workflow, result.topic, result.relation, supabase);

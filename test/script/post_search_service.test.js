@@ -29,6 +29,15 @@ test('search documents keep lexical memory cues and draft text without vectors',
   assert.equal('search_vector' in document, false);
 });
 
+test('search uses an AI title only when the source title is absent', () => {
+  const document = buildPostSearchDocument({
+    ...post,
+    title: null,
+    collection_post_analysis: [{ generated_title: 'AI 產生的顯示標題' }]
+  });
+  assert.equal(document.title, 'AI 產生的顯示標題');
+});
+
 test('search service passes tenant and filters to the service RPC', async () => {
   let args;
   const results = await searchPostDocuments({

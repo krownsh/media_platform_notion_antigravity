@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { upsertPostSearchDocument } from './postSearchService.js';
+import { persistGeneratedTitle } from './autonomousKnowledgeService.js';
 
 function serializeAnalysisSummary(summary) {
     if (!summary) return null;
@@ -92,6 +93,14 @@ export async function finalizeCapture(
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
     if (!finalized?.post_id || !finalized?.outbox_event_id) {
         throw new Error('Capture finalization returned an incomplete result');
+    }
+
+    if (!data.title && analysis.generated_title) {
+        try {
+            await persistGeneratedTitle({ id: finalized.post_id, user_id: userId, title: data.title }, analysis.generated_title, supabaseClient, 'capture_ai');
+        } catch (titleError) {
+            console.warn(`[Capture] Generated title persistence deferred: ${titleError.message}`);
+        }
     }
 
     // Search indexing is a projection. A missing/unapplied Stage N migration

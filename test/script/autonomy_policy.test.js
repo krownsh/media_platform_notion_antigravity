@@ -54,6 +54,11 @@ test('low-confidence folder is preserved only as a suggestion and does not inven
     assert.equal(result.folder.suggested_name, '不確定資料夾');
 });
 
+test('preprocess input keeps a bounded generated title as analysis metadata', () => {
+    const result = normalizePreprocessInput({ analysis: { generated_title: '  AI 產生的貼文標題  ' } });
+    assert.equal(result.analysis.generated_title, 'AI 產生的貼文標題');
+});
+
 test('rejected container IDs retain classification suggestions for human review', () => {
     const result = normalizePreprocessInput({
         outcome: 'complete',

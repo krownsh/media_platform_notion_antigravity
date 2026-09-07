@@ -705,10 +705,14 @@ app.get('/api/posts', async (req, res) => {
         if (collectionsError) throw collectionsError;
 
         // Transform data to match frontend expectations
-        const formattedPosts = postsWithResolvedMedia.map(post => ({
+        const formattedPosts = postsWithResolvedMedia.map(post => {
+            const analysis = post.collection_post_analysis?.[0] || null;
+            return {
             id: post.id,
             dbId: post.id,
             platform: post.platform,
+            title: post.title || analysis?.generated_title || null,
+            sourceTitle: post.title || null,
             author: post.author_name,
             authorHandle: post.author_id,
             avatar: null,
@@ -725,7 +729,7 @@ app.get('/api/posts', async (req, res) => {
                 postedAt: c.commented_at
             })) || [],
             annotations: post.collection_user_annotations || [],
-            analysis: post.collection_post_analysis?.[0] || null,
+            analysis,
             workflow: post.collection_post_workflows?.[0] || null,
             reviewRequest: post.collection_post_workflows?.[0]?.context?.review_request || null,
             vault: post.collection_post_workflows?.[0]?.context?.vault || null,
@@ -734,7 +738,8 @@ app.get('/api/posts', async (req, res) => {
                 latestRevision: [...(asset.content_revisions || [])]
                     .sort((a, b) => Number(b.revision_number || 0) - Number(a.revision_number || 0))[0] || null
             }))
-        }));
+            };
+        });
 
         res.json({ posts: formattedPosts, collections: collections || [] });
     } catch (error) {

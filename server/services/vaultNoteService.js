@@ -264,7 +264,7 @@ export function buildVaultNotePaths(root, noteInput, post, _options = {}) {
     const platform = allowedPlatforms.has(String(post?.platform || '').toLowerCase())
         ? String(post.platform).toLowerCase()
         : 'generic';
-    const noteTitle = safeSegment(noteInput.note_title || post?.title, `貼文-${post?.id?.slice(0, 8) || '未命名'}`, 'note_title');
+    const noteTitle = safeSegment(noteInput.note_title || post?.title || analysisFromPost(post)?.generated_title, `貼文-${post?.id?.slice(0, 8) || '未命名'}`, 'note_title');
     const postDate = String(post?.posted_at || post?.created_at || new Date().toISOString()).slice(0, 10);
     const postId = safeSegment(String(post?.id || '').slice(0, 8), 'unknown', 'post id');
     const collection = collectionFromPost(post);

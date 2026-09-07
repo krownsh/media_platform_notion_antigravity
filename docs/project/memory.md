@@ -121,3 +121,9 @@
 2. Lint 歸零後，文字掃描仍發現 `InsightPage.jsx` 使用未匯入的 `<motion.div>`。目前 ESLint 對小寫 JSX member expression 無法可靠抓出 `no-undef`。
 3. Framer Motion 一律匯入成大寫 `Motion` 並使用 `<Motion.div>`，讓 unused／undefined 檢查有效。
 4. 完整驗收要同時包含 ESLint、production build、測試與針對已知 JSX namespace 的文字掃描，不能只看單一工具綠燈。
+
+## 2026-09-07：Obsidian Vault 路徑以內容分類為準
+
+1. Owner 已確認 Vault 的目標結構應依真正內容分類，而非依來源 platform 分資料夾。
+2. 現行目標是有既有 Collection 時寫入 `wiki/collections/<Collection>/`，未分類時寫入 `wiki/inbox/`；不得再把早期 `wiki/threads/<platform>/` 提案當成現行規格。
+3. 說明既有 Vault 遷移時，須清楚區分「舊 DB relative_path 可用作來源定位」與「目標路徑依內容 Collection/inbox 重建」；不可混稱成平台路徑遷移。

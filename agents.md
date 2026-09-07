@@ -64,3 +64,8 @@
 * **輸入**：原始貼文內容 + 使用者選擇的風格 (e.g., "Viral Tweet", "Professional LinkedIn").
 * **輸出**：新的貼文草稿 (Draft)。
 * **API 介面**：預留 `shareToPlatform(platform, content)` 介面。
+
+## 9. 擷取路由現況（2026-09-08 補充）
+* **目前有效契約**：貼文擷取採 crawler-only；`server/services/orchestrator.js` 直接依平台使用 crawler，並無官方 API 優先、失敗再 fallback 的正式 runtime 路徑。
+* **API Agent 定義**：官方 API 相關 service／角色為未接線的預留設計，不得據此假設 production 已有 API token、限流或 fallback 保護。
+* **後續變更**：若要重新啟用 API-first，必須另行提出可測試的接線、憑證、限流、fallback 與文件同步計畫；在此之前，文件與維運均以 crawler-only 為準。

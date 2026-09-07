@@ -19,7 +19,7 @@ test('Vault migration copies, atomically repoints the workflow, then removes one
     };
     const manifest = await planVaultContentMigration({ workflows: [workflow], vaultRoot: root });
     assert.equal(manifest.rows[0].status, 'ready');
-    assert.equal(manifest.rows[0].new_relative_path, 'wiki/collections/agent工具/2026-09-01-note--post-123.md');
+    assert.equal(manifest.rows[0].new_relative_path, 'wiki/sources/post-123.md');
     const updates = [];
     const supabase = {
         from: () => ({
@@ -39,7 +39,7 @@ test('Vault migration copies, atomically repoints the workflow, then removes one
 test('Vault migration never removes a pre-existing target note', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'vault-content-conflict-'));
     const oldPath = 'wiki/domains/AI 工具/2026-09-01-note--post-456.md';
-    const newPath = 'wiki/collections/agent工具/2026-09-01-note--post-456.md';
+    const newPath = 'wiki/sources/post-456.md';
     await mkdir(path.join(root, path.dirname(oldPath)), { recursive: true });
     await mkdir(path.join(root, path.dirname(newPath)), { recursive: true });
     await writeFile(path.join(root, oldPath), 'old note');
@@ -51,4 +51,18 @@ test('Vault migration never removes a pre-existing target note', async () => {
     assert.equal(result.ok, true);
     assert.equal((await readFile(path.join(root, newPath), 'utf8')).trim(), 'manual target');
     assert.equal((await readFile(path.join(root, oldPath), 'utf8')).trim(), 'old note');
+});
+
+test('Vault migration plans every legacy wiki path into one stable source path', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'vault-content-migration-'));
+    const oldPath = 'wiki/threads/threads/2026-09-01-note--post-789.md';
+    await mkdir(path.join(root, path.dirname(oldPath)), { recursive: true });
+    await writeFile(path.join(root, oldPath), 'old note');
+    const workflow = {
+        id: 'workflow-3', user_id: 'owner-1', post_id: 'post-789', updated_at: '2026-09-07T00:00:00.000Z',
+        context: { vault: { relative_path: oldPath } }, action_plan: {}
+    };
+    const manifest = await planVaultContentMigration({ workflows: [workflow], vaultRoot: root });
+    assert.equal(manifest.rows[0].status, 'ready');
+    assert.equal(manifest.rows[0].new_relative_path, 'wiki/sources/post-789.md');
 });

@@ -49,3 +49,19 @@ test('every strategy decision receives a final vault_note action', () => {
   assert.deepEqual(plan.actions.map(action => action.type), ['vault_note']);
   assert.equal(plan.actions.at(-1).status, 'approved');
 });
+
+test('replication plan retains displayable goal, MVP, and acceptance criteria', () => {
+  const plan = normalizePlan({
+    actions: [{
+      type: 'replication_plan',
+      project_name: '可驗證的復刻構想',
+      goal: '驗證需求',
+      mvp: '最小流程',
+      acceptance_criteria: ['完成一次驗證']
+    }]
+  }, 'owner');
+  const replication = plan.actions.find(action => action.type === 'replication_plan');
+  assert.equal(replication.goal, '驗證需求');
+  assert.equal(replication.mvp, '最小流程');
+  assert.deepEqual(replication.acceptance_criteria, ['完成一次驗證']);
+});

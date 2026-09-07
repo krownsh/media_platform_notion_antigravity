@@ -443,4 +443,4 @@ apply_poc
 - 來源筆記改用不可變路徑 `wiki/sources/<post-id>.md`；內容分類以 `collection_id`、穩定 Collection hub 連結與 managed metadata 表達。
 - Collection 改名只改顯示名稱／hub 內容；貼文移動只改 DB 關聯與筆記分類連結，來源筆記路徑不變。
 - 前端貼文卡顯示復刻方案狀態 badge，詳細頁新增復刻方案區塊；未經 Owner 明確核准不得建立正式 Project。
-- 現行 `wiki/collections/<Collection 名稱>/...` writer 在此方向確認前不視為最終長期契約，也不應據此搬移既有 Vault。
+- 已確認並實作：來源筆記使用固定 `wiki/sources/<post-id>.md`；Collection 僅更新穩定索引與 metadata，不應據舊 `wiki/collections/<Collection 名稱>/...` 規則搬移既有 Vault。

@@ -21,6 +21,12 @@
 - 收斂 dry-run 僅能把 Hermes Collection 指向名稱完全匹配的既有 Owner Collection；沒有明確規則的資料一律維持未分類並進 `wiki/inbox/`，禁止自行創造新的收納類別。
 - Legacy `agent_auto` Topic 的 dry-run 使用精確標題對照至 `github repository × domain_key`；未命中的 Topic 僅列為封存候選，來源 match 保留，絕不靠模糊關鍵字硬掛到 6 個 Repo。
 
+### Vault 穩定來源路徑（2026-09-07）
+
+- `wiki/collections/<Collection 名稱>/` 與 `wiki/inbox/` 的實體來源路徑設計已被取代；來源筆記固定為 `wiki/sources/<post-id>.md`。
+- Collection 是前端內容分類，也在 Vault 透過 `wiki/collections/<collection-id>.md` 索引呈現；未分類來源列在 `wiki/inbox.md`。
+- Collection 改名或貼文改分類只更新索引／managed metadata，不搬來源筆記；舊路徑改造必須由 manifest 驗證、人工核准後執行。
+
 ## Active project registry
 
 GitHub 查詢條件：`user:krownsh pushed:>=2026-08-05`。

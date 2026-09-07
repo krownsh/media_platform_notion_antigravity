@@ -57,7 +57,7 @@ test('Vault note writes one source note and keeps replication in its managed blo
     });
 
     assert.equal(result.post_id, 'post-123');
-    assert.equal(result.relative_path, 'wiki/collections/agent工具/2026-09-03-Wallpets 深度研究與複製規劃--post-123.md');
+    assert.equal(result.relative_path, 'wiki/sources/post-123.md');
     assert.equal(result.replication_path, null);
     const source = await fs.readFile(path.join(root, result.relative_path), 'utf8');
     assert.match(source, /database_post_id: post-123/);
@@ -66,6 +66,9 @@ test('Vault note writes one source note and keeps replication in its managed blo
     assert.match(source, /collection_name: agent工具/);
     assert.match(source, /## 復刻方案/);
     assert.match(source, /Wallpets 復刻項目/);
+    const index = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
+    assert.match(index, /# agent工具/);
+    assert.match(index, /\[\[wiki\/sources\/post-123\|Wallpets 深度研究與複製規劃\]\]/);
 });
 
 test('Vault note retry preserves text outside the managed block', async () => {
@@ -79,7 +82,7 @@ test('Vault note retry preserves text outside the managed block', async () => {
     const workflow = fixtureWorkflow();
     workflow.action_plan.actions = [{ type: 'vault_note', status: 'approved' }];
     const firstOutcome = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
-    const filePath = path.join(root, 'wiki', 'collections', 'agent工具', '2026-09-03-保留人工內容--post-123.md');
+    const filePath = path.join(root, 'wiki', 'sources', 'post-123.md');
     await fs.appendFile(filePath, '\n\n## 人工補充\n不要覆蓋我\n');
     workflow.context = { vault: { relative_path: firstOutcome.relative_path } };
     workflow.collection_posts.content = '第二次內容';
@@ -88,20 +91,37 @@ test('Vault note retry preserves text outside the managed block', async () => {
     const content = await fs.readFile(filePath, 'utf8');
     assert.match(content, /第二次內容/);
     assert.match(content, /不要覆蓋我/);
-    await assert.rejects(fs.stat(path.join(root, 'wiki', 'collections', '重新命名的資料夾')));
+    const index = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
+    assert.match(index, /# 重新命名的資料夾/);
 });
 
-test('Vault source notes use content Collection folders and keep unfiled sources in inbox', () => {
+test('Vault source paths are stable while Collection remains a content index', () => {
     const root = path.join(os.tmpdir(), 'media-vault-path-contract');
     const filed = buildVaultNotePaths(root, { note_title: '內容分類' }, fixtureWorkflow().collection_posts);
-    assert.equal(filed.wiki.relative_path, 'wiki/collections/agent工具/2026-09-03-內容分類--post-123.md');
+    assert.equal(filed.wiki.relative_path, 'wiki/sources/post-123.md');
     assert.equal(filed.platform, 'threads');
     assert.equal(filed.collection.name, 'agent工具');
 
     const unfiledPost = { ...fixtureWorkflow().collection_posts, collection_collections: null };
     const unfiled = buildVaultNotePaths(root, { note_title: '未分類內容' }, unfiledPost);
-    assert.equal(unfiled.wiki.relative_path, 'wiki/inbox/2026-09-03-未分類內容--post-123.md');
+    assert.equal(unfiled.wiki.relative_path, 'wiki/sources/post-123.md');
     assert.equal(unfiled.collection, null);
+});
+
+test('moving a post updates Collection indexes without moving its source note', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '穩定來源' } });
+    workflow.context = { vault: { relative_path: 'wiki/sources/post-123.md' } };
+    workflow.collection_posts.collection_collections = { id: 'collection-research', name: '研究素材' };
+    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '穩定來源' } });
+    await fs.stat(path.join(root, 'wiki', 'sources', 'post-123.md'));
+    const oldIndex = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-agent-tools.md'), 'utf8');
+    const newIndex = await fs.readFile(path.join(root, 'wiki', 'collections', 'collection-research.md'), 'utf8');
+    assert.match(oldIndex, /# agent工具/);
+    assert.doesNotMatch(oldIndex, /media-post:post-123/);
+    assert.match(newIndex, /media-post:post-123/);
 });
 
 test('skill and CLI expose bounded source preview and mandatory note action', async () => {

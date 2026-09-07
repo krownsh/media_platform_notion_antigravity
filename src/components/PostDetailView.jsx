@@ -77,7 +77,10 @@ const WorkflowSummaryPanel = ({ post }) => {
     const drafts = Array.isArray(post.drafts) ? post.drafts : [];
     const review = post.reviewRequest;
     const vault = post.vault;
-    if (!workflow && drafts.length === 0 && !vault) return null;
+    const replication = Array.isArray(workflow?.action_plan?.actions)
+        ? workflow.action_plan.actions.find(action => action?.type === 'replication_plan')
+        : null;
+    if (!workflow && drafts.length === 0 && !vault && !replication) return null;
     return (
         <div className="mt-6 space-y-3">
             <div className="flow-panel p-4">
@@ -88,6 +91,24 @@ const WorkflowSummaryPanel = ({ post }) => {
                 {vault?.relative_path && <p className="mt-3 text-xs text-[var(--muted-foreground)] break-all">Vault：{vault.relative_path}</p>}
                 {review && <div className="mt-3 border-t border-[var(--border)] pt-3"><p className="text-sm leading-6 text-[var(--foreground)]">{review.question}</p><div className="mt-2 flex flex-wrap gap-1.5">{(review.options || []).map(option => <span key={option} className="rounded-full border border-black/10 px-2 py-1 text-[10px] text-[#615d59]">{option}</span>)}</div></div>}
             </div>
+            {replication && (
+                <div className="flow-panel p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <h3 className="text-[10px] tracking-[0.16em] font-bold text-violet-700">復刻方案</h3>
+                        <span className="rounded-full bg-violet-50 px-2 py-1 text-[10px] text-violet-700">{replication.status === 'completed' ? '已完成' : replication.status === 'approved' ? '已確認' : '待確認'}</span>
+                    </div>
+                    <p className="mt-2 text-sm font-semibold text-[var(--foreground)]">{replication.project_name || '未命名復刻方案'}</p>
+                    {replication.goal && <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/80">目標：{replication.goal}</p>}
+                    {replication.mvp && <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/80">MVP：{replication.mvp}</p>}
+                    {replication.notes && <p className="mt-2 text-sm leading-6 text-[var(--foreground)]/80">說明：{replication.notes}</p>}
+                    {Array.isArray(replication.acceptance_criteria) && replication.acceptance_criteria.length > 0 && (
+                        <ul className="mt-3 space-y-1 text-sm text-[var(--foreground)]/80">
+                            {replication.acceptance_criteria.map((item, index) => <li key={`${item}-${index}`}>• {item}</li>)}
+                        </ul>
+                    )}
+                    <p className="mt-3 text-[10px] text-[#615d59]">方案本身不會建立正式 Project；仍需你明確確認。</p>
+                </div>
+            )}
             {drafts.map((draft) => (
                 <div key={draft.id} className="flow-panel p-4">
                     <div className="flex items-center justify-between gap-3"><h3 className="text-[10px] tracking-[0.16em] font-bold text-amber-700">自動改寫草稿</h3><span className="text-[10px] text-[#615d59]">{draft.format} · {draft.status}</span></div>

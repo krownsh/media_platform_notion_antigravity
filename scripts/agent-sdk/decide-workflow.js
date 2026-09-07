@@ -37,7 +37,14 @@ export function normalizePlan(value, agentIdentity) {
             requested_at: new Date().toISOString(),
             notes: String(action?.notes || '').slice(0, 2000),
             project_target: String(action?.project_target || '').slice(0, 500) || null,
-            project_name: String(action?.project_name || '').slice(0, 500) || null
+            project_name: String(action?.project_name || '').slice(0, 500) || null,
+            ...(type === 'replication_plan' ? {
+                goal: String(action?.goal || '').slice(0, 2000) || null,
+                mvp: String(action?.mvp || '').slice(0, 2000) || null,
+                acceptance_criteria: Array.isArray(action?.acceptance_criteria)
+                    ? action.acceptance_criteria.map(item => String(item || '').slice(0, 500)).filter(Boolean).slice(0, 20)
+                    : []
+            } : {})
         };
     });
     if (new Set(normalized.map(action => action.type)).size !== normalized.length) {

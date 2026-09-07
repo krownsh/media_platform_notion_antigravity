@@ -59,6 +59,12 @@ const PostCard = ({
     const pocActions = Array.isArray(post.workflow?.action_plan?.actions) ? post.workflow.action_plan.actions : [];
     const hasPocProposal = pocActions.some(action => action?.type === 'poc_proposal');
     const hasPocResult = Array.isArray(analysis?.insights) && analysis.insights.some(item => item?.type === 'poc_run' && item?.status === 'success');
+    const replicationAction = pocActions.find(action => action?.type === 'replication_plan');
+    const replicationLabel = replicationAction?.status === 'completed'
+        ? '復刻已完成'
+        : replicationAction?.status === 'approved'
+            ? '復刻方案'
+            : '復刻待確認';
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -136,6 +142,12 @@ const PostCard = ({
                         <>
                             <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
                             <span className={`rounded-full px-1.5 py-1 text-[10px] font-medium ${hasPocResult ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`} title={hasPocResult ? '已有 POC 驗證結果' : '已有 POC 提案'}>{hasPocResult ? 'POC 完成' : 'POC 提案'}</span>
+                        </>
+                    )}
+                    {replicationAction && (
+                        <>
+                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
+                            <span className="rounded-full bg-violet-50 px-1.5 py-1 text-[10px] font-medium text-violet-700" title={replicationAction.project_name || replicationAction.notes || '已有復刻方案'}>{replicationLabel}</span>
                         </>
                     )}
                 </div>

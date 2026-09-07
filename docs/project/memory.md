@@ -125,5 +125,5 @@
 ## 2026-09-07：Obsidian Vault 路徑以內容分類為準
 
 1. Owner 已確認 Vault 的目標結構應依真正內容分類，而非依來源 platform 分資料夾。
-2. 現行目標是有既有 Collection 時寫入 `wiki/collections/<Collection>/`，未分類時寫入 `wiki/inbox/`；不得再把早期 `wiki/threads/<platform>/` 提案當成現行規格。
-3. 說明既有 Vault 遷移時，須清楚區分「舊 DB relative_path 可用作來源定位」與「目標路徑依內容 Collection/inbox 重建」；不可混稱成平台路徑遷移。
+2. 現行目標是來源筆記固定寫入 `wiki/sources/<post-id>.md`；既有 Collection／inbox 只以穩定的 `wiki/collections/<collection-id>.md`／`wiki/inbox.md` 索引表達，不得再把分類名稱、平台或 AI 文字當成來源路徑。
+3. 說明既有 Vault 遷移時，須清楚區分「舊 DB relative_path 可用作來源定位」與「目標路徑依 post ID 固定」；Collection 歸屬僅更新索引與 metadata，不搬來源筆記。

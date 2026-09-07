@@ -1,9 +1,10 @@
 # Vault 舊路徑遷移
 
-新寫入已使用 `wiki/collections/<Collection>/` 或 `wiki/inbox/`。本工具只處理既有
-`wiki/domains/` 筆記；它先產生 manifest，再逐筆驗證檔案 hash 與 workflow 的
-`updated_at`。套用時先複製、更新同一筆 workflow 的三個可能路徑紀錄，成功後才移除舊檔。
-衝突、手動異動或缺檔會保留原狀並回報 failed，不覆寫。
+新寫入使用固定 `wiki/sources/<post-id>.md`；Collection 僅以
+`wiki/collections/<collection-id>.md`（或 `wiki/inbox.md`）索引，不決定來源筆記
+位置。本工具會把任何既有 `wiki/` 來源筆記規劃至該固定路徑，先逐筆驗證檔案 hash 與
+workflow 的 `updated_at`。套用時先複製、更新同一筆 workflow 的三個可能路徑紀錄，成功
+後才移除舊檔。衝突、手動異動或缺檔會保留原狀並回報 failed，不覆寫。
 
 在 Mac 的真實 Vault 執行：
 

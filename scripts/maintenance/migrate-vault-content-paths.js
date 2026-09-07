@@ -6,10 +6,6 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { verifyVaultRoot } from '../../server/services/vaultNoteService.js';
 
-function one(value) {
-    return Array.isArray(value) ? value[0] || null : value || null;
-}
-
 function safeRelative(value) {
     const relative = String(value || '').trim().replace(/\\/g, '/');
     if (!relative.startsWith('wiki/') || relative.split('/').some(part => !part || part === '.' || part === '..')) return null;
@@ -47,13 +43,8 @@ function workflowPath(workflow) {
     ].map(safeRelative).find(Boolean) || null;
 }
 
-function targetPath(workflow, oldPath) {
-    const post = one(workflow.collection_posts);
-    const collection = one(post?.collection_collections);
-    const directory = collection?.name
-        ? `wiki/collections/${safeSegment(collection.name, '未命名資料夾')}`
-        : 'wiki/inbox';
-    return `${directory}/${path.posix.basename(oldPath)}`;
+function targetPath(workflow) {
+    return `wiki/sources/${safeSegment(workflow.post_id, 'unknown')}.md`;
 }
 
 function replacePath(workflow, oldPath, newPath) {
@@ -88,11 +79,15 @@ export async function planVaultContentMigration({ workflows, vaultRoot }) {
             expected_updated_at: workflow.updated_at,
             old_relative_path
         };
-        if (!old_relative_path?.startsWith('wiki/domains/')) {
-            rows.push({ ...base, status: 'skipped', reason: 'not_a_legacy_domain_path' });
+        if (!old_relative_path) {
+            rows.push({ ...base, status: 'skipped', reason: 'missing_workflow_path' });
             continue;
         }
-        const new_relative_path = targetPath(workflow, old_relative_path);
+        const new_relative_path = targetPath(workflow);
+        if (old_relative_path === new_relative_path) {
+            rows.push({ ...base, new_relative_path, status: 'skipped', reason: 'already_stable_source_path' });
+            continue;
+        }
         const source = absolute(root, old_relative_path);
         const destination = absolute(root, new_relative_path);
         const sourceStat = await fs.stat(source).catch(() => null);

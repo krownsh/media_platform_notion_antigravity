@@ -6,6 +6,7 @@ import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
 import { visibleCollections } from '../utils/collectionVisibility';
+import { actionBadges, badgeClass, workflowBadge } from '../utils/workflowPresentation';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
@@ -37,34 +38,8 @@ const PostCard = ({
     const folderSuggestions = suggestFolders(post, activeCollections);
     const topFolderSuggestion = folderSuggestions[0] || null;
 
-    const workflowLabel = (workflow) => {
-        if (!workflow) return null;
-        const labels = {
-            base_analysis: '待內容分析',
-            triage: '待 Hermes 分類',
-            preprocessing: 'Hermes 自動整理中',
-            strategy: workflow.status === 'awaiting_user' ? '待討論策略' : '整理策略中',
-            research: '等待研究任務',
-            review: '待後續確認',
-            vault_sync: '等待 Vault 同步',
-            actions: '執行後續工作中',
-            complete: '處理完成'
-        };
-        if (workflow.status === 'awaiting_user') return '需要你確認';
-        if (workflow.status === 'failed') return `待重試：${labels[workflow.stage] || '處理失敗'}`;
-        if (workflow.status === 'blocked') return '需要你協助處理';
-        return labels[workflow.stage] || '背景處理中';
-    };
-    const workflowText = workflowLabel(post.workflow);
-    const pocActions = Array.isArray(post.workflow?.action_plan?.actions) ? post.workflow.action_plan.actions : [];
-    const hasPocProposal = pocActions.some(action => action?.type === 'poc_proposal');
-    const hasPocResult = Array.isArray(analysis?.insights) && analysis.insights.some(item => item?.type === 'poc_run' && item?.status === 'success');
-    const replicationAction = pocActions.find(action => action?.type === 'replication_plan');
-    const replicationLabel = replicationAction?.status === 'completed'
-        ? '復刻已完成'
-        : replicationAction?.status === 'approved'
-            ? '復刻方案'
-            : '復刻待確認';
+    const workflowState = workflowBadge(post.workflow);
+    const futureActions = actionBadges(post.workflow);
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -124,41 +99,18 @@ const PostCard = ({
                             ? activeCollections.find(c => c.id === post.collectionId)?.name || '未分類'
                             : topFolderSuggestion ? `建議：${topFolderSuggestion.collection.name}` : '未分類'}
                     </span>
-                    {workflowText && (
-                        <>
-                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
-                            <span className="max-w-[120px] truncate text-[10px] sm:text-[11px] font-medium leading-none text-[var(--accent)]" title={post.workflow?.last_error || workflowText}>
-                                {workflowText}
-                            </span>
-                        </>
-                    )}
-                    {post.drafts?.length > 0 && (
-                        <>
-                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
-                            <span className="rounded-full bg-amber-50 px-1.5 py-1 text-[10px] font-medium text-amber-700" title="已有 Hermes 自動草稿">草稿</span>
-                        </>
-                    )}
-                    {(hasPocResult || hasPocProposal) && (
-                        <>
-                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
-                            <span className={`rounded-full px-1.5 py-1 text-[10px] font-medium ${hasPocResult ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'}`} title={hasPocResult ? '已有 POC 驗證結果' : '已有 POC 提案'}>{hasPocResult ? 'POC 完成' : 'POC 提案'}</span>
-                        </>
-                    )}
-                    {replicationAction && (
-                        <>
-                            <span className="h-3.5 w-px bg-black/10" aria-hidden="true" />
-                            <span className="rounded-full bg-violet-50 px-1.5 py-1 text-[10px] font-medium text-violet-700" title={replicationAction.project_name || replicationAction.notes || '已有復刻方案'}>{replicationLabel}</span>
-                        </>
-                    )}
                 </div>
-                <button
-                    className="flow-icon-button min-h-8 min-w-8"
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-                    aria-label="開啟貼文選項"
-                    aria-expanded={showMenu}
-                >
-                    <MoreHorizontal size={16} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <span className={`whitespace-nowrap rounded-full border px-1.5 py-1 text-[10px] font-semibold leading-none ${badgeClass[workflowState.tone]}`} title={post.workflow?.last_error || workflowState.label}>{workflowState.label}</span>
+                    <button
+                        className="flow-icon-button min-h-8 min-w-8"
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                        aria-label="開啟貼文選項"
+                        aria-expanded={showMenu}
+                    >
+                        <MoreHorizontal size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Author Info */}
@@ -223,6 +175,12 @@ const PostCard = ({
                         ))}
                     </div>
 
+                    {futureActions.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {futureActions.map(action => <span key={action.type} className={`rounded-full border px-1.5 py-1 text-[10px] font-medium ${badgeClass[action.tone]}`} title={action.title}>{action.label}</span>)}
+                        </div>
+                    )}
+
                     {/* AI Info / Summary Area */}
                     <div className={`${showSummary && analysis?.summary ? 'max-h-10' : 'max-h-0'} overflow-hidden flex-shrink-0 transition-[max-height] duration-200`}>
                         {showSummary && !analysisPending && analysis?.summary && (
@@ -239,7 +197,6 @@ const PostCard = ({
                     <div className="flex items-center justify-between flex-shrink-0 gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                             <span className={`text-[var(--accent)] font-bold uppercase tracking-[0.05em] leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{analysisPending ? '待分析' : (analysis?.primary_category || '尚未分類')}</span>
-                            {workflowText && <span className={`truncate rounded-full border border-[var(--accent)]/20 bg-[var(--accent-soft)] px-1.5 py-1 font-medium text-[var(--accent)] ${isCompact ? 'text-[9px]' : 'text-[10px]'}`} title={post.workflow?.last_error || workflowText}>{workflowText}</span>}
                         </div>
                         <div className={`text-[#615d59] opacity-80 font-medium leading-none tabular-nums ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>{post.createdAt ? new Date(post.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛'}</div>
                     </div>

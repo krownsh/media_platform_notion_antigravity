@@ -9,6 +9,7 @@ import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
+import { actionBadges, badgeClass, workflowBadge } from '../utils/workflowPresentation';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -77,6 +78,8 @@ const WorkflowSummaryPanel = ({ post }) => {
     const drafts = Array.isArray(post.drafts) ? post.drafts : [];
     const review = post.reviewRequest;
     const vault = post.vault;
+    const workflowState = workflowBadge(workflow);
+    const futureActions = actionBadges(workflow);
     const replication = Array.isArray(workflow?.action_plan?.actions)
         ? workflow.action_plan.actions.find(action => action?.type === 'replication_plan')
         : null;
@@ -86,11 +89,19 @@ const WorkflowSummaryPanel = ({ post }) => {
             <div className="flow-panel p-4">
                 <div className="flex items-center justify-between gap-3">
                     <h3 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)]">HERMES 工作流</h3>
-                    {workflow && <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-[10px] text-[var(--accent)]">{workflow.stage} / {workflow.status}</span>}
+                    <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${badgeClass[workflowState.tone]}`}>{workflowState.label}</span>
                 </div>
                 {vault?.relative_path && <p className="mt-3 text-xs text-[var(--muted-foreground)] break-all">Vault：{vault.relative_path}</p>}
                 {review && <div className="mt-3 border-t border-[var(--border)] pt-3"><p className="text-sm leading-6 text-[var(--foreground)]">{review.question}</p><div className="mt-2 flex flex-wrap gap-1.5">{(review.options || []).map(option => <span key={option} className="rounded-full border border-black/10 px-2 py-1 text-[10px] text-[#615d59]">{option}</span>)}</div></div>}
             </div>
+            {futureActions.length > 0 && (
+                <div className="flow-panel p-4">
+                    <h3 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)]">後續行動</h3>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                        {futureActions.map(action => <span key={action.type} className={`rounded-full border px-2 py-1 text-[10px] font-medium ${badgeClass[action.tone]}`} title={action.title}>{action.label}</span>)}
+                    </div>
+                </div>
+            )}
             {replication && (
                 <div className="flow-panel p-4">
                     <div className="flex items-center justify-between gap-3">

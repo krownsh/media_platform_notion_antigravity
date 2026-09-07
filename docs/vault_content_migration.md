@@ -6,7 +6,29 @@
 workflow 的 `updated_at`。套用時先複製、更新同一筆 workflow 的三個可能路徑紀錄，成功
 後才移除舊檔。衝突、手動異動或缺檔會保留原狀並回報 failed，不覆寫。
 
-在 Mac 的真實 Vault 執行：
+先在任何有專案環境檔、但不需要 Vault 的機器產生 DB-only manifest。它只讀取 workflow
+相對路徑，列出舊路徑與固定目標路徑；不會檢查檔案、不會更新 Supabase：
+
+```bash
+cd "$MEDIA_PLATFORM_PROJECT_ROOT"
+npm run vault:migrate-content-paths -- \
+  --database-only \
+  --user-id "50984520-69ad-4e64-b9c1-503f5c1b0e63" \
+  --env-file server/.env \
+  --output /Volumes/DevSSD/hermes/vault-db-plan-2026-09-07
+```
+
+Windows 使用相同指令，將 output 放在非 C 槽的工作磁碟：
+
+```powershell
+npm run vault:migrate-content-paths -- `
+  --database-only `
+  --user-id "50984520-69ad-4e64-b9c1-503f5c1b0e63" `
+  --env-file server/.env `
+  --output G:\hermes\vault-db-plan-2026-09-07
+```
+
+接著才在 Mac 的真實 Vault 使用同一批 workflow 做檔案 hash／衝突驗證：
 
 ```bash
 cd "$MEDIA_PLATFORM_PROJECT_ROOT"

@@ -3,7 +3,18 @@ import { mkdtemp, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { applyVaultContentMigration, planVaultContentMigration } from '../../scripts/maintenance/migrate-vault-content-paths.js';
+import { applyVaultContentMigration, planDatabaseVaultPaths, planVaultContentMigration } from '../../scripts/maintenance/migrate-vault-content-paths.js';
+
+test('database-only plan needs no Vault and never claims the path was applied', () => {
+    const oldPath = 'wiki/threads/threads/2026-09-01-note--post-db.md';
+    const manifest = planDatabaseVaultPaths({ workflows: [{
+        id: 'workflow-db', user_id: 'owner-1', post_id: 'post-db', updated_at: '2026-09-07T00:00:00.000Z',
+        context: { vault: { relative_path: oldPath } }, action_plan: {}
+    }] });
+    assert.equal(manifest.scope, 'database_only');
+    assert.equal(manifest.rows[0].status, 'ready_for_filesystem_verification');
+    assert.equal(manifest.rows[0].new_relative_path, 'wiki/sources/post-db.md');
+});
 
 test('Vault migration copies, atomically repoints the workflow, then removes one verified legacy note', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'vault-content-migration-'));

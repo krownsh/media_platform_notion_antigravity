@@ -44,7 +44,8 @@ function workflowPath(workflow) {
 }
 
 function targetPath(workflow) {
-    return `wiki/sources/${safeSegment(workflow.post_id, 'unknown')}.md`;
+    const postId = safeSegment(workflow.post_id, '');
+    return postId ? `wiki/sources/${postId}.md` : null;
 }
 
 function replacePath(workflow, oldPath, newPath) {
@@ -84,6 +85,10 @@ export async function planVaultContentMigration({ workflows, vaultRoot }) {
             continue;
         }
         const new_relative_path = targetPath(workflow);
+        if (!new_relative_path) {
+            rows.push({ ...base, status: 'skipped', reason: 'missing_post_id' });
+            continue;
+        }
         if (old_relative_path === new_relative_path) {
             rows.push({ ...base, new_relative_path, status: 'skipped', reason: 'already_stable_source_path' });
             continue;
@@ -102,6 +107,40 @@ export async function planVaultContentMigration({ workflows, vaultRoot }) {
         rows.push({ ...base, new_relative_path, old_sha256: await sha256(source), status: 'ready', reason: 'verified' });
     }
     return { version: 1, generated_at: new Date().toISOString(), vault_root: root, rows };
+}
+
+export function planDatabaseVaultPaths({ workflows }) {
+    const rows = [];
+    for (const workflow of workflows || []) {
+        const old_relative_path = workflowPath(workflow);
+        const base = {
+            workflow_id: workflow.id,
+            user_id: workflow.user_id,
+            post_id: workflow.post_id,
+            expected_updated_at: workflow.updated_at,
+            old_relative_path
+        };
+        if (!old_relative_path) {
+            rows.push({ ...base, status: 'skipped', reason: 'missing_workflow_path' });
+            continue;
+        }
+        const new_relative_path = targetPath(workflow);
+        if (!new_relative_path) {
+            rows.push({ ...base, status: 'skipped', reason: 'missing_post_id' });
+            continue;
+        }
+        if (old_relative_path === new_relative_path) {
+            rows.push({ ...base, new_relative_path, status: 'skipped', reason: 'already_stable_source_path' });
+            continue;
+        }
+        rows.push({
+            ...base,
+            new_relative_path,
+            status: 'ready_for_filesystem_verification',
+            reason: 'database_path_change_planned'
+        });
+    }
+    return { version: 1, scope: 'database_only', generated_at: new Date().toISOString(), rows };
 }
 
 async function currentWorkflow(supabase, row) {
@@ -168,8 +207,10 @@ async function main() {
     const args = process.argv.slice(2);
     const vault = option(args, '--vault');
     const manifestPath = option(args, '--manifest');
-    if (!vault) throw new Error('Use --vault <actual-obsidian-vault>.');
-    const vaultRoot = await verifyVaultRoot(vault);
+    const databaseOnly = args.includes('--database-only');
+    if (!vault && !databaseOnly) throw new Error('Use --database-only or --vault <actual-obsidian-vault>.');
+    if (databaseOnly && manifestPath) throw new Error('--database-only cannot apply a filesystem manifest.');
+    const vaultRoot = vault ? await verifyVaultRoot(vault) : null;
     if (manifestPath) {
         if (!args.includes('--apply')) throw new Error('Applying a manifest requires --apply.');
         const manifest = JSON.parse(await fs.readFile(path.resolve(manifestPath), 'utf8'));
@@ -184,14 +225,16 @@ async function main() {
     if (!userId || !output) throw new Error('Dry run requires --user-id <uuid> and --output <directory>.');
     const { supabase } = await import('../../server/supabaseClient.js');
     const { data, error } = await supabase.from('collection_post_workflows')
-        .select('id,user_id,post_id,updated_at,context,action_plan,collection_posts (id, collection_id, collection_collections (id, name))')
+        .select('id,user_id,post_id,updated_at,context,action_plan')
         .eq('user_id', userId);
     if (error) throw new Error(`Vault migration read failed: ${error.message}`);
-    const manifest = await planVaultContentMigration({ workflows: data || [], vaultRoot });
-    const outputPath = path.resolve(output, 'vault-content-migration-plan.json');
+    const manifest = databaseOnly
+        ? planDatabaseVaultPaths({ workflows: data || [] })
+        : await planVaultContentMigration({ workflows: data || [], vaultRoot });
+    const outputPath = path.resolve(output, databaseOnly ? 'vault-database-path-plan.json' : 'vault-content-migration-plan.json');
     await fs.mkdir(path.dirname(outputPath), { recursive: true });
     await fs.writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-    process.stdout.write(`${JSON.stringify({ ok: true, output: outputPath, ready: manifest.rows.filter(row => row.status === 'ready').length, skipped: manifest.rows.filter(row => row.status === 'skipped').length })}\n`);
+    process.stdout.write(`${JSON.stringify({ ok: true, output: outputPath, ready: manifest.rows.filter(row => row.status === (databaseOnly ? 'ready_for_filesystem_verification' : 'ready')).length, skipped: manifest.rows.filter(row => row.status === 'skipped').length })}\n`);
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;

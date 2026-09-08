@@ -13,7 +13,7 @@
 - 前端改為只傳 URL 與 Bearer JWT；API key caller 須設定 `MEDIA_API_KEY_USER_ID`。
 - `collection_posts` 的 tenant-aware URL constraint SQL 位於 [`database/deployments/add_unique_constraint.sql`](../database/deployments/add_unique_constraint.sql)；使用者已回報執行，尚未由本工作區獨立驗證。
 - 寫入 analysis、media、comments 的錯誤不再只記 log 後回傳成功；插入失敗會嘗試還原該表舊資料，並回傳明確錯誤與 `x-correlation-id`。跨表原子 finalization/outbox 仍屬 Stage B。
-- Gemini SDK、fallback、模型選單與專用模型清單已移除；AI 分析只使用 MiniMax，且只接受完整 JSON object，不再寫入 mock analysis。
+- 2026-09-08 起 server LLM provider 已退役：MiniMax、模型選單與 HTTP 呼叫皆不再使用。需要 AI 判讀由 Hermes Codex agent 處理；server 保留來源、規則式結果與待處理狀態，不寫入 mock analysis。
 - 已通過本機安全、tenant 契約與 AI provider 回歸測試；完整前端 build 仍受目前 Node 18／缺少 Rollup optional dependency 阻擋。
 - Project Auditor 首輪已完成並優先收斂公開副作用 API：n8n key 僅能呼叫 `/api/process`；發布、AI、批次分類與互動資料 API 均改為 Supabase JWT；影像 workflow 已因沒有替代供應商而退役。
 - tracked env template 的舊憑證已改為 placeholder；**部署端必須輪替既有 Supabase service-role 與 X crawler token**，本機未進行任何遠端操作。

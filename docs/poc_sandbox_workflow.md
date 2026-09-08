@@ -4,6 +4,8 @@
 
 此文件中的 `agent:analyze` 是 Stage G 前的 legacy 工作流。新流程從 `agent:next` 選取 workflow、完成 triage 並取得使用者對該貼文的明確 `poc_execute` action 後，才可執行 POC。
 
+2026-09-08 起 server MiniMax provider 已退役。POC 的 AI 提案需由 Hermes Codex agent 產生並帶回可驗證 artifact；server 不會自行呼叫模型。既有 deterministic fallback 與沙盒安全限制維持不變。
+
 ### 2026-07-29 實測補充
 
 - 模型產物違反靜態安全檢查時，流程只會帶著拒絕原因重生一次；第二次仍違規則使用可稽核的純標準函式庫 deterministic fallback。結果會記錄 `generation_method`、`generation_attempts` 與 `fallback_reason`。
@@ -13,14 +15,14 @@
 1. 讀取 `collection_capture_outbox` 與貼文分析資料。
 2. Route Agent 分類，必要時由 Tavily 補充官方資料。
 3. Project Auditor 與 Opportunity Matcher 找出應用案件。
-4. 只針對最高分案件，由既有 MiniMax provider 產生一個 JavaScript 或 Python POC。
+4. 只針對最高分案件，由 Hermes Codex agent 產生一個 JavaScript 或 Python POC，或使用既有 deterministic fallback。
 5. 靜態拒絕網路、環境變數、檔案、子程序、shell 與秘密字樣存取。
 6. 將程式與 manifest 寫到 `sandbox/runs/<run-id>/`。
 7. 在斷網、唯讀、受限資源的 Docker container 執行。
 8. 將程式碼、雜湊、stdout、stderr、exit code、耗時與成功狀態追加至 `collection_post_analysis.insights` JSONB。
 9. 貼文詳情頁會顯示最新成功 POC 的驗證目標、沙盒耗時、stdout 與安全 fallback 說明；衍生內容草稿不會取代原始貼文或自動發布。
 10. 資料夾的 `collection_topic_scopes` 僅提供專案背景，不是 POC 授權。POC 執行需要該貼文的使用者明確 action plan 與新的執行確認。
-11. 貼文詳情頁的「POC 工作台」是日常入口：會顯示該資料夾目標、綁定的 GitHub 專案、目前提案與已驗證結果。按「產生提案」只執行安全的本機分析；按「執行 POC」會先要求瀏覽器確認，才會送出 `EXECUTE_POC` 並實際呼叫模型、Tavily 與 Docker。未按確認不會產生付費 API 或沙盒執行。
+11. 貼文詳情頁的「POC 工作台」是日常入口：會顯示該資料夾目標、綁定的 GitHub 專案、目前提案與已驗證結果。按「產生提案」只執行安全的本機分析；需要 AI 提案時交由 Hermes Codex agent，按「執行 POC」才會執行已核准 artifact。未按確認不會產生付費 API 或沙盒執行。
 
 ## 前端操作
 

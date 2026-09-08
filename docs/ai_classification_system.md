@@ -1,19 +1,17 @@
-# AI 內容分類系統 (V2 - 動態配置版)
+# 內容分類系統（規則式／Hermes 交接）
 
 ## 1. 系統概述
-本系統採用「規則優先 (Rule-based) + LLM 備援 (LLM Fallback)」的雙軌制，對所有採集到的內容進行貼標分類。所有的分類邏輯（包含關鍵字與 AI 提示描述）均存儲於 `collection_category_configs` 資料庫表中。
+本系統採用規則式分類，對所有採集到的內容進行貼標判定。MiniMax 已退役，server 不配置或呼叫 LLM；需要 AI 判讀時由 Hermes Codex agent 在 HTTP 流程之外處理。所有可用分類規則均存於 `collection_category_configs` 資料庫表中。
 
 ## 2. 核心組件
 - **CategoryProcessor (server/services/categoryProcessor.js)**: 負責調度分類邏輯，讀取 DB 配置並處理標籤判定。
-- **AiService (server/services/aiService.js)**: 提供 **MiniMax** 模型連線；無法取得合格 JSON 時回報失敗，不寫入 mock 分析結果。
+- **AiService (server/services/aiService.js)**: 明確回報 `HERMES_AGENT_REQUIRED`；不是 server 可呼叫的模型 provider。
 - **BatchProcessor (server/services/batchProcessor.js)**: 批量處理未分類貼文。
 
 ## 3. 分類流程
 1. **規則匹配**: 系統從 DB 抓取 `patterns` 欄位，利用正則表達式進行初篩。
-2. **AI 備援**: 
-   - 若規則匹配結果為 `other`，系統會將貼文內容與所有類別的 `description` 傳送給 LLM。
-   - 採用的 Prompt 會強迫 AI 從定義好的 Slug 清單中選取一個。
-3. **模糊判定**: 為了防止 AI 的回覆包含廢話，程式會檢索回覆中是否包含特定的 Slug 關鍵字。
+2. **無規則命中**：保留 `other`，不會呼叫模型或偽造分類結果。
+3. **需要 AI 判讀**：背景工作維持待處理狀態，由 Hermes Codex agent 依貼文來源與既有 workflow 輸入產生可覆核結果。
 
 ## 4. 資料庫結構 (collection_category_configs)
 - `slug`: 標籤識別碼（如 `ai`, `tool`）
@@ -23,8 +21,8 @@
 - `is_active`: 是否啟用該標籤
 
 ## 5. 環境變數要求
-- `MINIMAX_API_KEY`: 必須，主要分類引擎。
-- `SUPABASE_SERVICE_KEY`: 必須，用於繞過 RLS 操作同步表單。
+- `SUPABASE_SERVICE_KEY`: 供 server-side 資料庫操作使用；不可交給前端。
+- 不需要 `MINIMAX_API_KEY` 或 `MINIMAX_GROUP_ID`。
 
 ---
-*更新日期：2026-04-08*
+*更新日期：2026-09-08*

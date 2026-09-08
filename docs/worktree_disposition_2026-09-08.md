@@ -21,3 +21,15 @@
 其他本機分支（無 worktree）：`_main`、`codex/ui-topic-governance`、`docs/agent-codex-action-vault-v2-20260724` 同樣是 main 祖先、0 unique/cherry rows；建議保留至 owner 確認分支保存政策。stash：`git stash list` 為空。
 
 遠端：`git ls-remote --symref origin HEAD` 於本輪唯讀成功，HEAD 是 `refs/heads/main` 的 `6dd66b2863f2a108cbac3a5d20b3bcd78e727289`。本機 tracking ref 也為該 commit；`git rev-list --left-right --count origin/main...main` 為 `0 16`。未證實部署端 revision。
+
+## agent-dev artifact 保存清冊（2026-09-08）
+
+以下五份是 `.worktrees/agent-dev/artifacts/container-migration/2026-09-05-stage-o-stage-p-preflight/` 唯讀 preflight 產物；本輪只計算 SHA-256，沒有複製、套用、移動或刪除。保存位置維持原 worktree，且 `vault-plan.csv` 已屬撤回方案，不可作為 Vault 搬移指令。
+
+| 檔案 | Bytes | SHA-256 | 用途／處置 |
+| --- | ---: | --- | --- |
+| `baseline.json` | 99,733 | `BB5865758550ED736CE84FDF08E2EC1FE0B8348ED275BD92E15B1B46BBAA73A2` | 當時的唯讀基準；保留供歷史比對。 |
+| `collection-plan.csv` | 39,690 | `DDB4F33D40003969AC7C5A395E87452F3090313CF4C65B40A24D0B7BDEFAA004` | Collection 建議；不可直接套用。 |
+| `topic-plan.csv` | 12,345 | `09CE77A55A532D988F3AE98912BF5F2A5A2D5830E4C993AE6B579F6E6D50C11F` | Topic 建議；不可直接套用。 |
+| `unresolved.json` | 185,283 | `BA1E8E3DF4543DF76682DE49B60F63D33A5667274C2F86A1428B1AE7D63C86DF` | 未決項目紀錄；保留供人工覆核。 |
+| `vault-plan.csv` | 48,635 | `F1965A79498FE5DBBE0FC20BDE71CE3166D4B0392F3D122500C3F7E0174D9BD7` | 已撤回的 Vault 搬移建議；保留但禁止執行。 |

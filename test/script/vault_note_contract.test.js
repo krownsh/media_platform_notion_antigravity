@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { buildVaultNotePaths, verifyVaultRoot, writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
+import { buildVaultNotePaths, VAULT_MANAGED_END, VAULT_MANAGED_START, verifyVaultRoot, writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.js';
 import { formatWorkflow } from '../../scripts/agent-sdk/next-workflow.js';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -117,6 +117,99 @@ test('Vault retry fails instead of creating a second note when its recorded path
         error => error.code === 'VAULT_RECORDED_PATH_UNAVAILABLE'
     );
     await assert.rejects(fs.stat(path.join(root, 'wiki', 'threads', 'threads', '2026-09-03-不應建立--post-123.md')));
+});
+
+test('Vault retry rejects a recorded path that belongs to another post or has manual content', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    const relativePath = 'wiki/threads/threads/conflict--post-123.md';
+    await fs.mkdir(path.join(root, 'wiki', 'threads', 'threads'), { recursive: true });
+    await fs.writeFile(path.join(root, relativePath), `${VAULT_MANAGED_START}\n- database_post_id: another-post\n${VAULT_MANAGED_END}\n`);
+    workflow.context = { vault: { relative_path: relativePath } };
+
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '不應覆寫' } }),
+        error => error.code === 'VAULT_RECORDED_PATH_CONFLICT'
+    );
+
+    const manualPath = 'wiki/threads/threads/manual--post-123.md';
+    await fs.writeFile(path.join(root, manualPath), '# 人工筆記\n只屬於使用者\n');
+    workflow.context = { vault: { relative_path: manualPath } };
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '也不應覆寫' } }),
+        error => error.code === 'VAULT_RECORDED_PATH_CONFLICT'
+    );
+});
+
+test('Vault retry rejects conflicting recorded paths instead of selecting one', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    const first = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '第一份' } });
+    const secondPath = 'wiki/threads/threads/第二份--post-123.md';
+    await fs.mkdir(path.dirname(path.join(root, secondPath)), { recursive: true });
+    await fs.copyFile(path.join(root, first.relative_path), path.join(root, secondPath));
+    workflow.context = {
+        vault: { relative_path: first.relative_path },
+        vault_sync: { relative_path: secondPath }
+    };
+
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '不選任何一份' } }),
+        error => error.code === 'VAULT_RECORDED_PATH_CONFLICT'
+    );
+});
+
+test('Vault retry rejects a recorded path that resolves outside the Vault through a symlink', async (t) => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    const external = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-external-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    await fs.mkdir(path.join(root, 'wiki'));
+    await fs.mkdir(path.join(external, 'threads'), { recursive: true });
+    const relativePath = 'wiki/threads/symlink--post-123.md';
+    await fs.writeFile(path.join(external, 'threads', 'symlink--post-123.md'), `${VAULT_MANAGED_START}\n- database_post_id: post-123\n${VAULT_MANAGED_END}\n`);
+    try {
+        await fs.symlink(path.join(external, 'threads'), path.join(root, 'wiki', 'threads'), process.platform === 'win32' ? 'junction' : 'dir');
+    } catch (error) {
+        if (error.code === 'EPERM' || error.code === 'EACCES') {
+            t.skip('Current Windows permissions do not allow symlink fixtures');
+            return;
+        }
+        throw error;
+    }
+    const workflow = fixtureWorkflow();
+    workflow.context = { vault: { relative_path: relativePath } };
+
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: { note_title: '不應越界' } }),
+        error => error.code === 'VAULT_RECORDED_PATH_INVALID'
+    );
+});
+
+test('Vault draft retry keeps the recorded draft path when its title changes', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    const first = await writeWorkflowVaultNotes({
+        workflow,
+        vaultRoot: root,
+        noteInput: { note_title: '來源筆記', content_draft: { title: '第一版草稿', format: 'x_thread', body: '第一版內容' } }
+    });
+    const draftFile = path.join(root, first.draft_path);
+    await fs.appendFile(draftFile, '\n人工草稿備註\n');
+    workflow.context = { vault: { relative_path: first.relative_path, draft_path: first.draft_path } };
+    workflow.collection_posts.title = '更新後來源標題';
+    const retry = await writeWorkflowVaultNotes({
+        workflow,
+        vaultRoot: root,
+        noteInput: { note_title: '更新後筆記', content_draft: { title: '第二版草稿', format: 'x_thread', body: '第二版內容' } }
+    });
+
+    assert.equal(retry.draft_path, first.draft_path);
+    assert.match(await fs.readFile(draftFile, 'utf8'), /第二版內容/);
+    assert.match(await fs.readFile(draftFile, 'utf8'), /人工草稿備註/);
+    await assert.rejects(fs.stat(path.join(root, 'content', 'drafts', 'threads', 'x_thread', '第二版草稿-post-123.md')));
 });
 
 test('Vault source paths stay platform-based and ignore Collection classification', () => {

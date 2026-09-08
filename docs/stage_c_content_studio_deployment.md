@@ -68,7 +68,7 @@ macOS Terminal:
 npm run agent:content -- ca45f652-9f38-4f80-9cae-579a1ad45040
 ```
 
-The command generates drafts with the existing MiniMax provider, then persists each pending content route. It reuses the source/route idempotency key, so an interrupted retry does not create a duplicate revision. When all planned routes are terminal, the outbox changes to `sent`; otherwise it stays `pending`.
+The server has no active LLM provider. Hermes Codex can persist a prepared rewrite without another model call; otherwise Content Studio uses its deterministic fallback draft. Storage reuses the source/route idempotency key, so an interrupted retry does not create a duplicate revision. When all planned routes are terminal, the outbox changes to `sent`; otherwise it stays `pending`.
 
 ## Production verification (2026-07-29)
 

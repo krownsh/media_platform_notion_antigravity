@@ -112,6 +112,35 @@ function actionFromWorkflow(workflow, type) {
     return actions.find(action => action?.type === type) || null;
 }
 
+function hasManagedPostIdentity(content, postId) {
+    return content.includes(VAULT_MANAGED_START)
+        && content.includes(VAULT_MANAGED_END)
+        && content.includes(`- database_post_id: ${postId}`);
+}
+
+async function readRecordedVaultFile(root, relativePath, expectedPath, postId, kind) {
+    const filePath = path.resolve(root, ...relativePath.split('/'));
+    assertInside(root, filePath);
+    const [realRoot, realFile] = await Promise.all([
+        fs.realpath(root),
+        fs.realpath(filePath).catch(error => error.code === 'ENOENT' ? null : Promise.reject(error))
+    ]);
+    if (!realFile) return null;
+    try {
+        assertInside(realRoot, realFile);
+    } catch (error) {
+        error.code = 'VAULT_RECORDED_PATH_INVALID';
+        throw error;
+    }
+    const content = await fs.readFile(realFile, 'utf8');
+    if (!hasManagedPostIdentity(content, postId) || (expectedPath && !content.includes(`- source_note: ${expectedPath}`))) {
+        const error = new Error(`Recorded ${kind} belongs to a different post or is not a managed note: ${relativePath}`);
+        error.code = 'VAULT_RECORDED_PATH_CONFLICT';
+        throw error;
+    }
+    return { relative_path: relativePath, path: filePath };
+}
+
 async function recordedWikiPath(root, workflow, postId) {
     const vaultAction = actionFromWorkflow(workflow, 'vault_note');
     const paths = [...new Set([
@@ -129,19 +158,17 @@ async function recordedWikiPath(root, workflow, postId) {
             error.code = 'VAULT_RECORDED_PATH_INVALID';
             throw error;
         }
-        const filePath = path.resolve(root, ...relativePath.split('/'));
-        assertInside(root, filePath);
-        const content = await fs.readFile(filePath, 'utf8').catch(error => error.code === 'ENOENT' ? null : Promise.reject(error));
-        if (content === null) {
+        const recorded = await readRecordedVaultFile(root, relativePath, null, postId, 'Vault note');
+        if (recorded === null) {
             missing.push(relativePath);
             continue;
         }
-        if (!content.includes(`- database_post_id: ${postId}`)) {
-            const error = new Error(`Recorded Vault note belongs to a different post: ${relativePath}`);
-            error.code = 'VAULT_RECORDED_PATH_CONFLICT';
-            throw error;
-        }
-        existing.push({ relative_path: relativePath, path: filePath });
+        existing.push(recorded);
+    }
+    if (existing.length > 1) {
+        const error = new Error(`Recorded Vault paths conflict: ${existing.map(item => item.relative_path).join(', ')}`);
+        error.code = 'VAULT_RECORDED_PATH_CONFLICT';
+        throw error;
     }
     if (missing.length || existing.length !== 1) {
         const error = new Error(`Recorded Vault note cannot be safely reused: ${[...missing, ...existing.map(item => item.relative_path)].join(', ')}`);
@@ -149,6 +176,28 @@ async function recordedWikiPath(root, workflow, postId) {
         throw error;
     }
     return existing[0];
+}
+
+async function recordedDraftPath(root, workflow, draft, postId, sourcePath) {
+    const relativePath = String(
+        draft?.relative_path
+        || workflow?.context?.vault?.draft_path
+        || workflow?.context?.vault_sync?.draft_path
+        || ''
+    ).trim().replace(/\\/g, '/');
+    if (!relativePath) return null;
+    if (!relativePath.startsWith('content/drafts/')) {
+        const error = new Error(`Recorded draft path is outside content/drafts: ${relativePath}`);
+        error.code = 'VAULT_RECORDED_PATH_INVALID';
+        throw error;
+    }
+    const recorded = await readRecordedVaultFile(root, relativePath, sourcePath, postId, 'draft note');
+    if (!recorded) {
+        const error = new Error(`Recorded draft note cannot be safely reused: ${relativePath}`);
+        error.code = 'VAULT_RECORDED_PATH_UNAVAILABLE';
+        throw error;
+    }
+    return recorded;
 }
 
 function formatList(items, maxItems = 20) {
@@ -314,18 +363,37 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
     let draftFormat = null;
     let draftTitle = null;
     if (draft?.body) {
-        draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
-        draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
-        draftFile = path.resolve(root, 'content', 'drafts', paths.platform, draftFormat, `${draftTitle}.md`);
-        assertInside(root, draftFile);
-        draftPath = path.relative(root, draftFile).split(path.sep).join('/');
+        const existingDraft = await recordedDraftPath(root, workflow, draft, post.id, paths.wiki.relative_path);
+        if (existingDraft) {
+            draftFile = existingDraft.path;
+            draftPath = existingDraft.relative_path;
+        } else {
+            draftFormat = safeSegment(draft.format || 'draft', 'draft', 'draft format');
+            draftTitle = safeSegment(`${draft.title || paths.note_title}-${post.id.slice(0, 8)}`, paths.note_title, 'draft title');
+            draftFile = path.resolve(root, 'content', 'drafts', paths.platform, draftFormat, `${draftTitle}.md`);
+            assertInside(root, draftFile);
+            draftPath = path.relative(root, draftFile).split(path.sep).join('/');
+        }
         effectiveNoteInput.content_draft.relative_path = draftPath;
     }
     const wikiManaged = buildManagedBlock({ workflow, noteInput: effectiveNoteInput, post, analysis, replication });
     const existingWiki = await fs.readFile(paths.wiki.path, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
+    if (existingWiki && !hasManagedPostIdentity(existingWiki, post.id)) {
+        const error = new Error(`Vault note path is occupied by an unmanaged note: ${paths.wiki.relative_path}`);
+        error.code = 'VAULT_NOTE_PATH_CONFLICT';
+        throw error;
+    }
     await atomicWrite(paths.wiki.path, mergeManagedBlock(existingWiki, wikiManaged));
 
     if (draft?.body) {
+        const draftManaged = [
+            VAULT_MANAGED_START,
+            '## 草稿內容',
+            markdownText(draft.body, 30_000),
+            '',
+            VAULT_MANAGED_END,
+            ''
+        ].join('\n');
         const draftNote = [
             `# ${draftTitle}`,
             '',
@@ -337,15 +405,15 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
             `- published: ${draft.published ? 'true' : 'false'}`,
             `- source_note: ${paths.wiki.relative_path}`,
             '',
-            VAULT_MANAGED_START,
-            '## 草稿內容',
-            markdownText(draft.body, 30_000),
-            '',
-            VAULT_MANAGED_END,
-            ''
+            draftManaged
         ].join('\n');
         const existingDraft = await fs.readFile(draftFile, 'utf8').catch(error => (error.code === 'ENOENT' ? '' : Promise.reject(error)));
-        await atomicWrite(draftFile, existingDraft ? mergeManagedBlock(existingDraft, draftNote) : draftNote);
+        if (existingDraft && !hasManagedPostIdentity(existingDraft, post.id)) {
+            const error = new Error(`Draft path is occupied by an unmanaged note: ${draftPath}`);
+            error.code = 'VAULT_NOTE_PATH_CONFLICT';
+            throw error;
+        }
+        await atomicWrite(draftFile, existingDraft ? mergeManagedBlock(existingDraft, draftManaged) : draftNote);
     }
 
     return {

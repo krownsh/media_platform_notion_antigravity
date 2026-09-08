@@ -27,3 +27,7 @@
 - 同一批資料若同時更新貼文歸屬與搜尋投影，move mapping 只能定義一次並由兩個 update 共用；禁止手寫兩份 VALUES 清單，以免 target UUID 漂移。
 - 資料庫成功回傳空結果不等於驗收完成。每次 batch 必須明確核對：預期筆數、目標 Collection、搜尋投影一致性、總貼文不變與 inbox 差額。
 - tenant-aware foreign key 擋下錯誤目標後，先以唯讀查詢確認完整 rollback，才能修正並重送；不得假設失敗交易沒有局部影響。
+
+## 2026-09-08：資料庫身分不得混稱
+
+- 資料庫身分絕不可依 dashboard 名稱或 table 外觀猜測：`dcyjictvatixbflfrsfg` 是本專案專用資料庫，`nfnjxjmarzevkxawkzro` 才是共用資料庫。回報前必須逐字核對 project ref 與 Owner 的定位；對照不足一律標示未確認，禁止以「共享」含混概括。

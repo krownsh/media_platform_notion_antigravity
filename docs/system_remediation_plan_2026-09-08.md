@@ -2,6 +2,10 @@
 
 狀態：本機修正完成；正式環境補證未執行。此文件記錄修正範圍與驗收門檻；Supabase live RLS／schema、部署 revision、實際 Vault 與 DB 失敗前未持久化路徑的補償設計，仍需獨立確認，不能標示為已驗證。
 
+正式環境唯讀補證（2026-09-08）：repo 使用的 project ref `dcyjictvatixbflfrsfg` 是健康的共用 project（dashboard 名稱為 `v0-stock-dashboard`），但其 migration 含本專案的 Stage O、P、Q、R、S，且核心表數量量級與本專案相符，因此確認不是連錯資料庫。`collection_posts` 與 `collection_collections` 已啟用 RLS、只授權 `authenticated`，owner policy 具明確 `auth.uid()` 與 insert/update `WITH CHECK`；Stage P 已部署。`collection_collection_post_map`、`collection_post_analysis`、`collection_post_comments` 仍是舊 `TO public` policy，雖以 `auth.uid() = user_id` 阻擋匿名資料讀取，但尚未符合 Stage P 的明確角色／更新檢查模式；這是新發現的 schema scope，未經 Owner 確認不改 live RLS。
+
+版本補證（2026-09-08）：GitHub 遠端 `main` 仍是 `6dd66b2`；本機修正尚未 push，故不可能由本 repo 的現況推論已部署。沒有 Hermes／server 主機 connector，實際服務與排程 revision 維持未確認。
+
 執行更新（2026-09-08）：第一、二批的本機修正已完成並合併至本機 `main`；尚未 push／部署、未連線 Supabase 或實際 Vault。供應商撤銷、Git 歷史清除、MiniMax 替代 runtime 與 worktree 實體清理仍未執行。
 
 Owner 決定（2026-09-08）：MiniMax 已無訂閱，視為永久退役；不執行撤銷或 Git 歷史重寫，也不擅自接入付費替代模型。Hermes agent 執行 Codex 是獨立的 agent 工作流，不等同於既有 server API 的 LLM provider；現有 server 入口需改為明確交由 Hermes 處理，不能再嘗試 MiniMax。

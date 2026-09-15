@@ -54,6 +54,13 @@ const TopicCard = ({ topic, domainLabel }) => (
         <p className="mt-2 text-xs text-[#615d59]">{topic.project?.title || '尚未遷移的舊主題'} · {domainLabel(topic.domain_key)}</p>
         {topic.purpose && <p className="mt-3 text-sm text-[#615d59]">{topic.purpose}</p>}
         {topic.description && <p className="mt-2 text-sm text-[#615d59]/80">{topic.description}</p>}
+        <section className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3" aria-label="知識彙整">
+            <div className="flex items-center justify-between gap-2 text-xs font-medium text-[#615d59]"><span>知識彙整</span><span>r{topic.knowledge_revision || 0} · {topic.knowledge_source_count || 0} 個已接受來源</span></div>
+            {topic.knowledge_source_count > 0 ? <>
+                <p className="mt-2 text-sm text-[#615d59]">{topic.knowledge_summary}</p>
+                {topic.knowledge_concepts?.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{topic.knowledge_concepts.map((concept) => <span key={concept} className="rounded-md bg-white px-2 py-1 text-xs text-[#615d59]">{concept}</span>)}</div>}
+            </> : <p className="mt-2 text-sm text-[#615d59]">尚未彙整：接受來源後會在此建立可追溯摘要。</p>}
+        </section>
         {topic.keywords?.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{topic.keywords.map((keyword) => <span key={keyword} className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#615d59]">#{keyword}</span>)}</div>}
     </article>
 );

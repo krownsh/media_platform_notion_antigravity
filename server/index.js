@@ -26,6 +26,7 @@ import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
+import { rebuildTopicKnowledgeAggregate } from './services/topicKnowledgeAggregateService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -441,8 +442,16 @@ app.post('/api/topics/:topicId/matches/:sourceId/decision', async (req, res) => 
             .select()
             .single();
         if (error) throw error;
-        return res.json({ match: data });
+        const aggregate = await rebuildTopicKnowledgeAggregate({
+            topicId,
+            userId,
+            supabaseClient: supabase
+        });
+        return res.json({ match: data, aggregate });
     } catch (error) {
+        if (error.code === 'TOPIC_AGGREGATE_CONFLICT') {
+            return res.status(409).json({ error: error.message, code: error.code });
+        }
         if (isGovernanceSchemaError(error)) {
             return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
         }

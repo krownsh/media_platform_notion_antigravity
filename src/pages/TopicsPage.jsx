@@ -59,6 +59,7 @@ const TopicCard = ({ topic, domainLabel }) => (
             {topic.knowledge_source_count > 0 ? <>
                 <p className="mt-2 text-sm text-[#615d59]">{topic.knowledge_summary}</p>
                 {topic.knowledge_concepts?.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{topic.knowledge_concepts.map((concept) => <span key={concept} className="rounded-md bg-white px-2 py-1 text-xs text-[#615d59]">{concept}</span>)}</div>}
+                {topic.knowledge_source_ids?.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5 text-xs"><span className="self-center text-[#615d59]">來源：</span>{topic.knowledge_source_ids.map((sourceId) => <a key={sourceId} href={`/post/${sourceId}`} className="rounded-md border notion-whisper-border bg-white px-2 py-1 text-[var(--accent)] hover:underline">查看來源</a>)}</div>}
             </> : <p className="mt-2 text-sm text-[#615d59]">尚未彙整：接受來源後會在此建立可追溯摘要。</p>}
         </section>
         {topic.keywords?.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{topic.keywords.map((keyword) => <span key={keyword} className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#615d59]">#{keyword}</span>)}</div>}

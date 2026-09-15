@@ -25,6 +25,7 @@ import { releaseHermesCronWorkflow } from '../../server/services/hermesCronServi
 import { acknowledgePersistedWorkflowOutbox } from '../../server/services/hermesOutboxService.js';
 import { storePreparedContentDraft } from '../../server/services/contentRouteService.js';
 import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
+import { executeParallelTracks } from '../../server/services/parallelTrackExecutionService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -183,7 +184,30 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             .catch(error => console.warn(`[Hermes Preprocess] Generated title persistence deferred: ${error.message}`));
 
         const persistence = await persistSourceIdentity(workflow, supabase);
-        const topicPersistence = await persistTopicDecision(workflow, result.topic, result.relation, supabase);
+        let topicPersistence = null;
+        let acceptedTopics = [];
+        const trackRun = await executeParallelTracks(workflow.context, {
+            knowledge: async () => {
+                topicPersistence = await persistTopicDecision(workflow, result.topic, result.relation, supabase);
+                return {
+                    status: topicPersistence?.reason === 'user_acceptance_required' ? 'needs_review' : 'not_applicable',
+                    reason: topicPersistence?.reason === 'user_acceptance_required'
+                        ? '已建立主題匹配建議，等待你接受或略過。'
+                        : '沒有可自動連結的已確認主題。'
+                };
+            },
+            project_application: async () => {
+                acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
+                if (acceptedTopics.length === 0) {
+                    return { status: 'not_applicable', reason: '尚未有已接受主題，暫不建立專案應用研究建議。' };
+                }
+                return {
+                    status: 'needs_review',
+                    reason: `已找到 ${acceptedTopics.length} 個已接受主題，可確認是否建立專案應用研究。`,
+                    details: { accepted_topic_ids: acceptedTopics.map(({ topic }) => topic.id) }
+                };
+            }
+        });
         const folderPersistence = await persistFolderDecision(
             workflow,
             result.folder,
@@ -196,7 +220,6 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             }
         );
 
-        const acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
         let pocResult = null;
         if (result.poc?.auto_execute
             && result.autonomy.outcome !== 'review_pending'
@@ -257,6 +280,8 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             : { stage: 'review', status: 'awaiting_user' };
         if (options.deferVault) {
             const context = buildAutomationContext(result, {
+                ...trackRun.context,
+                parallel_track_outcomes: trackRun.outcomes,
                 source_identity: persistence,
                 topic_persistence: topicPersistence,
                 accepted_topics: acceptedTopics.map(({ topic, score, rationale }) => ({
@@ -315,6 +340,8 @@ export async function preprocessWorkflow(workflowId, options = {}) {
         const vaultOutcome = await writeWorkflowVaultNotes({ workflow, noteInput, vaultRoot: options.vaultRoot });
         if (contentDraft && vaultOutcome.draft_path) contentDraft.relative_path = vaultOutcome.draft_path;
         const context = buildAutomationContext(result, {
+            ...trackRun.context,
+            parallel_track_outcomes: trackRun.outcomes,
             source_identity: persistence,
             topic_persistence: topicPersistence,
             accepted_topics: acceptedTopics.map(({ topic, score, rationale }) => ({

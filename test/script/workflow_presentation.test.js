@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { actionBadges, matchesWorkflowFilter, workflowBadge, workflowNextStep } from '../../src/utils/workflowPresentation.js';
+import { actionBadges, matchesWorkflowFilter, workflowBadge, workflowGuidance, workflowNextStep } from '../../src/utils/workflowPresentation.js';
 
 test('workflow badge always has a textual lifecycle label', () => {
     assert.equal(workflowBadge(null).label, '尚未納入流程');
@@ -26,6 +26,13 @@ test('workflow filter groups and next steps use human-facing states rather than 
     assert.equal(matchesWorkflowFilter(null, 'not_started'), true);
     assert.equal(workflowNextStep(attention).label, '打開貼文並選擇後續方向');
     assert.equal(workflowNextStep({ stage: 'actions', status: 'failed' }).label, '打開貼文查看錯誤並重試');
+});
+
+test('workflow guidance exposes stage, owner, reason and safe next action', () => {
+    const blocked = workflowGuidance({ stage: 'actions', status: 'blocked', last_error: '缺少專案確認' });
+    assert.deepEqual(blocked, { stageLabel: '後續行動', waitingFor: '你', reason: '缺少專案確認', actionLabel: '查看錯誤並重試或調整方向' });
+    assert.equal(workflowGuidance({ stage: 'review', status: 'awaiting_user', context: { review_request: { question: '選擇研究或封存？' } } }).reason, '選擇研究或封存？');
+    assert.equal(workflowGuidance({ stage: 'vault_sync', status: 'pending' }).waitingFor, '本機 Obsidian');
 });
 
 test('action badges show all supported directions independently of replication', () => {

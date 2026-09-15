@@ -9,7 +9,7 @@ import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
-import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
+import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowGuidance, workflowNextStep } from '../utils/workflowPresentation';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -80,6 +80,7 @@ const WorkflowSummaryPanel = ({ post }) => {
     const vault = post.vault;
     const workflowState = workflowBadge(workflow);
     const nextStep = workflowNextStep(workflow);
+    const guidance = workflowGuidance(workflow);
     const futureActions = actionBadges(workflow);
     const parallelTracks = parallelTrackPresentation(post.parallelTracks);
     const replication = Array.isArray(workflow?.action_plan?.actions)
@@ -93,7 +94,7 @@ const WorkflowSummaryPanel = ({ post }) => {
                     <h3 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)]">HERMES 工作流</h3>
                     <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${badgeClass[workflowState.tone]}`}>{workflowState.label}</span>
                 </div>
-                {workflow && <p className="mt-3 text-sm leading-6 text-[var(--foreground)]">下一步：{nextStep.label}</p>}
+                {workflow && <div className="mt-3 grid gap-2 text-sm leading-6 text-[var(--foreground)]"><p>目前階段：{guidance.stageLabel}</p><p>等待：{guidance.waitingFor}</p><p>原因：{guidance.reason}</p><p>可做什麼：{guidance.actionLabel}</p></div>}
                 <div className="mt-3 flex flex-wrap gap-1.5">
                     <span className={`rounded-full border px-2 py-1 text-[10px] font-medium ${badgeClass[parallelTracks[0].tone]}`} title={parallelTracks[0].reason}>知識收藏：{parallelTracks[0].label}</span>
                     <span className={`rounded-full border px-2 py-1 text-[10px] font-medium ${badgeClass[parallelTracks[1].tone]}`} title={parallelTracks[1].reason}>專案應用：{parallelTracks[1].label}</span>

@@ -31,5 +31,9 @@ test('post browsing surfaces workflow filtering and a human-readable next step o
     assert.match(detail, /parallelTrackPresentation\(post\.parallelTracks\)/);
     assert.match(detail, /知識收藏/);
     assert.match(detail, /專案應用/);
-    assert.match(detail, /下一步：/);
+    assert.match(detail, /workflowGuidance/);
+    assert.match(detail, /目前階段：/);
+    assert.match(detail, /等待：/);
+    assert.match(detail, /原因：/);
+    assert.match(detail, /可做什麼：/);
 });

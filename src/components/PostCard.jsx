@@ -6,7 +6,7 @@ import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
 import { visibleCollections } from '../utils/collectionVisibility';
-import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
+import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowGuidance, workflowNextStep } from '../utils/workflowPresentation';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
@@ -40,6 +40,7 @@ const PostCard = ({
 
     const workflowState = workflowBadge(post.workflow);
     const nextStep = workflowNextStep(post.workflow);
+    const guidance = workflowGuidance(post.workflow);
     const futureActions = actionBadges(post.workflow);
     const parallelTracks = parallelTrackPresentation(post.parallelTracks);
 
@@ -181,6 +182,7 @@ const PostCard = ({
                         ))}
                     </div>
 
+                    {post.workflow && <p className={`text-[#615d59] leading-4 ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>流程：{guidance.stageLabel} · 等待：{guidance.waitingFor}</p>}
                     {post.workflow && <p className={`text-[#615d59] leading-4 ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>下一步：{nextStep.label}</p>}
 
                     {futureActions.length > 0 && (

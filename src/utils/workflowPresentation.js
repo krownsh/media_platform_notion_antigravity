@@ -56,6 +56,19 @@ export function workflowNextStep(workflow) {
     return { label: '系統正在整理，完成後會顯示下一步', tone: 'teal' };
 }
 
+export function workflowGuidance(workflow) {
+    const stage = workflow?.stage || 'base_analysis';
+    const status = workflow?.status || 'pending';
+    const stageLabels = { base_analysis: '來源分析', triage: '內容分流', preprocessing: '自動整理', vault_sync: 'Obsidian 同步', strategy: '方向決策', research: '研究驗證', review: '人工審核', actions: '後續行動', complete: '流程完成' };
+    const stageLabel = stageLabels[stage] || `未知階段（${stage}）`;
+    if (!workflow) return { stageLabel, waitingFor: 'Hermes', reason: '來源已儲存，尚未開始整理。', actionLabel: '等待系統開始整理' };
+    if (status === 'failed' || status === 'blocked') return { stageLabel, waitingFor: '你', reason: workflow.last_error || '此步驟未成功完成，需要確認後再試。', actionLabel: '查看錯誤並重試或調整方向' };
+    if (status === 'awaiting_user') return { stageLabel, waitingFor: '你', reason: workflow.context?.review_request?.question || '需要你決定後續方向。', actionLabel: '打開貼文並選擇後續方向' };
+    if (stage === 'vault_sync') return { stageLabel, waitingFor: '本機 Obsidian', reason: workflow.context?.vault_sync?.reason || '等待已排程的筆記同步。', actionLabel: '等待同步完成' };
+    if (stage === 'complete' && status === 'completed') return { stageLabel, waitingFor: '無', reason: '所有已核准工作均已完成。', actionLabel: '查看整理結果' };
+    return { stageLabel, waitingFor: 'Hermes', reason: `目前正在進行「${stageLabel}」。`, actionLabel: workflowNextStep(workflow).label };
+}
+
 const PARALLEL_TRACK_LABELS = {
     pending: { label: '待處理', tone: 'slate' },
     processing: { label: '整理中', tone: 'teal' },

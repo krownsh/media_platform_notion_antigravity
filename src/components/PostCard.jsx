@@ -6,7 +6,7 @@ import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
 import { visibleCollections } from '../utils/collectionVisibility';
-import { actionBadges, badgeClass, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
+import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
@@ -41,6 +41,7 @@ const PostCard = ({
     const workflowState = workflowBadge(post.workflow);
     const nextStep = workflowNextStep(post.workflow);
     const futureActions = actionBadges(post.workflow);
+    const parallelTracks = parallelTrackPresentation(post.parallelTracks);
 
     // Helper function to proxy Instagram/Threads images
     const proxyImage = (imageUrl) => {
@@ -112,6 +113,10 @@ const PostCard = ({
                         <MoreHorizontal size={16} />
                     </button>
                 </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 px-3 sm:px-4 py-2 border-b notion-whisper-border bg-surface-raised">
+                {parallelTracks.map(track => <span key={track.key} className={`rounded-full border px-1.5 py-1 text-[10px] font-medium ${badgeClass[track.tone]}`} title={track.reason}>{track.title}：{track.label}</span>)}
             </div>
 
             {/* Author Info */}

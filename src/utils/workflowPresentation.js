@@ -56,6 +56,22 @@ export function workflowNextStep(workflow) {
     return { label: '系統正在整理，完成後會顯示下一步', tone: 'teal' };
 }
 
+const PARALLEL_TRACK_LABELS = {
+    pending: { label: '待處理', tone: 'slate' },
+    processing: { label: '整理中', tone: 'teal' },
+    needs_review: { label: '需要確認', tone: 'amber' },
+    completed: { label: '已完成', tone: 'emerald' },
+    not_applicable: { label: '尚未適用', tone: 'slate' },
+    failed: { label: '需要處理', tone: 'red' }
+};
+
+export function parallelTrackPresentation(tracks) {
+    return [
+        { key: 'knowledge', title: '知識收藏', ...(PARALLEL_TRACK_LABELS[tracks?.knowledge?.status] || PARALLEL_TRACK_LABELS.pending), reason: tracks?.knowledge?.reason || '等待知識整理' },
+        { key: 'project_application', title: '專案應用', ...(PARALLEL_TRACK_LABELS[tracks?.project_application?.status] || PARALLEL_TRACK_LABELS.not_applicable), reason: tracks?.project_application?.reason || '尚未連結專案應用' }
+    ];
+}
+
 export function actionBadges(workflow) {
     const actions = Array.isArray(workflow?.action_plan?.actions) ? workflow.action_plan.actions : [];
     return actions

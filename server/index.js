@@ -20,10 +20,12 @@ import { suggestTopicMatches } from './services/topicAgent.js';
 import { normalizeProjectTarget, normalizeTopicDomain, TOPIC_DOMAIN_OPTIONS } from './services/topicGovernanceService.js';
 import { agentJobRouter } from './routes/agentJobRoutes.js';
 import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
+import { parallelTrackRouter } from './routes/parallelTrackRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
+import { normalizeParallelTracks } from './services/parallelTrackService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -716,6 +718,7 @@ app.get('/api/posts', async (req, res) => {
             annotations: post.collection_user_annotations || [],
             analysis,
             workflow: post.collection_post_workflows?.[0] || null,
+            parallelTracks: normalizeParallelTracks(post.collection_post_workflows?.[0]?.context),
             reviewRequest: post.collection_post_workflows?.[0]?.context?.review_request || null,
             vault: post.collection_post_workflows?.[0]?.context?.vault || null,
             drafts: (post.content_assets || []).map(asset => ({
@@ -972,6 +975,7 @@ app.post('/api/batch-classify', async (req, res) => {
 // Agent Job Control Plane API
 app.use('/api/agent/jobs', requireSupabaseJwt, agentJobRouter);
 app.use('/api/poc-workbench', requireSupabaseJwt, pocWorkbenchRouter);
+app.use('/api/parallel-tracks', requireSupabaseJwt, parallelTrackRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
 app.use('/api', (req, res) => {

@@ -22,6 +22,7 @@ import { writeWorkflowVaultNotes } from '../../server/services/vaultNoteService.
 import { runPocWorkflow } from '../../server/services/pocService.js';
 import { getAcceptedTopicsForSource } from '../../server/services/topicGovernanceService.js';
 import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
+import { acknowledgePersistedWorkflowOutbox } from '../../server/services/hermesOutboxService.js';
 import { storePreparedContentDraft } from '../../server/services/contentRouteService.js';
 import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
 
@@ -286,6 +287,7 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                 failedStage: null,
                 lastError: null
             }, supabase);
+            const outboxAck = await acknowledgePersistedWorkflowOutbox(transitioned, options.agentIdentity, supabase);
             await upsertPostSearchDocument(post, {
                 supabaseClient: supabase,
                 analysis: result.analysis,
@@ -303,6 +305,7 @@ export async function preprocessWorkflow(workflowId, options = {}) {
                 target_status: next.status,
                 autonomy: result.autonomy,
                 exact_duplicate: persistence.exact_duplicate?.id || null,
+                outbox_ack_status: outboxAck.status,
                 vault_path: null,
                 content_draft: contentDraft,
                 poc: result.poc?.result || null
@@ -335,6 +338,7 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             failedStage: null,
             lastError: null
         }, supabase);
+        const outboxAck = await acknowledgePersistedWorkflowOutbox(transitioned, options.agentIdentity, supabase);
         await releaseHermesCronWorkflow({ workflowId: transitioned.id, agentId: options.agentIdentity }, supabase);
         await upsertPostSearchDocument(post, {
             supabaseClient: supabase,
@@ -350,6 +354,7 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             status: transitioned.status,
             autonomy: result.autonomy,
             exact_duplicate: persistence.exact_duplicate?.id || null,
+            outbox_ack_status: outboxAck.status,
             vault_path: vaultOutcome.relative_path,
             content_draft: contentDraft,
             poc: result.poc?.result || null

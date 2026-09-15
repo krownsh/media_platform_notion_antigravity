@@ -2,6 +2,7 @@ import { supabase } from '../supabaseClient.js';
 import { normalizePreprocessInput } from './autonomyPolicyService.js';
 import { persistGeneratedTitle } from './autonomousKnowledgeService.js';
 import { getWorkflowPost, loadWorkflow } from './postWorkflowService.js';
+import { acknowledgePersistedWorkflowOutbox } from './hermesOutboxService.js';
 
 const IDENTITY_PATTERN = /^[a-zA-Z0-9._:@/-]{1,128}$/;
 
@@ -9,6 +10,15 @@ function normalizeIdentity(value) {
     const identity = String(value || 'codex:db-preprocess').trim();
     if (!IDENTITY_PATTERN.test(identity)) throw new Error('Codex agent identity is invalid');
     return identity;
+}
+
+function safeRemoteOutboxAck(workflowId, agentId, supabaseClient) {
+    return loadWorkflow(workflowId, supabaseClient)
+        .then((workflow) => acknowledgePersistedWorkflowOutbox(workflow, agentId, supabaseClient))
+        .catch((error) => {
+            console.warn(`[CodexPreprocess] Outbox ACK deferred: ${error.message}`);
+            return { status: 'ack_failed', reason: error.message };
+        });
 }
 
 export async function stageCodexPreprocessWorkflow(input = {}, supabaseClient = supabase) {
@@ -48,9 +58,10 @@ export async function stageCodexPreprocessWorkflow(input = {}, supabaseClient = 
     if (error) throw new Error(`Codex remote preprocess failed: ${error.message}`);
     const row = Array.isArray(data) ? data[0] : data;
     if (!row?.workflow_id) throw new Error(`Codex remote preprocess returned no workflow: ${workflowId}`);
+    const outboxAck = await safeRemoteOutboxAck(row.workflow_id, agentId, supabaseClient);
     if (post) {
         await persistGeneratedTitle(post, normalized.analysis.generated_title, supabaseClient, 'codex_db_preprocess')
             .catch(error => console.warn(`[CodexPreprocess] Generated title persistence deferred: ${error.message}`));
     }
-    return row;
+    return { ...row, outbox_ack_status: outboxAck.status };
 }

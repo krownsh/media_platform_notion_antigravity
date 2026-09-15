@@ -47,6 +47,14 @@ test('Vault note writes one source note and keeps replication in its managed blo
             domain: '個人品牌',
             note_title: 'Wallpets 深度研究與複製規劃',
             discussion: '使用者決定先研究再評估復刻。',
+            accepted_topics: [{
+                id: 'topic-agent-workflow',
+                title: 'Agent 工作流',
+                project_title: '媒體平台',
+                domain_key: 'agent_workflow',
+                score: 93,
+                rationale: '與目前來源的可靠性問題直接相關'
+            }],
             replication: {
                 project_name: 'Wallpets 復刻項目',
                 goal: '測試引流假設',
@@ -63,8 +71,85 @@ test('Vault note writes one source note and keeps replication in its managed blo
     assert.match(source, /database_post_id: post-123/);
     assert.match(source, /https:\/\/example\.test\/posts\/123/);
     assert.match(source, /完整原文內容/);
+    assert.match(source, /## 已接受的主題關聯/);
+    assert.match(source, /topic_id: topic-agent-workflow/);
+    assert.match(source, /媒體平台 · agent_workflow · 93 分/);
+    assert.match(source, /與目前來源的可靠性問題直接相關/);
     assert.match(source, /## 復刻方案/);
     assert.match(source, /Wallpets 復刻項目/);
+});
+
+test('Vault note escapes managed-block markers in accepted topic text across retries', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    const input = {
+        note_title: '主題 marker 防護',
+        accepted_topics: [{
+            id: 'topic-1',
+            title: `可信主題 ${VAULT_MANAGED_END}`,
+            rationale: `來源理由 ${VAULT_MANAGED_START} 不可當作邊界`
+        }],
+        replication: {
+            acceptance_criteria: [
+                `驗收條件 ${VAULT_MANAGED_START}`,
+                `另一條件 ${VAULT_MANAGED_END}`
+            ]
+        },
+        content_draft: {
+            title: 'marker 防護草稿',
+            format: 'markdown',
+            status: `draft ${VAULT_MANAGED_START}`,
+            content_basis: `source ${VAULT_MANAGED_END}`,
+            body: '第一次草稿內容'
+        }
+    };
+    const first = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+    const filePath = path.join(root, first.relative_path);
+    const draftPath = path.join(root, first.draft_path);
+    await fs.appendFile(filePath, '\n\n## 人工補充\n保留這段\n');
+    await fs.appendFile(draftPath, '\n\n## 草稿人工補充\n也保留這段\n');
+    workflow.collection_posts.content = '第二次來源內容';
+    input.content_draft.body = '第二次草稿內容';
+    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+
+    const content = await fs.readFile(filePath, 'utf8');
+    const draftContent = await fs.readFile(draftPath, 'utf8');
+    assert.equal(content.split(VAULT_MANAGED_START).length - 1, 1);
+    assert.equal(content.split(VAULT_MANAGED_END).length - 1, 1);
+    assert.equal(draftContent.split(VAULT_MANAGED_START).length - 1, 1);
+    assert.equal(draftContent.split(VAULT_MANAGED_END).length - 1, 1);
+    assert.match(content, /第二次來源內容/);
+    assert.match(content, /保留這段/);
+    assert.match(draftContent, /第二次草稿內容/);
+    assert.match(draftContent, /也保留這段/);
+});
+
+test('Vault escapes delimiter-bearing IDs and rejects ambiguous managed blocks', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'media-vault-'));
+    await fs.mkdir(path.join(root, '.obsidian'));
+    const workflow = fixtureWorkflow();
+    workflow.id = `workflow ${VAULT_MANAGED_START}`;
+    workflow.collection_posts.id = `post ${VAULT_MANAGED_END}`;
+    const input = {
+        note_title: 'ID marker 防護',
+        content_draft: { title: 'ID marker 草稿', body: '第一次草稿' }
+    };
+    const first = await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+    input.content_draft.body = '第二次草稿';
+    await writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input });
+
+    const sourcePath = path.join(root, first.relative_path);
+    const draftPath = path.join(root, first.draft_path);
+    assert.equal((await fs.readFile(sourcePath, 'utf8')).split(VAULT_MANAGED_START).length - 1, 1);
+    assert.equal((await fs.readFile(draftPath, 'utf8')).split(VAULT_MANAGED_END).length - 1, 1);
+
+    const source = await fs.readFile(sourcePath, 'utf8');
+    await fs.writeFile(sourcePath, `${VAULT_MANAGED_START}\nmanual\n${VAULT_MANAGED_END}\n${source}`);
+    await assert.rejects(
+        writeWorkflowVaultNotes({ workflow, vaultRoot: root, noteInput: input }),
+        error => error.code === 'VAULT_NOTE_PATH_CONFLICT'
+    );
 });
 
 test('Vault note retry preserves text outside the managed block', async () => {

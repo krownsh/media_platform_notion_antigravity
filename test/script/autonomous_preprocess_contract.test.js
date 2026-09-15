@@ -75,6 +75,17 @@ test('preprocess can inherit an existing collection but cannot create one from t
     assert.doesNotMatch(knowledge, /collection_collections'[\s\S]{0,400}\.insert/);
 });
 
+test('every post-persistence entry path delegates technical ACK to the shared safe helper', () => {
+    assert.match(preprocess, /acknowledgePersistedWorkflowOutbox/);
+    assert.match(preprocess, /acknowledgePersistedWorkflowOutbox\(transitioned, options\.agentIdentity, supabase\)/);
+    assert.match(remotePreprocess, /acknowledgePersistedWorkflowOutbox/);
+    assert.match(remotePreprocess, /function safeRemoteOutboxAck[\s\S]+acknowledgePersistedWorkflowOutbox/);
+    assert.match(remotePreprocess, /return \{ status: 'ack_failed', reason: error\.message \}/);
+    assert.match(remotePreprocess, /await safeRemoteOutboxAck\(row\.workflow_id, agentId, supabaseClient\)/);
+    assert.match(triage, /acknowledgePersistedWorkflowOutbox\(transitioned, agentIdentity, supabase\)/);
+    assert.doesNotMatch(triage, /completeHermesTriage\(/);
+});
+
 test('legacy Cron triage cannot create an interactive strategy pause', () => {
     assert.match(triage, /stage: isCronRun \? 'preprocessing' : 'strategy'/);
     assert.match(triage, /status: isCronRun \? 'pending' : 'awaiting_user'/);

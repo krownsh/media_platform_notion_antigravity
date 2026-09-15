@@ -329,8 +329,118 @@ export async function completeHermesStoredOnlyReview(eventInput, agentIdentity, 
   return data;
 }
 
+function assertWorkflowOutboxIdentity(workflow, event) {
+  if (!workflow?.id || !workflow?.user_id || !workflow?.post_id || !workflow?.outbox_event_id) {
+    throw outboxError('OUTBOX_WORKFLOW_IDENTITY_INVALID', 'Workflow id, user_id, post_id, and outbox_event_id are required for acknowledgement');
+  }
+  if (event.id !== workflow.outbox_event_id
+    || event.user_id !== workflow.user_id
+    || event.aggregate_id !== workflow.post_id) {
+    throw outboxError('OUTBOX_WORKFLOW_IDENTITY_MISMATCH', `Outbox event ${event.id} does not match workflow ${workflow.id}`);
+  }
+}
+
 // `sent` remains an internal outbox-delivery acknowledgement. It must not be
 // interpreted as the post workflow being complete.
+async function recordHermesOutboxAckFailure(event, identity, failure, supabaseClient, now) {
+  let query = supabaseClient
+    .from('collection_capture_outbox')
+    .update({
+      status: 'pending',
+      available_at: now.toISOString(),
+      locked_at: null,
+      locked_by: null,
+      last_error: formatHermesFailure('outbox_ack', failure, identity, now)
+    });
+  query = addLeaseVersionFilter(query, event).eq('locked_by', identity);
+  const { data, error } = await query
+    .select(HERMES_OUTBOX_SELECT)
+    .maybeSingle();
+  if (error || !data) {
+    throw outboxError(
+      'OUTBOX_ACK_FAILURE_RECORD_CONFLICT',
+      `Unable to record ACK failure for outbox event ${event.id}${error ? `: ${error.message}` : ''}`
+    );
+  }
+  return data;
+}
+
+async function acknowledgePersistedWorkflowOutboxUnsafe(workflow, agentIdentity, supabaseClient, options = {}) {
+  if (!supabaseClient) throw new Error('Supabase client is required');
+  const identity = normalizeHermesIdentity(agentIdentity);
+  const now = toDate(options.now || new Date(), 'now');
+  const event = await loadOutboxEvent(workflow?.outbox_event_id, supabaseClient);
+  assertWorkflowOutboxIdentity(workflow, event);
+  if (event.status === 'sent') return event;
+
+  const leased = event.locked_by === identity
+    ? event
+    : await claimHermesOutboxItem(event.id, identity, supabaseClient, { now });
+  assertWorkflowOutboxIdentity(workflow, leased);
+  const payload = {
+    ...(leased.payload || {}),
+    hermes_ack: {
+      schema_version: 1,
+      status: 'acknowledged',
+      workflow_id: workflow.id,
+      acknowledged_at: now.toISOString(),
+      acknowledged_by: identity
+    }
+  };
+  let query = supabaseClient
+    .from('collection_capture_outbox')
+    .update({
+      status: 'sent',
+      payload,
+      locked_at: null,
+      locked_by: null,
+      last_error: null
+    });
+  query = addLeaseVersionFilter(query, leased).eq('locked_by', identity);
+  const { data, error } = await query
+    .select(HERMES_OUTBOX_SELECT)
+    .maybeSingle();
+  if (!error && data) return data;
+
+  const acknowledgementError = outboxError(
+    'OUTBOX_ACK_CONFLICT',
+    `Unable to acknowledge outbox event ${leased.id}${error ? `: ${error.message}` : ''}`
+  );
+  try {
+    return await recordHermesOutboxAckFailure(leased, identity, acknowledgementError, supabaseClient, now);
+  } catch (recordError) {
+    console.error(`[Hermes Outbox] Failed to record ACK failure for ${leased.id}: ${recordError.message}`);
+    try {
+      return await releaseHermesOutboxItem(leased, identity, supabaseClient, {
+        availableAt: now,
+        keepStatus: true,
+        clearError: false
+      });
+    } catch (releaseError) {
+      console.error(`[Hermes Outbox] Failed to release ACK lease for ${leased.id}: ${releaseError.message}`);
+      return leased;
+    }
+  }
+}
+
+// ACK is post-persistence bookkeeping. It must never turn a saved user
+// workflow into a failed workflow just because the technical event cannot be
+// acknowledged. Successful calls return the updated outbox row; failures are
+// observable via the returned marker and server error log.
+export async function acknowledgePersistedWorkflowOutbox(workflow, agentIdentity, supabaseClient, options = {}) {
+  try {
+    return await acknowledgePersistedWorkflowOutboxUnsafe(workflow, agentIdentity, supabaseClient, options);
+  } catch (error) {
+    console.error(`[Hermes Outbox] ACK skipped for workflow ${workflow?.id || 'unknown'}: ${error.message}`);
+    return {
+      id: workflow?.outbox_event_id || null,
+      status: 'ack_failed',
+      error_code: error.code || 'OUTBOX_ACK_FAILED',
+      last_error: error.message
+    };
+  }
+}
+
 export async function completeHermesTriage(eventInput, agentIdentity, supabaseClient, options = {}) {
   if (!supabaseClient) throw new Error('Supabase client is required');
   const event = eventInput?.id ? eventInput : await loadOutboxEvent(eventInput, supabaseClient);

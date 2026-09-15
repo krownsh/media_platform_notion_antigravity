@@ -6,6 +6,7 @@ import {
   claimHermesOutboxItem,
   completeHermesImageReview,
   completeHermesStoredOnlyReview,
+  acknowledgePersistedWorkflowOutbox,
   failHermesOutboxItem,
   formatHermesFailure,
   isOutboxLeaseAvailable,
@@ -38,8 +39,9 @@ function createRow(overrides = {}) {
   };
 }
 
-function createSupabaseClient(initialRow) {
+function createSupabaseClient(initialRow, options = {}) {
   let row = structuredClone(initialRow);
+  let updateCount = 0;
 
   class Query {
     constructor() {
@@ -48,11 +50,18 @@ function createSupabaseClient(initialRow) {
     }
 
     select() { return this; }
-    update(payload) { this.updatePayload = payload; return this; }
+    update(payload) {
+      this.updatePayload = payload;
+      this.updateNumber = ++updateCount;
+      return this;
+    }
     eq(field, value) { this.filters.push(candidate => candidate[field] === value); return this; }
     is(field, value) { this.filters.push(candidate => candidate[field] === value); return this; }
 
     maybeSingle() {
+      if (this.updatePayload && options.failUpdateAt === this.updateNumber) {
+        return Promise.resolve({ data: null, error: new Error(options.failureMessage || 'update failed') });
+      }
       const matches = row && this.filters.every(filter => filter(row));
       if (!matches) return Promise.resolve({ data: null, error: null });
       if (this.updatePayload) {
@@ -148,6 +157,53 @@ test('claim, release, and failure recording preserve explicit lease ownership', 
   assert.equal(failed.status, 'failed');
   assert.equal(failed.locked_by, null);
   assert.match(failed.last_error, /model response invalid/);
+});
+
+test('preprocess ACK marks only the matching persisted workflow outbox event as sent', async () => {
+  const client = createSupabaseClient(createRow());
+  const acknowledged = await acknowledgePersistedWorkflowOutbox({
+    id: 'workflow-1',
+    user_id: 'user-1',
+    post_id: 'post-1',
+    outbox_event_id: 'event-1'
+  }, 'hermes:preprocess', client, { now: NOW });
+
+  assert.equal(acknowledged.status, 'sent');
+  assert.equal(acknowledged.locked_by, null);
+  assert.equal(acknowledged.payload.hermes_ack.workflow_id, 'workflow-1');
+  assert.equal(acknowledged.payload.hermes_ack.acknowledged_by, 'hermes:preprocess');
+});
+
+test('ACK failure records the error and releases its owned outbox lock without touching the workflow', async () => {
+  const client = createSupabaseClient(createRow(), {
+    failUpdateAt: 2,
+    failureMessage: 'ack write failed'
+  });
+  const acknowledged = await acknowledgePersistedWorkflowOutbox({
+    id: 'workflow-1',
+    user_id: 'user-1',
+    post_id: 'post-1',
+    outbox_event_id: 'event-1'
+  }, 'hermes:preprocess', client, { now: NOW });
+
+  assert.equal(acknowledged.status, 'pending');
+  assert.equal(acknowledged.locked_by, null);
+  assert.match(acknowledged.last_error, /ack write failed/);
+  assert.equal(acknowledged.payload.hermes_ack, undefined);
+});
+
+test('identity mismatch rejects ACK without changing the unrelated outbox event', async () => {
+  const client = createSupabaseClient(createRow());
+  const acknowledged = await acknowledgePersistedWorkflowOutbox({
+    id: 'workflow-1',
+    user_id: 'user-1',
+    post_id: 'different-post',
+    outbox_event_id: 'event-1'
+  }, 'hermes:preprocess', client, { now: NOW });
+
+  assert.equal(acknowledged.status, 'ack_failed');
+  assert.equal(acknowledged.error_code, 'OUTBOX_WORKFLOW_IDENTITY_MISMATCH');
+  assert.deepEqual(client.readRow(), createRow());
 });
 
 test('collect-only review becomes sent without creating an execution route', async () => {

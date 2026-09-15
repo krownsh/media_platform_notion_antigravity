@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import { Search, Filter, SearchX } from 'lucide-react';
+import { matchesWorkflowFilter, WORKFLOW_FILTER_OPTIONS } from '../utils/workflowPresentation';
 
 const CATEGORIES = [
     { value: 'all', label: '全部類別' },
@@ -26,6 +27,7 @@ const ViewAllPage = ({ onRemix }) => {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedWorkflow, setSelectedWorkflow] = useState('all');
 
     // 1. Base Filter (Collection)
     let displayedPosts = items;
@@ -61,7 +63,12 @@ const ViewAllPage = ({ onRemix }) => {
         });
     }
 
-    // 4. Sort by createdAt desc (default)
+    // 4. Workflow Filter (人話狀態群組)
+    if (selectedWorkflow !== 'all') {
+        displayedPosts = displayedPosts.filter(post => matchesWorkflowFilter(post.workflow, selectedWorkflow));
+    }
+
+    // 5. Sort by createdAt desc (default)
     displayedPosts = [...displayedPosts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     return (
@@ -109,6 +116,20 @@ const ViewAllPage = ({ onRemix }) => {
                         >
                             {CATEGORIES.map(c => (
                                 <option key={c.value} value={c.value}>{c.label}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Workflow Filter */}
+                    <div className="relative flex-shrink-0 w-full sm:w-auto border-t sm:border-t-0 sm:border-l notion-whisper-border pt-2 sm:pt-0 sm:pl-2">
+                        <select
+                            value={selectedWorkflow}
+                            onChange={(e) => setSelectedWorkflow(e.target.value)}
+                            className="appearance-none bg-transparent border border-transparent hover:bg-black/[0.025] focus:border-[var(--accent)] focus:bg-surface-raised rounded-md px-3 py-2.5 text-sm text-[rgba(0,0,0,0.95)] focus:outline-none transition-[background-color,border-color,box-shadow] duration-200 focus:shadow-[0_0_0_3px_var(--accent-soft)] font-medium cursor-pointer w-full sm:w-auto"
+                            aria-label="依流程狀態篩選貼文"
+                        >
+                            {WORKFLOW_FILTER_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                         </select>
                     </div>

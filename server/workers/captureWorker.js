@@ -13,7 +13,13 @@ export async function runCaptureWorkerCycle({
     complete = completeCaptureRequest,
     fail = failCaptureRequest
 }) {
-    const request = await claim(workerId);
+    let request;
+    try {
+        request = await claim(workerId);
+    } catch (error) {
+        return { status: 'retry', error };
+    }
+
     if (!request) return { status: 'empty' };
 
     try {
@@ -36,17 +42,46 @@ export async function runCaptureWorkerCycle({
     }
 }
 
+function sleep(delayMs) {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+export async function runCaptureWorkerLoop({
+    workerId,
+    pollIntervalMs,
+    signal,
+    cycle = runCaptureWorkerCycle,
+    sleep: wait = sleep,
+    log = console
+}) {
+    while (!signal?.aborted) {
+        let result;
+        let errorAlreadyLogged = false;
+        try {
+            result = await cycle({ workerId });
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            log.error(`[CaptureWorker] cycle failed; retrying in ${pollIntervalMs}ms: ${message}`);
+            result = { status: 'retry', error };
+            errorAlreadyLogged = true;
+        }
+
+        if (result.status === 'retry' && !errorAlreadyLogged) {
+            log.warn(`[CaptureWorker] claim failed; retrying in ${pollIntervalMs}ms: ${result.error.message}`);
+        }
+
+        if (!signal?.aborted && (result.status === 'empty' || result.status === 'retry')) {
+            await wait(pollIntervalMs);
+        }
+    }
+}
+
 export async function runCaptureWorker({
     workerId = process.env.CAPTURE_WORKER_ID || `capture-worker-${randomUUID()}`,
     pollIntervalMs = Number(process.env.CAPTURE_WORKER_POLL_MS || 2000),
     signal
 } = {}) {
     console.log(`[CaptureWorker] started as ${workerId}`);
-    while (!signal?.aborted) {
-        const result = await runCaptureWorkerCycle({ workerId });
-        if (result.status === 'empty') {
-            await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-        }
-    }
+    await runCaptureWorkerLoop({ workerId, pollIntervalMs, signal });
     console.log('[CaptureWorker] stopped');
 }

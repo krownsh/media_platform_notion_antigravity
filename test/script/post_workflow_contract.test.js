@@ -50,6 +50,13 @@ test('every strategy decision receives a final vault_note action', () => {
   assert.equal(plan.actions.at(-1).status, 'approved');
 });
 
+test('workflow collection embed pins the intended foreign-key relationship', () => {
+  assert.match(
+    workflowService,
+    /collection_collections!collection_posts_collection_owner_fkey\s*\(id, name\)/
+  );
+});
+
 test('replication plan retains displayable goal, MVP, and acceptance criteria', () => {
   const plan = normalizePlan({
     actions: [{

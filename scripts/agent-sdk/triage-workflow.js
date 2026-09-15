@@ -10,8 +10,8 @@ import {
     transitionWorkflow
 } from '../../server/services/postWorkflowService.js';
 import {
+    acknowledgePersistedWorkflowOutbox,
     claimHermesOutboxItem,
-    completeHermesTriage,
     failHermesOutboxItem
 } from '../../server/services/hermesOutboxService.js';
 import { releaseHermesCronWorkflow } from '../../server/services/hermesCronService.js';
@@ -92,7 +92,7 @@ export async function triageWorkflow(workflowId, options = {}) {
         }, supabase);
 
         if (outboxEvent) {
-            await completeHermesTriage(outboxEvent, agentIdentity, supabase, { workflowId: transitioned.id });
+            await acknowledgePersistedWorkflowOutbox(transitioned, agentIdentity, supabase);
         }
 
         if (isCronRun) {

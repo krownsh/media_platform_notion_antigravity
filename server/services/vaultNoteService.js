@@ -13,12 +13,18 @@ function boundedText(value, maxLength = 4_000) {
     return String(value ?? '').replace(/\0/g, '').slice(0, maxLength).trim();
 }
 
+function escapeManagedMarkers(value) {
+    return value
+        .replaceAll(VAULT_MANAGED_START, '〔VAULT_MANAGED_START〕')
+        .replaceAll(VAULT_MANAGED_END, '〔VAULT_MANAGED_END〕');
+}
+
 function yamlText(value) {
-    return boundedText(value, 1_000).replace(/[\r\n]+/g, ' ');
+    return escapeManagedMarkers(boundedText(value, 1_000).replace(/[\r\n]+/g, ' '));
 }
 
 function markdownText(value, maxLength = 20_000) {
-    return boundedText(value, maxLength).replace(/\r\n/g, '\n');
+    return escapeManagedMarkers(boundedText(value, maxLength).replace(/\r\n/g, '\n'));
 }
 
 function safeSegment(value, fallback, label) {
@@ -113,9 +119,9 @@ function actionFromWorkflow(workflow, type) {
 }
 
 function hasManagedPostIdentity(content, postId) {
-    return content.includes(VAULT_MANAGED_START)
-        && content.includes(VAULT_MANAGED_END)
-        && content.includes(`- database_post_id: ${postId}`);
+    return content.split(VAULT_MANAGED_START).length - 1 === 1
+        && content.split(VAULT_MANAGED_END).length - 1 === 1
+        && content.includes(`- database_post_id: ${yamlText(postId)}`);
 }
 
 async function readRecordedVaultFile(root, relativePath, expectedPath, postId, kind) {
@@ -202,7 +208,7 @@ async function recordedDraftPath(root, workflow, draft, postId, sourcePath) {
 
 function formatList(items, maxItems = 20) {
     if (!Array.isArray(items)) return '- （無）';
-    const values = items.map(item => boundedText(item, 500)).filter(Boolean).slice(0, maxItems);
+    const values = items.map(item => markdownText(item, 500)).filter(Boolean).slice(0, maxItems);
     return values.length ? values.map(item => `- ${item}`).join('\n') : '- （無）';
 }
 
@@ -222,6 +228,9 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         : null;
     const tags = Array.isArray(noteInput.tags) ? noteInput.tags : analysis?.tags;
     const topics = Array.isArray(noteInput.topics) ? noteInput.topics : analysis?.topics;
+    const acceptedTopics = (Array.isArray(noteInput.accepted_topics) ? noteInput.accepted_topics : [])
+        .filter((topic) => topic && typeof topic === 'object' && boundedText(topic.id, 160))
+        .slice(0, 20);
     const sourceUrl = post?.platform === 'image'
         ? '（圖片上傳，無公開連結）'
         : (post?.original_url || '（無原文連結）');
@@ -243,6 +252,19 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
         `- primary_category: ${yamlText(noteInput.primary_category ?? analysis?.primary_category ?? 'other')}`,
         `- tags: ${Array.isArray(tags) && tags.length ? tags.map(item => yamlText(item, 200)).join('、') : '（無）'}`,
         `- topics: ${Array.isArray(topics) && topics.length ? topics.map(item => yamlText(item, 200)).join('、') : '（無）'}`,
+        '',
+        '## 已接受的主題關聯',
+        ...(acceptedTopics.length ? acceptedTopics.flatMap((topic) => {
+            const projectTitle = yamlText(topic.project_title || topic.project?.title || '未指定');
+            const domainKey = yamlText(topic.domain_key || '未指定');
+            const score = Number.isFinite(Number(topic.score)) ? Math.round(Number(topic.score)) : null;
+            return [
+                `- topic_id: ${yamlText(topic.id, 160)}`,
+                `  title: ${yamlText(topic.title || '未命名主題', 240)}`,
+                `  關聯: ${projectTitle} · ${domainKey}${score === null ? '' : ` · ${score} 分`}`,
+                `  rationale: ${markdownText(topic.rationale || '（未提供）', 2_000)}`
+            ];
+        }) : ['（無已接受的主題關聯）']),
         '',
         '## 討論紀錄',
         discussion || '（尚未提供）',
@@ -289,13 +311,25 @@ function buildManagedBlock({ workflow, noteInput, post, analysis, replication })
 }
 
 function mergeManagedBlock(existing, managed) {
-    const start = existing.indexOf(VAULT_MANAGED_START);
-    const end = existing.indexOf(VAULT_MANAGED_END);
-    if (start >= 0 && end >= start) {
-        const afterEnd = end + VAULT_MANAGED_END.length;
-        return `${existing.slice(0, start).trimEnd()}\n\n${managed}\n${existing.slice(afterEnd).trimStart()}`.trim() + '\n';
+    const startCount = existing.split(VAULT_MANAGED_START).length - 1;
+    const endCount = existing.split(VAULT_MANAGED_END).length - 1;
+    if (startCount === 0 && endCount === 0) {
+        return `${existing.trimEnd()}\n\n${managed}\n`;
     }
-    return `${existing.trimEnd()}\n\n${managed}\n`;
+    if (startCount !== 1 || endCount !== 1) {
+        const error = new Error('Vault note has ambiguous managed-block delimiters and cannot be safely updated');
+        error.code = 'VAULT_MANAGED_BLOCK_AMBIGUOUS';
+        throw error;
+    }
+    const start = existing.indexOf(VAULT_MANAGED_START);
+    const end = existing.indexOf(VAULT_MANAGED_END, start + VAULT_MANAGED_START.length);
+    if (end < start) {
+        const error = new Error('Vault note has an invalid managed-block delimiter order');
+        error.code = 'VAULT_MANAGED_BLOCK_AMBIGUOUS';
+        throw error;
+    }
+    const afterEnd = end + VAULT_MANAGED_END.length;
+    return `${existing.slice(0, start).trimEnd()}\n\n${managed}\n${existing.slice(afterEnd).trimStart()}`.trim() + '\n';
 }
 
 async function atomicWrite(filePath, content) {
@@ -397,11 +431,11 @@ export async function writeWorkflowVaultNotes({ workflow, noteInput = {}, vaultR
         const draftNote = [
             `# ${draftTitle}`,
             '',
-            `- workflow_id: ${workflow.id}`,
-            `- database_post_id: ${post.id}`,
+            `- workflow_id: ${yamlText(workflow.id)}`,
+            `- database_post_id: ${yamlText(post.id)}`,
             `- format: ${draftFormat}`,
-            `- status: ${draft.status || 'draft'}`,
-            `- content_basis: ${draft.content_basis || 'source_only'}`,
+            `- status: ${yamlText(draft.status || 'draft')}`,
+            `- content_basis: ${yamlText(draft.content_basis || 'source_only')}`,
             `- published: ${draft.published ? 'true' : 'false'}`,
             `- source_note: ${paths.wiki.relative_path}`,
             '',

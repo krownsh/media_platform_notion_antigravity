@@ -6,7 +6,7 @@ import { movePostToCollection } from '../features/postsSlice';
 import { API_BASE_URL } from '../api/config';
 import { suggestFolders } from '../utils/folderSuggestion';
 import { visibleCollections } from '../utils/collectionVisibility';
-import { actionBadges, badgeClass, workflowBadge } from '../utils/workflowPresentation';
+import { actionBadges, badgeClass, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 
 
@@ -39,6 +39,7 @@ const PostCard = ({
     const topFolderSuggestion = folderSuggestions[0] || null;
 
     const workflowState = workflowBadge(post.workflow);
+    const nextStep = workflowNextStep(post.workflow);
     const futureActions = actionBadges(post.workflow);
 
     // Helper function to proxy Instagram/Threads images
@@ -174,6 +175,8 @@ const PostCard = ({
                             <span key={i} className={`notion-badge leading-none ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>#{tag}</span>
                         ))}
                     </div>
+
+                    {post.workflow && <p className={`text-[#615d59] leading-4 ${isCompact ? 'text-[9px]' : 'text-[10px]'}`}>下一步：{nextStep.label}</p>}
 
                     {futureActions.length > 0 && (
                         <div className="flex flex-wrap gap-1">

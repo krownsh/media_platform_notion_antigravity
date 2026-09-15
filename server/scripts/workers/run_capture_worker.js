@@ -1,4 +1,5 @@
 import { runCaptureWorker } from '../../workers/captureWorker.js';
+import { exitAfterCaptureWorkerFatal } from '../../workers/captureWorkerRuntime.js';
 
 const controller = new AbortController();
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -6,6 +7,5 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 
 runCaptureWorker({ signal: controller.signal }).catch((error) => {
-    console.error('[CaptureWorker] fatal error:', error);
-    process.exitCode = 1;
+    exitAfterCaptureWorkerFatal(error);
 });

@@ -52,6 +52,7 @@ test('remote Codex preprocessing stores a proposal in context but strips the uns
     });
 
     assert.equal(response.workflow_id, 'workflow-1');
+    assert.equal(response.outbox_ack_status, 'ack_failed');
     assert.equal(params.p_result.topic, null);
     assert.equal(params.p_result.relation, null);
     assert.equal(params.p_result.topic_proposal.topic.suggested_title, 'Candidate');

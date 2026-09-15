@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { processCaptureRequest } from '../../server/services/captureProcessingService.js';
-import { runCaptureWorkerCycle } from '../../server/workers/captureWorker.js';
+import { runCaptureWorkerCycle, runCaptureWorkerLoop } from '../../server/workers/captureWorker.js';
+import { exitAfterCaptureWorkerFatal } from '../../server/workers/captureWorkerRuntime.js';
 
 const request = {
     id: '11111111-1111-4111-8111-111111111111',
@@ -174,4 +175,80 @@ test('worker records retry state when processing fails', async () => {
     assert.equal(result.status, 'accepted');
     assert.equal(failureInput.retryable, true);
     assert.match(failureInput.errorMessage, /temporary failure/);
+});
+
+test('worker treats a transient claim failure as retryable instead of terminating the polling loop', async () => {
+    const result = await runCaptureWorkerCycle({
+        workerId: 'worker-test',
+        claim: async () => { throw new Error('fetch failed'); },
+        processRequest: async () => { throw new Error('processRequest should not be called'); },
+        complete: async () => { throw new Error('complete should not be called'); },
+        fail: async () => { throw new Error('fail should not be called'); }
+    });
+
+    assert.equal(result.status, 'retry');
+    assert.match(result.error.message, /fetch failed/);
+});
+
+test('worker waits before retrying a failed claim and then continues polling', async () => {
+    const controller = new AbortController();
+    const delays = [];
+    let cycleCount = 0;
+
+    await runCaptureWorkerLoop({
+        workerId: 'worker-test',
+        pollIntervalMs: 250,
+        signal: controller.signal,
+        cycle: async () => {
+            cycleCount += 1;
+            if (cycleCount === 1) return { status: 'retry', error: new Error('fetch failed') };
+            controller.abort();
+            return { status: 'empty' };
+        },
+        sleep: async delayMs => { delays.push(delayMs); },
+        log: { warn: () => {} }
+    });
+
+    assert.equal(cycleCount, 2);
+    assert.deepEqual(delays, [250]);
+});
+
+test('worker retries an unexpected cycle error instead of leaving the process online without polling', async () => {
+    const controller = new AbortController();
+    const delays = [];
+    const errors = [];
+    let cycleCount = 0;
+
+    await runCaptureWorkerLoop({
+        workerId: 'worker-test',
+        pollIntervalMs: 250,
+        signal: controller.signal,
+        cycle: async () => {
+            cycleCount += 1;
+            if (cycleCount === 1) throw new Error('completion fetch failed');
+            controller.abort();
+            return { status: 'empty' };
+        },
+        sleep: async delayMs => { delays.push(delayMs); },
+        log: { error: message => { errors.push(message); }, warn: () => {} }
+    });
+
+    assert.equal(cycleCount, 2);
+    assert.deepEqual(delays, [250]);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /completion fetch failed/);
+});
+
+test('an unrecoverable worker error exits non-zero so PM2 can restart it', () => {
+    const logs = [];
+    const exitCodes = [];
+    const error = new Error('worker bootstrap failed');
+
+    exitAfterCaptureWorkerFatal(error, {
+        log: { error: (...args) => { logs.push(args); } },
+        exit: code => { exitCodes.push(code); }
+    });
+
+    assert.deepEqual(logs, [['[CaptureWorker] fatal error:', error]]);
+    assert.deepEqual(exitCodes, [1]);
 });

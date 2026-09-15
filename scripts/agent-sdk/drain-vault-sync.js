@@ -28,10 +28,13 @@ export async function drainVaultSync(options = {}) {
     const maxItems = boundedMax(options.maxItems);
     const supabaseModule = await import('../../server/supabaseClient.js');
     const supabaseClient = options.supabaseClient || supabaseModule.supabase;
+    const claimWorkflow = options.claimWorkflow || claimHermesCronWorkflow;
+    const syncWorkflow = options.syncWorkflow || syncVaultWorkflow;
     const results = [];
+    const succeeded = [];
 
     for (let index = 0; index < maxItems; index += 1) {
-        const workflow = await claimHermesCronWorkflow({
+        const workflow = await claimWorkflow({
             agentId: agentIdentity,
             leaseSeconds: options.leaseSeconds || DEFAULT_HERMES_CRON_LEASE_SECONDS,
             queue: 'vault_sync'
@@ -39,21 +42,23 @@ export async function drainVaultSync(options = {}) {
         if (!workflow) break;
 
         try {
-            const synced = await syncVaultWorkflow(workflow.id, {
+            const synced = await syncWorkflow(workflow.id, {
                 agentIdentity,
                 vaultRoot: options.vaultRoot,
                 supabaseClient
             });
-            results.push({ workflow_id: synced.id, status: synced.status, stage: synced.stage });
+            const outcome = { workflow_id: synced.workflow_id, status: synced.status, stage: synced.stage };
+            results.push(outcome);
+            succeeded.push(outcome);
         } catch (error) {
             results.push({ workflow_id: workflow.id, status: 'failed', error: error.message });
-            break;
         }
     }
 
     return {
         ok: results.every(item => item.status !== 'failed'),
-        processed: results.filter(item => item.status !== 'failed').length,
+        processed: succeeded.length,
+        succeeded,
         failed: results.filter(item => item.status === 'failed'),
         stopped_when_empty: results.length < maxItems
     };

@@ -9,7 +9,7 @@ import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
-import { actionBadges, badgeClass, workflowBadge } from '../utils/workflowPresentation';
+import { actionBadges, badgeClass, workflowBadge, workflowNextStep } from '../utils/workflowPresentation';
 
 
 // Reusing ThreadsIcon from PostCard
@@ -79,6 +79,7 @@ const WorkflowSummaryPanel = ({ post }) => {
     const review = post.reviewRequest;
     const vault = post.vault;
     const workflowState = workflowBadge(workflow);
+    const nextStep = workflowNextStep(workflow);
     const futureActions = actionBadges(workflow);
     const replication = Array.isArray(workflow?.action_plan?.actions)
         ? workflow.action_plan.actions.find(action => action?.type === 'replication_plan')
@@ -91,6 +92,7 @@ const WorkflowSummaryPanel = ({ post }) => {
                     <h3 className="text-[10px] tracking-[0.16em] font-bold text-[var(--accent)]">HERMES 工作流</h3>
                     <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${badgeClass[workflowState.tone]}`}>{workflowState.label}</span>
                 </div>
+                {workflow && <p className="mt-3 text-sm leading-6 text-[var(--foreground)]">下一步：{nextStep.label}</p>}
                 {vault?.relative_path && <p className="mt-3 text-xs text-[var(--muted-foreground)] break-all">Vault：{vault.relative_path}</p>}
                 {review && <div className="mt-3 border-t border-[var(--border)] pt-3"><p className="text-sm leading-6 text-[var(--foreground)]">{review.question}</p><div className="mt-2 flex flex-wrap gap-1.5">{(review.options || []).map(option => <span key={option} className="rounded-full border border-black/10 px-2 py-1 text-[10px] text-[#615d59]">{option}</span>)}</div></div>}
             </div>

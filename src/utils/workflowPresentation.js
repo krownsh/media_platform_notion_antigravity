@@ -26,6 +26,36 @@ export function workflowBadge(workflow) {
     return { label: 'AI 整理中', tone: 'teal' };
 }
 
+export const WORKFLOW_FILTER_OPTIONS = [
+    { value: 'all', label: '全部流程狀態' },
+    { value: 'needs_attention', label: '需要你處理' },
+    { value: 'in_progress', label: '系統處理中' },
+    { value: 'not_started', label: '尚未開始' },
+    { value: 'completed', label: '已完成' }
+];
+
+export function workflowFilterGroup(workflow) {
+    if (!workflow || workflow.stage === 'base_analysis') return 'not_started';
+    if (['failed', 'blocked', 'awaiting_user'].includes(workflow.status)) return 'needs_attention';
+    if (workflow.stage === 'complete' && workflow.status === 'completed') return 'completed';
+    return 'in_progress';
+}
+
+export function matchesWorkflowFilter(workflow, filter) {
+    return filter === 'all' || workflowFilterGroup(workflow) === filter;
+}
+
+export function workflowNextStep(workflow) {
+    if (!workflow) return { label: '等待系統開始整理', tone: 'slate' };
+    if (workflow.status === 'failed') return { label: '打開貼文查看錯誤並重試', tone: 'red' };
+    if (workflow.status === 'blocked') return { label: '打開貼文查看需要協助的項目', tone: 'red' };
+    if (workflow.status === 'awaiting_user') return { label: '打開貼文並選擇後續方向', tone: 'amber' };
+    if (workflow.stage === 'complete' && workflow.status === 'completed') return { label: '流程已完成，可查看整理結果', tone: 'emerald' };
+    if (workflow.stage === 'vault_sync') return { label: '等待筆記同步完成', tone: 'indigo' };
+    if (workflow.stage === 'base_analysis') return { label: '等待 Hermes 開始整理', tone: 'slate' };
+    return { label: '系統正在整理，完成後會顯示下一步', tone: 'teal' };
+}
+
 export function actionBadges(workflow) {
     const actions = Array.isArray(workflow?.action_plan?.actions) ? workflow.action_plan.actions : [];
     return actions

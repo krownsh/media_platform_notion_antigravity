@@ -287,6 +287,25 @@ app.post('/api/projects', async (req, res) => {
 
 // Topic workspaces are user-created working contexts. Agent proposals and
 // source-match acceptance are intentionally separate future actions.
+app.get('/api/activity', async (req, res) => {
+    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
+    const parsedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isInteger(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 20;
+    try {
+        const { data, error } = await supabase
+            .from('collection_activity_events')
+            .select('id, post_id, workflow_id, outbox_event_id, event_type, event_result, summary, error_code, error_message, metadata, created_at')
+            .eq('user_id', getAuthenticatedUserId(req))
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        if (error) throw error;
+        return res.json({ events: data || [] });
+    } catch (error) {
+        console.error('[Activity] list failed:', error.message);
+        return res.status(500).json({ error: 'Failed to list activity events' });
+    }
+});
+
 app.get('/api/topics', async (req, res) => {
     if (!hasSupabaseServiceConfig) {
         return res.status(503).json({ error: 'Database service is not configured' });

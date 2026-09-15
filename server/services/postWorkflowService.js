@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.js';
+import { recordWorkflowActivity } from './activityAuditService.js';
 
 export const WORKFLOW_STAGES = new Set([
     'base_analysis',
@@ -278,6 +279,10 @@ export async function transitionWorkflow(input, supabaseClient = supabase) {
         .select(WORKFLOW_SELECT)
         .single();
     if (error || !data) throw new Error(`Workflow transition failed: ${error?.message || 'no row updated'}`);
+    await recordWorkflowActivity(data, {
+        eventType: input.activityEventType,
+        summary: input.activitySummary
+    }, supabaseClient);
     return data;
 }
 
@@ -325,7 +330,9 @@ export async function completeWorkflowAction(input, supabaseClient = supabase) {
         status: nextStatus,
         actionPlan: { ...plan, actions: nextActions },
         failedStage: nextStatus === 'failed' ? 'actions' : null,
-        lastError: nextStatus === 'failed' ? String(input?.outcome?.error || 'Workflow action failed') : null
+        lastError: nextStatus === 'failed' ? String(input?.outcome?.error || 'Workflow action failed') : null,
+        activityEventType: 'workflow_action',
+        activitySummary: `工作流操作「${actionType}」結果：${nextStatus}`
     }, supabaseClient);
 }
 

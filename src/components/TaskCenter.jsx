@@ -1,15 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, CheckCircle2, AlertCircle, Clock, ExternalLink, Trash2, Image as ImageIcon } from 'lucide-react';
 import { toggleTaskCenter } from '../features/uiSlice';
 import { addPostByUrl, addTask, removeTask, updateTaskStatus } from '../features/postsSlice';
 import { RotateCcw } from 'lucide-react';
+import { API_BASE_URL } from '../api/config';
+import { supabase } from '../api/supabaseClient';
 
 const TaskCenter = () => {
     const dispatch = useDispatch();
     const { taskCenterOpen } = useSelector((state) => state.ui);
     const { tasks, captureHistory } = useSelector((state) => state.posts);
+    const [activityEvents, setActivityEvents] = useState([]);
+    const [activityError, setActivityError] = useState('');
+
+    useEffect(() => {
+        if (!taskCenterOpen) return undefined;
+        let cancelled = false;
+        const loadActivity = async () => {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session?.access_token) throw new Error('請先登入後再查看歷程');
+                const response = await fetch(`${API_BASE_URL}/api/activity?limit=12`, {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                const payload = await response.json();
+                if (!response.ok) throw new Error(payload.error || '無法載入最近歷程');
+                if (!cancelled) { setActivityEvents(Array.isArray(payload.events) ? payload.events : []); setActivityError(''); }
+            } catch (error) {
+                if (!cancelled) { setActivityEvents([]); setActivityError(error.message); }
+            }
+        };
+        void loadActivity();
+        return () => { cancelled = true; };
+    }, [taskCenterOpen]);
 
     const activeTasksCount = tasks.filter(t => t.status !== 'failed').length;
     const failedTasksCount = tasks.filter(t => t.status === 'failed').length;
@@ -223,6 +248,10 @@ const TaskCenter = () => {
                             )}
 
                             <div className="mt-7 border-t notion-whisper-border pt-5">
+                                <div className="mb-5">
+                                    <div className="mb-3 flex items-baseline justify-between gap-3"><div><p className="flow-kicker mb-1">可審計歷程</p><h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">最近工作流操作</h3></div><span className="text-xs text-[#615d59]">最近 {activityEvents.length} 筆</span></div>
+                                    {activityError ? <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-3 text-xs text-destructive">{activityError}</p> : activityEvents.length === 0 ? <p className="rounded-lg border notion-whisper-border bg-black/[0.02] px-3 py-3 text-xs text-[#615d59]">尚無可顯示的工作流歷程。</p> : <div className="space-y-2">{activityEvents.map(event => <div key={event.id} className={`rounded-lg border px-3 py-3 ${event.event_result === 'failed' || event.event_result === 'blocked' ? 'border-destructive/25 bg-destructive/5' : 'border-black/8 bg-black/[0.015]'}`}><div className="flex items-start justify-between gap-3"><p className="text-xs font-medium text-[rgba(0,0,0,0.95)]">{event.summary}</p><span className="shrink-0 text-[10px] text-[#615d59]">{new Date(event.created_at).toLocaleString()}</span></div>{event.error_message && <p className="mt-1 break-words text-[11px] text-destructive">{event.error_code ? `${event.error_code} · ` : ''}{event.error_message}</p>}</div>)}</div>}
+                                </div>
                                 <div className="mb-3 flex items-baseline justify-between gap-3">
                                     <div>
                                         <p className="flow-kicker mb-1">可持久查看</p>

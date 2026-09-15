@@ -19,7 +19,7 @@
 - `triage-workflow.js` 有舊的專用 ACK，無法涵蓋上述路徑。
 - 本里程碑不修改 review、Vault 寫入、Cron 排程或 DB schema。
 
-## M0.1｜Outbox ACK 一致性修正（進行中）
+## M0.1｜Outbox ACK 一致性修正（完成，2026-09-15）
 
 目標：結果保存成功後，以單一、可驗證、樂觀鎖保護的 ACK 處理技術 Outbox。
 
@@ -35,6 +35,8 @@
 不在範圍：review、Vault、Cron、DB schema、批次自動修復全部歷史資料。
 
 驗證：嚴格 TDD；單元／契約測試後，以 Docker 隔離測試。任何正式資料修復前必須先備份至 `/Volumes/DevSSD/hermes/`，並另經 Owner 授權。
+
+完成證據（2026-09-15）：Docker `node:20-alpine` 執行 `hermes_outbox_service`、`outbox_ack_repair_audit`、`hermes_cron_pull`，20 passed / 0 failed。
 
 ## M1｜全部貼文頁的流程可見性
 

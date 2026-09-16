@@ -27,6 +27,7 @@ import { processUrlThroughCaptureQueue } from './services/legacyProcessService.j
 import { searchRouter } from './routes/searchRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { rebuildTopicKnowledgeAggregate } from './services/topicKnowledgeAggregateService.js';
+import { loadKnowledgeMap } from './services/knowledgeMapService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -211,6 +212,7 @@ app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
 app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
+app.use('/api/knowledge-map', requireSupabaseJwt);
 
 function normalizeTopicTextList(value) {
     return Array.isArray(value)
@@ -229,6 +231,29 @@ function topicWithProject(topic) {
     const { collection_projects: _project, ...rest } = topic || {};
     return { ...rest, project };
 }
+
+// Reader-facing knowledge pages are stored in Supabase as an owner-scoped,
+// read-only projection. There is deliberately no write route here.
+app.get('/api/knowledge-map/:collectionId', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Knowledge map reader is not configured' });
+    }
+
+    try {
+        const knowledgeMap = await loadKnowledgeMap({
+            collectionId: req.params.collectionId,
+            userId: getAuthenticatedUserId(req),
+            supabaseClient: supabase
+        });
+        return res.json(knowledgeMap);
+    } catch (error) {
+        if (error.code === 'KNOWLEDGE_MAP_NOT_FOUND') {
+            return res.status(404).json({ error: '這個資料夾尚無可閱讀的知識地圖' });
+        }
+        console.error('[Knowledge map] read failed:', error.message);
+        return res.status(503).json({ error: 'Knowledge map reader is temporarily unavailable' });
+    }
+});
 
 app.get('/api/projects', async (req, res) => {
     if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });

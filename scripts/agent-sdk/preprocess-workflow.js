@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import {
+    AUTONOMY_CONFIDENCE_THRESHOLD,
     buildAutomationContext,
     normalizePreprocessInput
 } from '../../server/services/autonomyPolicyService.js';
@@ -26,6 +27,7 @@ import { acknowledgePersistedWorkflowOutbox } from '../../server/services/hermes
 import { storePreparedContentDraft } from '../../server/services/contentRouteService.js';
 import { upsertPostSearchDocument } from '../../server/services/postSearchService.js';
 import { executeParallelTracks } from '../../server/services/parallelTrackExecutionService.js';
+import { folderRoutingPolicyForUser } from '../../server/config/ownerCollectionTaxonomy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -213,6 +215,8 @@ export async function preprocessWorkflow(workflowId, options = {}) {
             result.folder,
             supabase,
             {
+                ...folderRoutingPolicyForUser(post.user_id),
+                minimumConfidence: AUTONOMY_CONFIDENCE_THRESHOLD,
                 duplicate: persistence.exact_duplicate,
                 relatedMatches: result.relation?.confidence >= 0.85
                     ? result.relation.matches

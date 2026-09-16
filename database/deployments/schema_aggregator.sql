@@ -1,8 +1,12 @@
 -- =============================================================================
 -- Intelligence Aggregator Schema Upgrade
 -- Remote preprocess behavior is replaced by stage_o_stop_auto_container_creation.sql.
--- Apply stage_o_topic_project_governance.sql and
--- stage_q_topic_match_governance_hardening.sql for project-first Topic review.
+-- Apply stage_o_topic_project_governance.sql,
+-- stage_q_topic_match_governance_hardening.sql,
+-- stage_q_1_preserve_user_topic_match_decisions.sql,
+-- stage_q_2_enforce_topic_match_source_ownership.sql, and
+-- stage_q_3_remote_preprocess_folder_guard.sql for project-first Topic review,
+-- source-owner enforcement, and remote Collection-routing parity.
 -- 參考 fieldtheory-cli 的分類聚合架構，為 collection_post_analysis 與 collection_posts 表新增欄位。
 -- 所有操作均使用 IF NOT EXISTS，可安全重複執行，不會與現有資料衝突。
 -- =============================================================================

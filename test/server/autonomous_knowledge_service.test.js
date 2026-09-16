@@ -18,7 +18,12 @@ test('topic ID links a tenant-owned existing topic without creating one', async 
     let match = null;
     const supabase = { from(table) {
         if (table === 'collection_topics') return { select() { return this; }, eq() { return this; }, maybeSingle: async () => ({ data: { id: 'topic-1', user_id: 'user-1', origin: 'user', status: 'active' }, error: null }) };
-        if (table === 'collection_topic_source_matches') return { upsert(value) { match = value; return { select() { return { single: async () => ({ data: { id: 'match-1' }, error: null }) }; } }; } };
+        if (table === 'collection_topic_source_matches') return {
+            select() { return this; },
+            eq() { return this; },
+            maybeSingle: async () => ({ data: null, error: null }),
+            upsert(value) { match = value; return { select() { return { single: async () => ({ data: { id: 'match-1' }, error: null }) }; } }; }
+        };
         throw new Error(`Unexpected table ${table}`);
     }};
     await persistTopicDecision({ collection_posts: { id: 'post-1', user_id: 'user-1' } }, { topic_id: 'topic-1', confidence: 0.99 }, { kind: 'related', confidence: 0.9 }, supabase);
@@ -50,3 +55,32 @@ test('suggested folder never creates or assigns a collection', async () => {
     assert.equal(result.assigned, false);
     assert.equal(result.reason, 'no_existing_collection');
 });
+
+for (const status of ['accepted', 'rejected']) {
+    test(`agent topic suggestion preserves existing user ${status} decision`, async () => {
+        let upserts = 0;
+        const supabase = { from(table) {
+            if (table === 'collection_topics') return {
+                select() { return this; },
+                eq() { return this; },
+                maybeSingle: async () => ({ data: { id: 'topic-1', user_id: 'user-1', origin: 'user', status: 'active' }, error: null })
+            };
+            if (table === 'collection_topic_source_matches') return {
+                select() { return this; },
+                eq() { return this; },
+                maybeSingle: async () => ({ data: { id: 'match-1', status, decision_source: 'user' }, error: null }),
+                upsert() { upserts += 1; throw new Error('must preserve user decision'); }
+            };
+            throw new Error(`Unexpected table ${table}`);
+        }};
+        const result = await persistTopicDecision(
+            { collection_posts: { id: 'post-1', user_id: 'user-1' } },
+            { topic_id: 'topic-1', confidence: 0.99 },
+            { kind: 'related', confidence: 0.9 },
+            supabase
+        );
+        assert.equal(result.reason, 'existing_user_decision_preserved');
+        assert.equal(result.deferred, true);
+        assert.equal(upserts, 0);
+    });
+}

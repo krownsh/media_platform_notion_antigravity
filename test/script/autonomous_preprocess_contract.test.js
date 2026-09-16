@@ -68,11 +68,18 @@ test('Codex can persist DB-only preprocessing without pretending to write Vault'
 
 test('preprocess can inherit an existing collection but cannot create one from text', () => {
     assert.match(knowledge, /collection_id/);
-    assert.match(knowledge, /Duplicate collection inheritance failed/);
+    assert.match(knowledge, /assignApprovedCollection/);
     assert.match(knowledge, /Related collection lookup failed/);
     assert.match(preprocess, /duplicate: persistence\.exact_duplicate/);
     assert.match(knowledge, /no_existing_collection/);
     assert.doesNotMatch(knowledge, /collection_collections'[\s\S]{0,400}\.insert/);
+    assert.doesNotMatch(knowledge, /collection_collections'[\s\S]{0,400}\.delete/);
+});
+
+test('preprocess passes the owner taxonomy policy to fail-closed folder routing', () => {
+    assert.match(preprocess, /folderRoutingPolicyForUser/);
+    assert.match(preprocess, /folderRoutingPolicyForUser\(post\.user_id\)/);
+    assert.match(preprocess, /minimumConfidence:\s*AUTONOMY_CONFIDENCE_THRESHOLD/);
 });
 
 test('every post-persistence entry path delegates technical ACK to the shared safe helper', () => {

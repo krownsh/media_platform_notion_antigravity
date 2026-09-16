@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+import { AUTONOMY_CONFIDENCE_THRESHOLD } from './autonomyPolicyService.js';
+
 function text(value, maxLength = 4_000) {
     return String(value ?? '').replace(/\0/g, '').slice(0, maxLength).trim();
 }
@@ -177,6 +179,24 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
         ? relationInput.kind
         : topicInput.match_type;
     const score = Math.min(100, Math.max(0, Math.round(Number(relationInput?.confidence ?? topicInput.confidence ?? 0) * 100)));
+    const { data: existingMatch, error: existingMatchError } = await supabaseClient
+        .from('collection_topic_source_matches')
+        .select('id, topic_id, source_id, status, decision_source')
+        .eq('user_id', post.user_id)
+        .eq('topic_id', topic.id)
+        .eq('source_id', post.id)
+        .maybeSingle();
+    if (existingMatchError) throw new Error(`Topic match lookup failed: ${existingMatchError.message}`);
+    if (existingMatch?.decision_source === 'user'
+        && ['accepted', 'rejected'].includes(existingMatch.status)) {
+        return {
+            topic,
+            match: existingMatch,
+            deferred: true,
+            reason: 'existing_user_decision_preserved',
+            proposal
+        };
+    }
     const { data: match, error: matchError } = await supabaseClient
         .from('collection_topic_source_matches')
         .upsert({
@@ -197,11 +217,58 @@ export async function persistTopicDecision(workflow, topicInput, relationInput, 
     return { topic, match, deferred: true, reason: 'user_acceptance_required', proposal };
 }
 
+function approvedCollectionIds(options = {}) {
+    if (options.approvedCollectionIds instanceof Set) return options.approvedCollectionIds;
+    if (Array.isArray(options.approvedCollectionIds)) return new Set(options.approvedCollectionIds);
+    return new Set();
+}
+
+function minimumFolderConfidence(options = {}) {
+    const configured = Number(options.minimumConfidence);
+    return Number.isFinite(configured)
+        ? Math.max(AUTONOMY_CONFIDENCE_THRESHOLD, configured)
+        : AUTONOMY_CONFIDENCE_THRESHOLD;
+}
+
+function hasMinimumFolderConfidence(folderInput, options = {}) {
+    const confidence = Number(folderInput?.confidence);
+    return Number.isFinite(confidence) && confidence >= minimumFolderConfidence(options);
+}
+
+async function assignApprovedCollection(post, collection, supabaseClient, inheritance = {}) {
+    if (!collection?.id || collection.user_id !== post.user_id) {
+        return { collection: null, assigned: false, reason: 'collection_not_found', ...inheritance };
+    }
+    const updated = await supabaseClient
+        .from('collection_posts')
+        .update({ collection_id: collection.id })
+        .eq('id', post.id)
+        .eq('user_id', post.user_id)
+        .is('collection_id', null)
+        .select('id, collection_id')
+        .maybeSingle();
+    if (updated.error) throw new Error(`Collection assignment failed: ${updated.error.message}`);
+    if (!updated.data?.id) {
+        return {
+            collection: null,
+            assigned: false,
+            reason: 'collection_assignment_conflict',
+            ...inheritance
+        };
+    }
+    return { collection, assigned: true, ...inheritance };
+}
+
 export async function persistFolderDecision(workflow, folderInput, supabaseClient, options = {}) {
     const post = sourcePost(workflow);
     if (!post?.id || !post?.user_id || !supabaseClient) {
-        return { collection: null, assigned: false };
+        return { collection: null, assigned: false, reason: 'missing_folder_context' };
     }
+    if (post.collection_id) {
+        return { collection: null, assigned: false, reason: 'existing_collection_preserved' };
+    }
+
+    const approvedIds = approvedCollectionIds(options);
     let inheritedSourceId = options.duplicate?.id || null;
     let inheritedCollectionId = options.duplicate?.collection_id || null;
     if (!inheritedCollectionId && Array.isArray(options.relatedMatches) && options.relatedMatches.length) {
@@ -225,7 +292,23 @@ export async function persistFolderDecision(workflow, folderInput, supabaseClien
             inheritedSourceId = related.data?.id || null;
         }
     }
+
     if (inheritedCollectionId) {
+        const inheritance = {
+            inherited_from_duplicate: options.duplicate?.id || null,
+            inherited_from_related: options.duplicate?.id ? null : inheritedSourceId
+        };
+        if (!hasMinimumFolderConfidence(folderInput, options)) {
+            return { collection: null, assigned: false, reason: 'folder_confidence_low', ...inheritance };
+        }
+        if (!approvedIds.has(inheritedCollectionId)) {
+            return {
+                collection: null,
+                assigned: false,
+                reason: 'inherited_collection_not_approved',
+                ...inheritance
+            };
+        }
         const existing = await supabaseClient
             .from('collection_collections')
             .select('id, user_id, name, description')
@@ -234,25 +317,28 @@ export async function persistFolderDecision(workflow, folderInput, supabaseClien
             .maybeSingle();
         if (existing.error) throw new Error(`Duplicate collection lookup failed: ${existing.error.message}`);
         if (!existing.data) {
-            return { collection: null, assigned: false, inherited_from_duplicate: options.duplicate.id || null };
+            return {
+                collection: null,
+                assigned: false,
+                reason: 'collection_not_found',
+                inherited_from_duplicate: options.duplicate?.id || null,
+                inherited_from_related: options.duplicate?.id ? null : inheritedSourceId
+            };
         }
-        const inherited = await supabaseClient
-            .from('collection_posts')
-            .update({ collection_id: inheritedCollectionId })
-            .eq('id', post.id)
-            .eq('user_id', post.user_id)
-            .select('id, collection_id')
-            .single();
-        if (inherited.error) throw new Error(`Duplicate collection inheritance failed: ${inherited.error.message}`);
-        return {
-            collection: existing.data,
-            assigned: true,
+        return assignApprovedCollection(post, existing.data, supabaseClient, {
             inherited_from_duplicate: options.duplicate?.id || null,
             inherited_from_related: options.duplicate?.id ? null : inheritedSourceId
-        };
+        });
     }
+
     const collectionId = text(folderInput?.collection_id, 80);
     if (!collectionId) return { collection: null, assigned: false, reason: 'no_existing_collection' };
+    if (!approvedIds.has(collectionId)) {
+        return { collection: null, assigned: false, reason: 'collection_not_approved', requested_collection_id: collectionId };
+    }
+    if (!hasMinimumFolderConfidence(folderInput, options)) {
+        return { collection: null, assigned: false, reason: 'folder_confidence_low', requested_collection_id: collectionId };
+    }
     const { data: collection, error } = await supabaseClient
         .from('collection_collections')
         .select('id, user_id, name, description')
@@ -260,14 +346,6 @@ export async function persistFolderDecision(workflow, folderInput, supabaseClien
         .eq('id', collectionId)
         .maybeSingle();
     if (error) throw new Error(`Collection lookup failed: ${error.message}`);
-    if (!collection) return { collection: null, assigned: false, reason: 'collection_not_found' };
-    const updated = await supabaseClient
-        .from('collection_posts')
-        .update({ collection_id: collection.id })
-        .eq('id', post.id)
-        .eq('user_id', post.user_id)
-        .select('id, collection_id')
-        .single();
-    if (updated.error) throw new Error(`Collection assignment failed: ${updated.error.message}`);
-    return { collection, assigned: true };
+    if (!collection) return { collection: null, assigned: false, reason: 'collection_not_found', requested_collection_id: collectionId };
+    return assignApprovedCollection(post, collection, supabaseClient, { requested_collection_id: collectionId });
 }

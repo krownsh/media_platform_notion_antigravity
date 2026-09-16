@@ -55,6 +55,21 @@ does **not** execute SQL or create Supabase migration history.
   decision. It was applied to project `dcyjictvatixbflfrsfg` as migration
   `20260904190651`; the transactional smoke test passed without retaining test
   data, and the existing 60 Topic matches were unchanged.
+- `deployments/stage_q_1_preserve_user_topic_match_decisions.sql` — required
+  follow-up for environments that already applied Stage Q. It atomically keeps
+  an existing user `accepted` or `rejected` decision when a concurrent agent
+  upsert reaches the same match. It was applied to project
+  `dcyjictvatixbflfrsfg` as migration
+  `stage_q_1_preserve_user_topic_match_decisions`; it changes only the trigger
+  function and does not rewrite existing Topic-match rows.
+- `deployments/stage_q_2_enforce_topic_match_source_ownership.sql` — required
+  after Stage Q.1 for existing deployments. It makes the trigger verify that
+  `source_id` belongs to the same user as the match, including service-role
+  writes that bypass RLS; it does not rewrite existing Topic-match rows.
+- `deployments/stage_q_3_remote_preprocess_folder_guard.sql` — required after
+  Stage O for existing deployments. It redefines the service-role remote
+  preprocess RPC to enforce the same 20-ID owner allowlist, 0.85 confidence
+  floor, and null-only tenant-scoped Collection assignment as local routing.
 - `deployments/schema_aggregator.sql` — category/domain upgrade. Its current
   `source_domains` definition matches Stage B (`text[]`). Environments that
   previously applied an older JSONB version still require the preflight in the

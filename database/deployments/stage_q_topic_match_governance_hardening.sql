@@ -31,6 +31,29 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
+    -- Every source-to-topic match must be tenant-consistent, including writes
+    -- made with service_role, which bypasses RLS.
+    if not exists (
+        select 1
+        from public.collection_posts source
+        where source.id = new.source_id
+          and source.user_id = new.user_id
+    ) then
+        raise exception using
+            errcode = '23514',
+            message = 'topic source matches require a user-owned source post';
+    end if;
+
+    -- A concurrent user decision wins over a later agent upsert. Returning OLD
+    -- turns the agent's ON CONFLICT DO UPDATE into a no-op after row locking.
+    if TG_OP = 'UPDATE'
+        and old.decision_source = 'user'
+        and old.status in ('accepted', 'rejected')
+        and new.matched_by = 'agent'
+        and new.decision_source <> 'user' then
+        return old;
+    end if;
+
     -- A user decision is authoritative and may accept or reject a prior agent
     -- suggestion. Every other write labelled as agent-generated stays pending.
     if new.matched_by = 'agent' and new.decision_source <> 'user' then

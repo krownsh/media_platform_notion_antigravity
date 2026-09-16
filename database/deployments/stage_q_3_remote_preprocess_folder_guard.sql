@@ -1,8 +1,9 @@
--- Stage O: link-only autonomous preprocessing.
+-- Stage Q.3: enforce K1.1's fail-closed Collection-routing policy in the
+-- service-role remote preprocess RPC.
 --
--- This is intentionally a full Stage M parity replacement. It preserves the
--- established DB-only preprocess lifecycle and changes only container
--- materialization: free-text suggestions never create Collections or Topics.
+-- Apply after Stage O in existing environments. The function remains DB-only,
+-- but can assign only the owner's approved 20 Collections at >= 0.85 confidence,
+-- and only while the source post has no existing Collection assignment.
 
 begin;
 
@@ -222,8 +223,6 @@ begin
     v_domain := left(nullif(btrim(coalesce(v_folder_input ->> 'suggested_name', v_folder_input ->> 'domain')), ''), 255);
     if (v_folder_input ->> 'confidence') ~ '^[0-9]+(\\.[0-9]+)?$' then
         v_folder_confidence := least(1, greatest(0, (v_folder_input ->> 'confidence')::numeric));
-    elsif (v_result #>> '{autonomy,confidence,folder}') ~ '^[0-9]+(\\.[0-9]+)?$' then
-        v_folder_confidence := least(1, greatest(0, (v_result #>> '{autonomy,confidence,folder}')::numeric));
     else
         v_folder_confidence := 0;
     end if;

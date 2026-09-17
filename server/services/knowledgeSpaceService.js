@@ -1,0 +1,82 @@
+function knowledgeSpaceError(message, code) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function sourcePost(sourcePost) {
+  const joined = Array.isArray(sourcePost) ? sourcePost[0] : sourcePost;
+  return {
+    title: typeof joined?.title === 'string' && joined.title.trim() ? joined.title.trim() : '原始收藏貼文',
+    url: typeof joined?.original_url === 'string' ? joined.original_url : ''
+  };
+}
+
+function normalizeEvidence(evidence) {
+  if (!evidence || typeof evidence.source_post_id !== 'string' || !evidence.source_post_id || typeof evidence.excerpt !== 'string' || !evidence.excerpt.trim()) {
+    throw knowledgeSpaceError('Knowledge space contains invalid evidence', 'KNOWLEDGE_SPACE_INVALID');
+  }
+
+  const post = sourcePost(evidence.source_post);
+  return {
+    postId: evidence.source_post_id,
+    role: typeof evidence.evidence_role === 'string' ? evidence.evidence_role : 'supports',
+    excerpt: evidence.excerpt.trim(),
+    evidenceStatus: typeof evidence.evidence_status === 'string' ? evidence.evidence_status : 'source_captured',
+    note: typeof evidence.note === 'string' ? evidence.note.trim() : '',
+    sourceTitle: post.title,
+    sourceUrl: post.url
+  };
+}
+
+function normalizeNode(node) {
+  if (!node || typeof node.id !== 'string' || !node.id || typeof node.title !== 'string' || !node.title.trim() || typeof node.problem !== 'string' || !node.problem.trim() || !Array.isArray(node.evidence) || node.evidence.length === 0) {
+    throw knowledgeSpaceError('Every knowledge-space node must include a problem and at least one source citation', 'KNOWLEDGE_SPACE_INVALID');
+  }
+
+  return {
+    id: node.id,
+    slug: typeof node.slug === 'string' ? node.slug : '',
+    type: typeof node.node_type === 'string' ? node.node_type : 'question',
+    title: node.title.trim(),
+    problem: node.problem.trim(),
+    content: node.content && typeof node.content === 'object' && !Array.isArray(node.content) ? node.content : {},
+    status: typeof node.status === 'string' ? node.status : 'draft',
+    evidence: node.evidence.map(normalizeEvidence)
+  };
+}
+
+export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
+  if (typeof spaceId !== 'string' || !spaceId.trim() || typeof userId !== 'string' || !userId.trim() || !supabaseClient) {
+    throw knowledgeSpaceError('A knowledge space ID, user ID, and database client are required', 'KNOWLEDGE_SPACE_NOT_FOUND');
+  }
+
+  const { data, error } = await supabaseClient
+    .from('knowledge_spaces')
+    .select('id, slug, name, purpose, status, taxonomy_version, nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))')
+    .eq('id', spaceId)
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[Knowledge space] database read failed:', error.message);
+    throw knowledgeSpaceError('Knowledge space reader is temporarily unavailable', 'KNOWLEDGE_SPACE_UNAVAILABLE');
+  }
+  if (!data) throw knowledgeSpaceError('Knowledge space was not found', 'KNOWLEDGE_SPACE_NOT_FOUND');
+
+  const nodes = Array.isArray(data.nodes) ? data.nodes.map(normalizeNode) : [];
+  if (nodes.length === 0) throw knowledgeSpaceError('Knowledge space has no citable nodes', 'KNOWLEDGE_SPACE_INVALID');
+
+  return {
+    readOnly: true,
+    space: {
+      id: data.id,
+      slug: typeof data.slug === 'string' ? data.slug : '',
+      name: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : '未命名知識地圖',
+      purpose: typeof data.purpose === 'string' ? data.purpose.trim() : '',
+      status: typeof data.status === 'string' ? data.status : 'draft',
+      taxonomyVersion: Number.isInteger(data.taxonomy_version) ? data.taxonomy_version : 1
+    },
+    nodes
+  };
+}

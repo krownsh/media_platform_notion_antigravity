@@ -1,0 +1,154 @@
+{
+  "version": 1,
+  "purpose": "第一層來源文章分類。以未來可重複使用的工作結果分類，而非工具名稱、貼文格式或熱門程度。",
+  "primary_assignment_policy": "one_source_folder_per_post",
+  "routing_question": "這篇來源未來主要幫我完成哪一種工作？",
+  "mutation_policy": {
+    "rename_live_collections": "owner_approval_required",
+    "reassign_existing_posts": "owner_approved_manifest_required",
+    "low_confidence_destination": "inbox",
+    "create_new_categories": "owner_approval_required"
+  },
+  "categories": [
+    {
+      "key": "product-idea-validation",
+      "proposed_name": "產品構想與需求驗證",
+      "include": "問題、目標使用者、競品、需求、MVP 與驗證實驗。",
+      "exclude": "已進入定價、成長或一般程式實作的內容。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "product-strategy-growth-business",
+      "proposed_name": "產品策略、成長與商業化",
+      "include": "Distribution、定價、商業模式、獨立開發營運與成長策略。",
+      "exclude": "純粹的需求發現或技術實作。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "ux-research-onboarding",
+      "proposed_name": "使用者研究、UX 與 Onboarding",
+      "include": "User flow、資訊架構、使用者研究、轉換與 onboarding。",
+      "exclude": "純視覺樣式、CSS 或元件實作。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "ui-design-system-visual-implementation",
+      "proposed_name": "UI 設計系統與視覺實作",
+      "include": "設計系統、元件、版面、動效、前端視覺與設計交接。",
+      "exclude": "使用者研究、商業策略與一般產品需求。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "web-application-development",
+      "proposed_name": "Web 應用開發",
+      "include": "Web App、前端框架、網站實作與 Web 平台技術。",
+      "exclude": "iOS、Android、後端架構或部署基礎設施。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "ios-development-app-store",
+      "proposed_name": "iOS 開發與 App Store",
+      "include": "Swift、SwiftUI、iOS 測試、TestFlight、App Store Review 與上架。",
+      "exclude": "一般 Web、Android 或不涉及 iOS 的跨平台內容。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "android-development-google-play",
+      "proposed_name": "Android 開發與 Google Play",
+      "include": "Android、Kotlin、Android 測試、Google Play 與上架。",
+      "exclude": "一般 Web、iOS 或不涉及 Android 的跨平台內容。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "architecture-backend-data",
+      "proposed_name": "系統架構、後端與資料",
+      "include": "API、資料庫、Auth、Storage、支付、系統設計與資料模型。",
+      "exclude": "部署、CI/CD、Git 協作或純前端視覺。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "engineering-quality-testing",
+      "proposed_name": "工程實踐、品質與測試",
+      "include": "TDD、E2E、效能、可觀測性、錯誤處理、重構與品質流程。",
+      "exclude": "Git／PR 的協作規則或雲端部署設定。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "git-pr-engineering-collaboration",
+      "proposed_name": "Git、PR 與工程協作",
+      "include": "Branch、commit、code review、PR、issue 與團隊協作流程。",
+      "exclude": "測試框架、CI/CD 基礎設施或產品策略。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "devops-cicd-infrastructure",
+      "proposed_name": "部署、CI/CD 與基礎設施",
+      "include": "Docker、Cloud、PM2、Cloudflare、監控、release 與 CI/CD。",
+      "exclude": "App Store／Google Play 商店政策與一般後端商業邏輯。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "security-privacy-credentials",
+      "proposed_name": "安全、隱私與憑證管理",
+      "include": "Secrets、RLS、身份驗證安全、API key、隱私與資安風險。",
+      "exclude": "不涉及安全邊界的一般後端開發。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "game-interactive-product-development",
+      "proposed_name": "遊戲與互動產品開發",
+      "include": "遊戲引擎、互動體驗與遊戲產品開發流程。",
+      "exclude": "一般 Web／行動 App 的產品與工程內容。",
+      "knowledge_space_affinities": []
+    },
+    {
+      "key": "ai-coding-developer-tools",
+      "proposed_name": "AI 程式開發工具",
+      "include": "Coding agent、IDE agent、開發 skill、程式開發 prompt 與開發者 AI 工具。",
+      "exclude": "通用 Agent runtime、影片工具或不以開發為目的的 AI 使用法。",
+      "knowledge_space_affinities": ["zero-to-one-product-development"]
+    },
+    {
+      "key": "agent-systems-mcp-automation",
+      "proposed_name": "Agent 系統、MCP 與自動化",
+      "include": "MCP、tool calling、multi-agent、queue、cron、workflow 與 agent runtime。",
+      "exclude": "單純以 AI 協助寫程式或生成媒體的內容。",
+      "knowledge_space_affinities": ["agent-systems-and-automation", "zero-to-one-product-development"]
+    },
+    {
+      "key": "generative-visual-video-audio",
+      "proposed_name": "生成式影像、影片與音訊",
+      "include": "圖像、影片、音訊模型、生成與剪輯工作流、素材與輸出控制。",
+      "exclude": "以程式開發或 Agent orchestration 為主的內容。",
+      "knowledge_space_affinities": ["generative-media-production"]
+    },
+    {
+      "key": "ai-interaction-prompt-model-use",
+      "proposed_name": "AI 互動、Prompt 與模型使用",
+      "include": "可跨任務重用的 prompt 方法、模型行為控制、上下文策略與提示工程。",
+      "exclude": "已明確只服務 coding、agent 系統或影像生成的專用 prompt。",
+      "knowledge_space_affinities": ["agent-systems-and-automation", "generative-media-production"]
+    },
+    {
+      "key": "knowledge-learning-productivity",
+      "proposed_name": "知識管理、學習與個人生產力",
+      "include": "知識系統、學習法、研究流程與個人工作流。",
+      "exclude": "特定產品開發或團隊工程流程。",
+      "knowledge_space_affinities": []
+    },
+    {
+      "key": "investment-financial-markets",
+      "proposed_name": "投資與金融市場",
+      "include": "市場假設、投資、產業訊號、風險與金融研究。",
+      "exclude": "產品商業化、個人工作或一般科技新聞。",
+      "knowledge_space_affinities": []
+    },
+    {
+      "key": "career-life-interests",
+      "proposed_name": "職涯、生活與興趣",
+      "include": "職涯、求職、考試、生活工具、寵物與個人興趣。",
+      "exclude": "以上已有明確產品、工程、AI、投資或知識工作目的的內容。",
+      "knowledge_space_affinities": []
+    }
+  ]
+}

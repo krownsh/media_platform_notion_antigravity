@@ -28,6 +28,7 @@ import { searchRouter } from './routes/searchRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { rebuildTopicKnowledgeAggregate } from './services/topicKnowledgeAggregateService.js';
 import { loadKnowledgeMap } from './services/knowledgeMapService.js';
+import { loadKnowledgeSpace } from './services/knowledgeSpaceService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -213,6 +214,7 @@ app.use('/api/topics', requireSupabaseJwt);
 app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
 app.use('/api/knowledge-map', requireSupabaseJwt);
+app.use('/api/knowledge-spaces', requireSupabaseJwt);
 
 function normalizeTopicTextList(value) {
     return Array.isArray(value)
@@ -252,6 +254,29 @@ app.get('/api/knowledge-map/:collectionId', async (req, res) => {
         }
         console.error('[Knowledge map] read failed:', error.message);
         return res.status(503).json({ error: 'Knowledge map reader is temporarily unavailable' });
+    }
+});
+
+// Cross-folder knowledge spaces are read-only projections. Their evidence may cite
+// posts from several source folders, while source-folder assignment remains separate.
+app.get('/api/knowledge-spaces/:spaceId', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Knowledge space reader is not configured' });
+    }
+
+    try {
+        const knowledgeSpace = await loadKnowledgeSpace({
+            spaceId: req.params.spaceId,
+            userId: getAuthenticatedUserId(req),
+            supabaseClient: supabase
+        });
+        return res.json(knowledgeSpace);
+    } catch (error) {
+        if (error.code === 'KNOWLEDGE_SPACE_NOT_FOUND') {
+            return res.status(404).json({ error: '這個知識地圖尚無可閱讀內容' });
+        }
+        console.error('[Knowledge space] read failed:', error.message);
+        return res.status(503).json({ error: 'Knowledge space reader is temporarily unavailable' });
     }
 });
 

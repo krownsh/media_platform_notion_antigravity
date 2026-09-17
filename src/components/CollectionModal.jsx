@@ -2,6 +2,7 @@ import React from 'react';
 import { X, FolderOpen } from 'lucide-react';
 import { useDroppable } from '@dnd-kit/core';
 import SortablePostCard from './SortablePostCard';
+import CollectionKnowledgeMap from './CollectionKnowledgeMap';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 
 const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix, readOnly = false }) => {
@@ -38,6 +39,7 @@ const CollectionModal = ({ collection, posts, onClose, onPostClick, onRemix, rea
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[var(--surface)] custom-scrollbar">
+                    <CollectionKnowledgeMap collectionId={collection.id} />
                     {posts.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-[#615d59] px-6">
                             <p className="text-lg font-semibold text-[rgba(0,0,0,0.95)]">此資料夾目前是空的</p>

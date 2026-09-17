@@ -11,6 +11,8 @@ test('knowledge-space UI renders concrete technical nodes and source citations i
   assert.match(source, /node\.type/);
   assert.match(source, /node\.title/);
   assert.match(source, /node\.problem/);
+  assert.match(source, /collections\.map\(\(collection\)/);
+  assert.match(source, /collection\.name/);
   assert.match(source, /Object\.entries\(node\.content\)/);
   assert.match(source, /evidence\.excerpt/);
   assert.match(source, /navigate\(`\/post\/\$\{evidence\.postId\}`\)/);

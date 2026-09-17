@@ -30,6 +30,11 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
     purpose: '把產品構想推進到可驗證產品。',
     status: 'active',
     taxonomy_version: 1,
+    collections: [{
+      scope_role: 'primary',
+      position: 0,
+      collection: { id: 'collection-1', name: '工程師開發優化' }
+    }],
     nodes: [{
       id: 'node-1',
       slug: 'spec-driven-development',
@@ -46,13 +51,14 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
 
   assert.equal(result.readOnly, true);
   assert.equal(result.space.slug, 'zero-to-one-product-development');
+  assert.deepEqual(result.collections, [{ id: 'collection-1', name: '工程師開發優化', role: 'primary', position: 0 }]);
   assert.equal(result.nodes[0].type, 'workflow');
   assert.deepEqual(result.nodes[0].content.steps, ['釐清問題', '建立 spec', '審查後實作']);
   assert.equal(result.nodes[0].evidence[0].postId, 'post-1');
   assert.equal(result.nodes[0].evidence[0].sourceUrl, 'https://example.test/openspec');
   assert.deepEqual(supabaseClient.calls.slice(0, 4), [
     ['from', 'knowledge_spaces'],
-    ['select', 'id, slug, name, purpose, status, taxonomy_version, nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))'],
+    ['select', 'id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))'],
     ['eq', 'id', 'space-1'],
     ['eq', 'user_id', 'owner-a']
   ]);

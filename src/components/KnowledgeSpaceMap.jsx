@@ -78,7 +78,7 @@ export default function KnowledgeSpaceMap({ spaceId }) {
     return <section className="flow-panel flex items-start gap-3 px-5 py-4 text-sm leading-6 text-[#615d59]" aria-live="polite"><FileWarning size={18} className="mt-0.5 shrink-0 text-[#8a6f42]" aria-hidden="true" />知識地圖暫時無法讀取：{state.error}</section>;
   }
 
-  const { space, nodes } = state.data;
+  const { space, collections = [], nodes } = state.data;
   let evidenceNumber = 0;
   return (
     <section className="flow-panel overflow-visible px-5 py-5 sm:px-6 sm:py-6" aria-labelledby="knowledge-space-heading">
@@ -86,6 +86,16 @@ export default function KnowledgeSpaceMap({ spaceId }) {
         <p className="flow-kicker mb-2">跨資料夾 · 唯讀知識地圖</p>
         <h1 id="knowledge-space-heading" className="flex items-center gap-2 text-2xl font-bold tracking-[-0.03em] text-[rgba(0,0,0,0.95)]"><BookOpenText size={22} className="text-[var(--accent)]" aria-hidden="true" />{space.name}</h1>
         {space.purpose && <p className="mt-3 max-w-3xl text-sm leading-6 text-[#615d59]">{space.purpose}</p>}
+        {collections.length > 0 && (
+          <div className="mt-3 text-sm text-[#615d59]" aria-label="此知識地圖涵蓋的收藏資料夾">
+            <span className="mr-2 font-semibold text-[rgba(0,0,0,0.95)]">涵蓋資料夾：</span>
+            {collections.map((collection) => (
+              <span key={collection.id} className="mr-2 inline-block rounded-full bg-black/[0.045] px-2 py-0.5 text-xs">
+                {collection.name}{collection.role === 'primary' ? '（主要）' : ''}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <p className="mt-4 text-sm leading-6 text-[#615d59]">每個節點說明技術、工作流或選型判斷；每條內容都附回原始收藏貼文，不把跨來源證據壓成不可追查的總結。</p>
       <ol className="mt-6 space-y-5">

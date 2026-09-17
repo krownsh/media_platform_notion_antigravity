@@ -46,6 +46,20 @@ function normalizeNode(node) {
   };
 }
 
+function normalizeCollection(scope) {
+  const collection = Array.isArray(scope?.collection) ? scope.collection[0] : scope?.collection;
+  if (!collection || typeof collection.id !== 'string' || !collection.id || typeof collection.name !== 'string' || !collection.name.trim()) {
+    throw knowledgeSpaceError('Knowledge space contains an invalid source-folder scope', 'KNOWLEDGE_SPACE_INVALID');
+  }
+
+  return {
+    id: collection.id,
+    name: collection.name.trim(),
+    role: scope.scope_role === 'primary' ? 'primary' : 'supporting',
+    position: Number.isInteger(scope.position) && scope.position >= 0 ? scope.position : 0
+  };
+}
+
 export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
   if (typeof spaceId !== 'string' || !spaceId.trim() || typeof userId !== 'string' || !userId.trim() || !supabaseClient) {
     throw knowledgeSpaceError('A knowledge space ID, user ID, and database client are required', 'KNOWLEDGE_SPACE_NOT_FOUND');
@@ -53,7 +67,7 @@ export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
 
   const { data, error } = await supabaseClient
     .from('knowledge_spaces')
-    .select('id, slug, name, purpose, status, taxonomy_version, nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))')
+    .select('id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))')
     .eq('id', spaceId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -63,6 +77,9 @@ export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
     throw knowledgeSpaceError('Knowledge space reader is temporarily unavailable', 'KNOWLEDGE_SPACE_UNAVAILABLE');
   }
   if (!data) throw knowledgeSpaceError('Knowledge space was not found', 'KNOWLEDGE_SPACE_NOT_FOUND');
+
+  const collections = Array.isArray(data.collections) ? data.collections.map(normalizeCollection).sort((left, right) => left.position - right.position || left.name.localeCompare(right.name, 'zh-Hant')) : [];
+  if (collections.length === 0) throw knowledgeSpaceError('Knowledge space has no explicit source-folder scope', 'KNOWLEDGE_SPACE_INVALID');
 
   const nodes = Array.isArray(data.nodes) ? data.nodes.map(normalizeNode) : [];
   if (nodes.length === 0) throw knowledgeSpaceError('Knowledge space has no citable nodes', 'KNOWLEDGE_SPACE_INVALID');
@@ -77,6 +94,7 @@ export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
       status: typeof data.status === 'string' ? data.status : 'draft',
       taxonomyVersion: Number.isInteger(data.taxonomy_version) ? data.taxonomy_version : 1
     },
+    collections,
     nodes
   };
 }

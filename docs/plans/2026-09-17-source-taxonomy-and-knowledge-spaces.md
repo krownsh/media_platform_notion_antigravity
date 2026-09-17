@@ -4,7 +4,7 @@
 
 **Goal:** Establish a stable 20-category source taxonomy and an additive, source-cited second-layer knowledge-space model, beginning with the cross-folder `從 0 到 1 產品開發工作流` map.
 
-**Architecture:** Keep every saved article in exactly one primary source collection (or Inbox when evidence is insufficient). Add separate `knowledge_spaces`, `knowledge_map_nodes`, and `knowledge_node_evidence` tables so a map can cite articles from many collections without copying posts or overwriting existing collection maps. The initial reader API is strictly JWT-scoped and read-only.
+**Architecture:** Keep every saved article in exactly one primary source collection (or Inbox when evidence is insufficient). Add separate `knowledge_spaces`, `knowledge_space_collections`, `knowledge_map_nodes`, and `knowledge_node_evidence` tables so a map declares its existing source-folder scope and can cite articles from many collections without copying posts or overwriting existing collection maps. The initial reader API is strictly JWT-scoped and read-only.
 
 **Tech Stack:** PostgreSQL/Supabase migrations and RLS; Node/Express service and routes; React/Vite reader UI; Node test runner; Docker `node:20-alpine` isolated verification.
 

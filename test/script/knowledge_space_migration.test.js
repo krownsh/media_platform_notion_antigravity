@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migrationPath = new URL('../../database/deployments/stage_w_knowledge_spaces.sql', import.meta.url);
+const readerSchemaMigrationPath = new URL('../../database/deployments/stage_w3_knowledge_space_reader_schema.sql', import.meta.url);
 
 test('knowledge spaces migration is additive, owner-isolated, and evidence-first', async () => {
   const sql = await readFile(migrationPath, 'utf8');
@@ -26,4 +27,16 @@ test('knowledge spaces migration is additive, owner-isolated, and evidence-first
 
   assert.doesNotMatch(sql, /\b(drop\s+table|truncate)\b/i);
   assert.doesNotMatch(sql, /grant\s+.*\bto\s+anon/i);
+});
+
+test('W3 reader-schema repair is additive and does not touch collection sources', async () => {
+  const sql = await readFile(readerSchemaMigrationPath, 'utf8');
+
+  assert.match(sql, /add column if not exists taxonomy_version integer not null default 1/i);
+  assert.match(sql, /add column if not exists slug text/i);
+  assert.match(sql, /add constraint knowledge_map_nodes_space_slug_unique unique \(space_id, slug\)/i);
+  assert.match(sql, /set slug = 'legacy-' \|\| id::text/i);
+  const executableSql = sql.replace(/^--.*$/gm, '');
+  assert.doesNotMatch(executableSql, /\b(drop\s+table|truncate|delete\s+from)\b/i);
+  assert.doesNotMatch(executableSql, /\b(collection_posts|collection_collections)\b[\s\S]*\b(update|insert|delete|alter)\b/i);
 });

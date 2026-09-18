@@ -1,0 +1,80 @@
+{
+  "manifest_version": 1,
+  "kind": "live_taxonomy_reconciliation_preview",
+  "read_only": true,
+  "generated_from_live_at": "2026-09-18T05:45:15.781357Z",
+  "owner_id": "50984520-69ad-4e64-b9c1-503f5c1b0e63",
+  "source_taxonomy": "docs/knowledge-taxonomy/source-taxonomy-v1.json",
+  "source_taxonomy_version": 1,
+  "constraints": {
+    "one_source_folder_per_post": true,
+    "low_confidence_destination": "inbox",
+    "rename_requires_owner_mapping": true,
+    "writeback_requires_explicit_final_confirmation": true
+  },
+  "live_cardinality": {
+    "total_posts": 430,
+    "assigned_posts": 333,
+    "inbox_unassigned_posts": 97,
+    "dangling_or_cross_owner_assignments": 0,
+    "approved_owner_collections": 20,
+    "exact_hermes_auto_collections": 33
+  },
+  "proposed_renames": [],
+  "proposed_post_reassignments": [],
+  "unresolved": {
+    "inbox_post_count": 97,
+    "reason": "No owner-approved per-post destination mapping is present. These posts remain Inbox; no semantic reassignment is inferred."
+  },
+  "exclusions": {
+    "approved_owner_collection_count": 20,
+    "reason": "Owner-approved collections are not renamed, merged, or cleaned up by this manifest."
+  },
+  "cleanup_candidates": {
+    "eligibility": "description exactly equals Hermes 自動建立的媒體分類資料夾 AND current same-owner post_count = 0",
+    "count": 33,
+    "live_fingerprint_algorithm": "md5(sorted id|name|post_count separated by newline)",
+    "live_fingerprint": "a3175a2e59ee172a75344865c7be9c41",
+    "candidates": [
+      {"id":"057712b8-4127-4dbf-8f99-3f61fb27b7ac","name":"AI 工具","post_count":0},
+      {"id":"18953f83-1c89-419a-8ddc-6563274a6018","name":"獨立開發","post_count":0},
+      {"id":"2443d861-66f7-4d83-9905-0a5f5ce0d882","name":"生成式 AI","post_count":0},
+      {"id":"2a700d00-2c8d-41c6-8984-5b6d7de2c85a","name":"金融市場","post_count":0},
+      {"id":"45b18bbd-504b-4605-b7e9-442a0deab33d","name":"AI工具","post_count":0},
+      {"id":"473bab72-aca5-48a9-8987-8ef074afee21","name":"AI與產品策略","post_count":0},
+      {"id":"49a6ef65-2d51-42e4-ab19-309282576293","name":"人工智慧與創作工具","post_count":0},
+      {"id":"4f5bfefc-f389-4105-b449-c95c087d4dde","name":"法律科技","post_count":0},
+      {"id":"5289befd-9a7b-40c8-bc79-fc54ce115349","name":"AI 程式代理人","post_count":0},
+      {"id":"538a9025-733b-4e28-88fb-d55284142eee","name":"數位工作流與工具","post_count":0},
+      {"id":"5812a57a-eae3-4107-bddf-026935c2da4b","name":"AI 工具與工作流","post_count":0},
+      {"id":"6366b2e1-5ec2-4e4c-a0e5-35c43c85f7fb","name":"人工智慧","post_count":0},
+      {"id":"661c1cc0-8986-4da6-ae25-be24443fd3e9","name":"產品策略","post_count":0},
+      {"id":"69922a08-a0e7-492c-8868-ed6a76248f97","name":"開發工具","post_count":0},
+      {"id":"6e094650-b817-4ed9-9065-0c58d9bc9bcc","name":"教育與校園","post_count":0},
+      {"id":"79edf74f-e992-49f9-a6ab-5f690a1147cd","name":"人工智慧工具","post_count":0},
+      {"id":"7e1bab5f-7810-4ddb-910b-9acbba524113","name":"開發與資安","post_count":0},
+      {"id":"8314db15-7096-4113-ae60-972f5cea9f09","name":"職涯與遠端工作","post_count":0},
+      {"id":"844e58fc-3662-4d13-b24a-8a49086f4067","name":"人工智慧與資安","post_count":0},
+      {"id":"853e4d8d-0746-4253-9533-7afe7093e1fa","name":"人工智慧與本機開發","post_count":0},
+      {"id":"89af6162-b427-4954-b9c4-2c6748b6f860","name":"AI 與知識管理","post_count":0},
+      {"id":"960e48ba-c284-4647-a537-03be4e0dd18c","name":"前端開發","post_count":0},
+      {"id":"aa1277b5-ebc3-4291-855a-83a7db1331ca","name":"AI 與軟體開發","post_count":0},
+      {"id":"aba09134-de94-45d2-8693-cd154fcc4c50","name":"創業與產品營運","post_count":0},
+      {"id":"b1f1e8e7-07ab-4960-89c1-e7a9c090ebbf","name":"遊戲開發","post_count":0},
+      {"id":"b5e2defb-2f3a-4107-9bb8-4858308f255f","name":"AI內容製作","post_count":0},
+      {"id":"bc022296-df76-4863-bd7a-b8e2e700ddfc","name":"AI 工具与应用","post_count":0},
+      {"id":"cb273956-cd57-45b6-8245-dc6a150bd46e","name":"AI 工具與應用","post_count":0},
+      {"id":"d42b9b59-96cf-4f1c-8be4-1d101d8f84a8","name":"AI創作與貼圖設計","post_count":0},
+      {"id":"f256ab0f-0e59-4fd7-b7df-87206079971d","name":"AI 與前端開發","post_count":0},
+      {"id":"f858047f-2646-49a0-9849-4dea21b4082a","name":"AI繪圖與視覺創作","post_count":0},
+      {"id":"fbc0c420-7839-4f06-a7b7-4dfcac10c461","name":"AI 開發工具","post_count":0},
+      {"id":"ff5fbc74-1b44-4144-9ea0-a29ed1990bab","name":"AI代理人與自動化開發","post_count":0}
+    ]
+  },
+  "required_before_writeback": [
+    "Owner explicitly approves this manifest fingerprint and scope.",
+    "Create an SSD backup under /Volumes/DevSSD/hermes/.",
+    "Re-query every candidate inside the write boundary; every post_count must remain 0 and the fingerprint must match or the operation stops.",
+    "Apply only the approved cleanup action; no collection rename or post reassignment is authorized by this manifest."
+  ]
+}

@@ -146,3 +146,7 @@ create policy knowledge_space_stage_transitions_owner_select
 on public.knowledge_space_stage_transitions
 for select to authenticated
 using ((select auth.uid()) = user_id);
+
+-- Trigger functions are internal integrity guards, not RPC endpoints.
+revoke execute on function public.enforce_knowledge_space_stage_node_owner() from public, anon, authenticated;
+revoke execute on function public.enforce_knowledge_space_stage_transition_owner() from public, anon, authenticated;

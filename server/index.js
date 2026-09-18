@@ -28,7 +28,7 @@ import { searchRouter } from './routes/searchRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { rebuildTopicKnowledgeAggregate } from './services/topicKnowledgeAggregateService.js';
 import { loadKnowledgeMap } from './services/knowledgeMapService.js';
-import { loadKnowledgeSpace } from './services/knowledgeSpaceService.js';
+import { listKnowledgeSpaces, loadKnowledgeSpace } from './services/knowledgeSpaceService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -259,6 +259,23 @@ app.get('/api/knowledge-map/:collectionId', async (req, res) => {
 
 // Cross-folder knowledge spaces are read-only projections. Their evidence may cite
 // posts from several source folders, while source-folder assignment remains separate.
+app.get('/api/knowledge-spaces', async (req, res) => {
+    if (!hasSupabaseServiceConfig) {
+        return res.status(503).json({ error: 'Knowledge space reader is not configured' });
+    }
+
+    try {
+        const knowledgeSpaces = await listKnowledgeSpaces({
+            userId: getAuthenticatedUserId(req),
+            supabaseClient: supabase
+        });
+        return res.json(knowledgeSpaces);
+    } catch (error) {
+        console.error('[Knowledge spaces] list failed:', error.message);
+        return res.status(503).json({ error: 'Knowledge spaces are temporarily unavailable' });
+    }
+});
+
 app.get('/api/knowledge-spaces/:spaceId', async (req, res) => {
     if (!hasSupabaseServiceConfig) {
         return res.status(503).json({ error: 'Knowledge space reader is not configured' });

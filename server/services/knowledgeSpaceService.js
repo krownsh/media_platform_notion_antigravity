@@ -107,6 +107,44 @@ function normalizeCollection(scope) {
   };
 }
 
+function normalizeSpaceSummary(space) {
+  if (!space || typeof space.id !== 'string' || !space.id || typeof space.name !== 'string' || !space.name.trim()) {
+    throw knowledgeSpaceError('Knowledge space contains an invalid summary', 'KNOWLEDGE_SPACE_INVALID');
+  }
+
+  return {
+    id: space.id,
+    slug: typeof space.slug === 'string' ? space.slug : '',
+    name: space.name.trim(),
+    purpose: typeof space.purpose === 'string' ? space.purpose.trim() : '',
+    status: typeof space.status === 'string' ? space.status : 'draft',
+    taxonomyVersion: Number.isInteger(space.taxonomy_version) ? space.taxonomy_version : 1
+  };
+}
+
+export async function listKnowledgeSpaces({ userId, supabaseClient }) {
+  if (typeof userId !== 'string' || !userId.trim() || !supabaseClient) {
+    throw knowledgeSpaceError('A user ID and database client are required', 'KNOWLEDGE_SPACE_NOT_FOUND');
+  }
+
+  const { data, error } = await supabaseClient
+    .from('knowledge_spaces')
+    .select('id, slug, name, purpose, status, taxonomy_version')
+    .eq('user_id', userId)
+    .in('status', ['active', 'published'])
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('[Knowledge spaces] list read failed:', error.message);
+    throw knowledgeSpaceError('Knowledge spaces are temporarily unavailable', 'KNOWLEDGE_SPACE_UNAVAILABLE');
+  }
+
+  return {
+    readOnly: true,
+    spaces: Array.isArray(data) ? data.map(normalizeSpaceSummary) : []
+  };
+}
+
 export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
   if (typeof spaceId !== 'string' || !spaceId.trim() || typeof userId !== 'string' || !userId.trim() || !supabaseClient) {
     throw knowledgeSpaceError('A knowledge space ID, user ID, and database client are required', 'KNOWLEDGE_SPACE_NOT_FOUND');

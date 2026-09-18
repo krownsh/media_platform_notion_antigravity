@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target, BookOpenText } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -177,6 +177,12 @@ const Layout = ({ children }) => {
                                     onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
                                 />
                                 <SidebarItem
+                                    icon={BookOpenText}
+                                    label="知識地圖"
+                                    active={location.pathname.startsWith('/knowledge-spaces')}
+                                    onClick={() => { navigate('/knowledge-spaces'); setIsMobileMenuOpen(false); }}
+                                />
+                                <SidebarItem
                                     icon={Library}
                                     label="收藏夾"
                                     onClick={() => setIsCollectionsExpanded(!isCollectionsExpanded)}
@@ -325,6 +331,14 @@ const Layout = ({ children }) => {
                         label="主題工作區"
                         active={location.pathname === '/topics'}
                         onClick={() => navigate('/topics')}
+                        collapsed={isSidebarCollapsed}
+                    />
+
+                    <SidebarItem
+                        icon={BookOpenText}
+                        label="知識地圖"
+                        active={location.pathname.startsWith('/knowledge-spaces')}
+                        onClick={() => navigate('/knowledge-spaces')}
                         collapsed={isSidebarCollapsed}
                     />
 

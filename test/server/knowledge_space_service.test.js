@@ -44,6 +44,33 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
       content: { steps: ['釐清問題', '建立 spec', '審查後實作'] },
       status: 'active',
       evidence: [evidence]
+    }],
+    stages: [{
+      id: 'stage-1',
+      slug: 'problem-framing',
+      title: '問題與需求假設',
+      objective: '把市場訊號轉為可驗證的問題假設。',
+      position: 0,
+      required_inputs: ['市場訊號'],
+      expected_outputs: ['問題假設'],
+      gates: ['人類確認投入方向'],
+      coverage_status: 'supported',
+      status: 'active',
+      node_links: [{ position: 0, node_id: 'node-1' }],
+      transitions: [{ to_stage_id: 'stage-2', transition_type: 'progression', condition: '問題假設已明確' }]
+    }, {
+      id: 'stage-2',
+      slug: 'post-release-review',
+      title: '上線後訊號回收',
+      objective: '以實際使用訊號回饋產品假設。',
+      position: 1,
+      required_inputs: ['上線資料'],
+      expected_outputs: ['下一輪假設'],
+      gates: ['尚待來源'],
+      coverage_status: 'gap',
+      status: 'active',
+      node_links: [],
+      transitions: [{ to_stage_id: 'stage-1', transition_type: 'feedback', condition: '發現假設失效或新訊號' }]
     }]
   });
 
@@ -56,9 +83,36 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
   assert.deepEqual(result.nodes[0].content.steps, ['釐清問題', '建立 spec', '審查後實作']);
   assert.equal(result.nodes[0].evidence[0].postId, 'post-1');
   assert.equal(result.nodes[0].evidence[0].sourceUrl, 'https://example.test/openspec');
+  assert.deepEqual(result.stages, [{
+    id: 'stage-1',
+    slug: 'problem-framing',
+    title: '問題與需求假設',
+    objective: '把市場訊號轉為可驗證的問題假設。',
+    position: 0,
+    requiredInputs: ['市場訊號'],
+    expectedOutputs: ['問題假設'],
+    gates: ['人類確認投入方向'],
+    coverageStatus: 'supported',
+    status: 'active',
+    nodes: [result.nodes[0]],
+    transitions: [{ toStageId: 'stage-2', type: 'progression', condition: '問題假設已明確' }]
+  }, {
+    id: 'stage-2',
+    slug: 'post-release-review',
+    title: '上線後訊號回收',
+    objective: '以實際使用訊號回饋產品假設。',
+    position: 1,
+    requiredInputs: ['上線資料'],
+    expectedOutputs: ['下一輪假設'],
+    gates: ['尚待來源'],
+    coverageStatus: 'gap',
+    status: 'active',
+    nodes: [],
+    transitions: [{ toStageId: 'stage-1', type: 'feedback', condition: '發現假設失效或新訊號' }]
+  }]);
   assert.deepEqual(supabaseClient.calls.slice(0, 4), [
     ['from', 'knowledge_spaces'],
-    ['select', 'id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url)))'],
+    ['select', 'id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url))), stages:knowledge_space_path_stages!left(id, slug, title, objective, position, required_inputs, expected_outputs, gates, coverage_status, status, node_links:knowledge_space_stage_nodes!left(position, node_id), transitions:knowledge_space_stage_transitions!knowledge_space_stage_transitions_from_stage_id_fkey(to_stage_id, transition_type, condition))'],
     ['eq', 'id', 'space-1'],
     ['eq', 'user_id', 'owner-a']
   ]);

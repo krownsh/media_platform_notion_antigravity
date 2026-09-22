@@ -92,9 +92,11 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
     requiredInputs: ['市場訊號'],
     expectedOutputs: ['問題假設'],
     gates: ['人類確認投入方向'],
-    coverageStatus: 'supported',
+    coverageStatus: 'gap',
     status: 'active',
-    nodes: [result.nodes[0]],
+    evidenceLinks: [],
+    proposedEvidenceLinks: [],
+    candidateNodes: [result.nodes[0]],
     transitions: [{ toStageId: 'stage-2', type: 'progression', condition: '問題假設已明確' }]
   }, {
     id: 'stage-2',
@@ -107,12 +109,14 @@ test('knowledge space reader returns owner-scoped, evidence-cited technical node
     gates: ['尚待來源'],
     coverageStatus: 'gap',
     status: 'active',
-    nodes: [],
+    evidenceLinks: [],
+    proposedEvidenceLinks: [],
+    candidateNodes: [],
     transitions: [{ toStageId: 'stage-1', type: 'feedback', condition: '發現假設失效或新訊號' }]
   }]);
   assert.deepEqual(supabaseClient.calls.slice(0, 4), [
     ['from', 'knowledge_spaces'],
-    ['select', 'id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url))), stages:knowledge_space_path_stages!left(id, slug, title, objective, position, required_inputs, expected_outputs, gates, coverage_status, status, node_links:knowledge_space_stage_nodes!left(position, node_id), transitions:knowledge_space_stage_transitions!knowledge_space_stage_transitions_from_stage_id_fkey(to_stage_id, transition_type, condition))'],
+    ['select', 'id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url))), stages:knowledge_space_path_stages!left(id, slug, title, objective, position, required_inputs, expected_outputs, gates, coverage_status, status, node_links:knowledge_space_stage_nodes!left(position, node_id), evidence_links:knowledge_space_stage_evidence_links!left(id, position, node_id, evidence_role, rationale, applicability, limitation, status), transitions:knowledge_space_stage_transitions!knowledge_space_stage_transitions_from_stage_id_fkey(to_stage_id, transition_type, condition))'],
     ['eq', 'id', 'space-1'],
     ['eq', 'user_id', 'owner-a']
   ]);
@@ -132,4 +136,35 @@ test('knowledge space reader neither substitutes an absent space nor renders an 
     }),
     { code: 'KNOWLEDGE_SPACE_INVALID' }
   );
+});
+
+test('knowledge space reader distinguishes accepted workflow evidence from proposed and legacy candidate links', async () => {
+  const supabaseClient = databaseReturning({
+    id: 'space-1', slug: 'zero-to-one-product-development', name: '從 0 到 1 產品開發工作流', purpose: '', status: 'active', taxonomy_version: 1,
+    collections: [{ scope_role: 'primary', position: 0, collection: { id: 'collection-1', name: '工程師開發優化' } }],
+    nodes: [{ id: 'node-1', slug: 'spec-driven-development', node_type: 'workflow', title: 'Spec-driven development', problem: '如何在實作前讓需求與架構可審查？', content: {}, status: 'active', evidence: [evidence] }],
+    stages: [{
+      id: 'stage-1', slug: 'product-contract', title: '產品契約', objective: '把切片寫成可驗收的行為。', position: 0,
+      required_inputs: [], expected_outputs: [], gates: [], coverage_status: 'supported', status: 'active',
+      node_links: [{ position: 1, node_id: 'node-1' }],
+      evidence_links: [
+        { id: 'link-accepted', position: 0, node_id: 'node-1', evidence_role: 'method', rationale: '此方法能讓規格先被審查。', applicability: '需求尚未實作時', limitation: '不替代使用者驗收', status: 'accepted' },
+        { id: 'link-proposed', position: 2, node_id: 'node-1', evidence_role: 'example', rationale: '待確認是否適用。', applicability: '', limitation: '', status: 'proposed' }
+      ],
+      transitions: []
+    }]
+  });
+
+  const result = await loadKnowledgeSpace({ spaceId: 'space-1', userId: 'owner-a', supabaseClient });
+  const stage = result.stages[0];
+
+  assert.equal(stage.coverageStatus, 'supported');
+  assert.deepEqual(stage.evidenceLinks, [{
+    id: 'link-accepted', role: 'method', rationale: '此方法能讓規格先被審查。', applicability: '需求尚未實作時', limitation: '不替代使用者驗收', position: 0, status: 'accepted', node: result.nodes[0]
+  }]);
+  assert.deepEqual(stage.proposedEvidenceLinks, [{
+    id: 'link-proposed', role: 'example', rationale: '待確認是否適用。', applicability: '', limitation: '', position: 2, status: 'proposed', node: result.nodes[0]
+  }]);
+  assert.deepEqual(stage.candidateNodes, [result.nodes[0]]);
+  assert.match(supabaseClient.calls[1][1], /evidence_links:knowledge_space_stage_evidence_links!left\(id, position, node_id, evidence_role, rationale, applicability, limitation, status\)/);
 });

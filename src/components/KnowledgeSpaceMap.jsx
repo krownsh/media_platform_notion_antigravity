@@ -61,6 +61,18 @@ function NodeCard({ node, nextEvidenceNumber }) {
   );
 }
 
+function EvidenceLinkCard({ link, nextEvidenceNumber }) {
+  return (
+    <section className="rounded-lg border border-[var(--accent)]/25 bg-[var(--accent-soft)]/30 p-4">
+      <p className="text-xs font-semibold text-[var(--accent)]">{link.role}</p>
+      <p className="mt-2 text-sm leading-6 text-[#615d59]"><strong className="text-[rgba(0,0,0,0.95)]">為何在此：</strong>{link.rationale}</p>
+      {link.applicability && <p className="mt-1 text-sm leading-6 text-[#615d59]"><strong className="text-[rgba(0,0,0,0.95)]">適用範圍：</strong>{link.applicability}</p>}
+      {link.limitation && <p className="mt-1 text-sm leading-6 text-[#615d59]"><strong className="text-[rgba(0,0,0,0.95)]">限制：</strong>{link.limitation}</p>}
+      <div className="mt-4"><NodeCard node={link.node} nextEvidenceNumber={nextEvidenceNumber} /></div>
+    </section>
+  );
+}
+
 export default function KnowledgeSpaceMap({ spaceId }) {
   const [state, setState] = useState({ status: 'loading', data: null, error: null });
 
@@ -91,7 +103,7 @@ export default function KnowledgeSpaceMap({ spaceId }) {
 
   const { space, collections = [], nodes, stages = [] } = state.data;
   const stageNameById = new Map(stages.map((stage) => [stage.id, stage.title]));
-  const assignedNodeIds = new Set(stages.flatMap((stage) => stage.nodes.map((node) => node.id)));
+  const assignedNodeIds = new Set(stages.flatMap((stage) => stage.evidenceLinks.map((link) => link.node.id)));
   const unassignedNodes = nodes.filter((node) => !assignedNodeIds.has(node.id));
   let evidenceNumber = 0;
   const nextEvidenceNumber = () => { evidenceNumber += 1; return evidenceNumber; };
@@ -116,8 +128,10 @@ export default function KnowledgeSpaceMap({ spaceId }) {
               {stage.coverageStatus === 'gap' ? <span className="rounded-full bg-[#8a6f42]/15 px-2.5 py-1 text-xs font-semibold text-[#76541d]">尚缺來源覆蓋</span> : <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--accent)]">已有來源覆蓋</span>}
             </div>
             {stage.objective && <p className="mt-3 text-sm leading-6 text-[#615d59]">{stage.objective}</p>}
-            {(stage.requiredInputs.length > 0 || stage.expectedArtifacts.length > 0 || stage.gateCriteria.length > 0) && <dl className="mt-4 grid gap-2 rounded-lg bg-black/[0.025] p-3 text-sm leading-6 text-[#615d59]"><div>{stage.requiredInputs.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">輸入：</dt><dd className="inline">{stage.requiredInputs.join('、')}</dd></>}</div><div>{stage.expectedArtifacts.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">產出：</dt><dd className="inline">{stage.expectedArtifacts.join('、')}</dd></>}</div><div>{stage.gateCriteria.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">Gate：</dt><dd className="inline">{stage.gateCriteria.join('、')}</dd></>}</div></dl>}
-            {stage.nodes.length > 0 && <div className="mt-5 space-y-5">{stage.nodes.map((node) => <NodeCard key={node.id} node={node} nextEvidenceNumber={nextEvidenceNumber} />)}</div>}
+            {(stage.requiredInputs.length > 0 || stage.expectedOutputs.length > 0 || stage.gates.length > 0) && <dl className="mt-4 grid gap-2 rounded-lg bg-black/[0.025] p-3 text-sm leading-6 text-[#615d59]"><div>{stage.requiredInputs.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">輸入：</dt><dd className="inline">{stage.requiredInputs.join('、')}</dd></>}</div><div>{stage.expectedOutputs.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">產出：</dt><dd className="inline">{stage.expectedOutputs.join('、')}</dd></>}</div><div>{stage.gates.length > 0 && <><dt className="inline font-semibold text-[rgba(0,0,0,0.95)]">Gate：</dt><dd className="inline">{stage.gates.join('、')}</dd></>}</div></dl>}
+            {stage.evidenceLinks.length > 0 && <section className="mt-5"><h3 className="text-sm font-bold text-[rgba(0,0,0,0.95)]">已接受的依據</h3><div className="mt-3 space-y-4">{stage.evidenceLinks.map((link) => <EvidenceLinkCard key={link.id} link={link} nextEvidenceNumber={nextEvidenceNumber} />)}</div></section>}
+            {stage.proposedEvidenceLinks.length > 0 && <section className="mt-4 rounded-lg border border-dashed border-black/15 p-3 text-sm leading-6 text-[#615d59]"><h3 className="font-bold text-[rgba(0,0,0,0.95)]">待確認候選</h3><ul className="mt-2 space-y-1">{stage.proposedEvidenceLinks.map((link) => <li key={link.id}>【{link.role}】{link.node.title}：{link.rationale}</li>)}</ul></section>}
+            {stage.candidateNodes.length > 0 && <section className="mt-4 rounded-lg border border-dashed border-black/15 p-3 text-sm leading-6 text-[#615d59]"><h3 className="font-bold text-[rgba(0,0,0,0.95)]">舊關聯候選</h3><p className="mt-1">這些舊關聯尚未補齊用途與限制，不算作本階段已接受的依據。</p><ul className="mt-2 list-disc pl-5">{stage.candidateNodes.map((node) => <li key={node.id}>{node.title}</li>)}</ul></section>}
             {stage.coverageStatus === 'gap' && <p className="mt-4 rounded-lg border border-dashed border-[#8a6f42]/40 bg-[#8a6f42]/5 p-3 text-sm leading-6 text-[#76541d]">這一關已有工作定義，但尚無可引用來源支持其內容；需要補齊來源後才能把它當成已驗證的做法。</p>}
             {stage.transitions.length > 0 && <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#615d59]">{stage.transitions.map((transition) => <span key={`${stage.id}-${transition.toStageId}-${transition.type}`} className="inline-flex items-center gap-1 rounded-full bg-black/[0.045] px-2.5 py-1">{transition.type === 'feedback' ? <RotateCcw size={12} aria-hidden="true" /> : <ArrowRight size={12} aria-hidden="true" />}{transition.label || (transition.type === 'feedback' ? '回饋至' : '下一關：')} {stageNameById.get(transition.toStageId) || '下一階段'}</span>)}</div>}
           </li>

@@ -52,24 +52,47 @@ function normalizeTextList(value) {
     : [];
 }
 
+function normalizeEvidenceLink(link, nodesById) {
+  const roles = ['evidence', 'method', 'example', 'decision', 'risk', 'open_question'];
+  const statuses = ['proposed', 'accepted', 'superseded', 'archived'];
+  const node = nodesById.get(link?.node_id);
+  if (!link || typeof link.id !== 'string' || !link.id || !node || !roles.includes(link.evidence_role) || typeof link.rationale !== 'string' || !link.rationale.trim()) {
+    throw knowledgeSpaceError('Knowledge-space stage contains an invalid evidence link', 'KNOWLEDGE_SPACE_INVALID');
+  }
+
+  return {
+    id: link.id,
+    role: link.evidence_role,
+    rationale: link.rationale.trim(),
+    applicability: typeof link.applicability === 'string' ? link.applicability.trim() : '',
+    limitation: typeof link.limitation === 'string' ? link.limitation.trim() : '',
+    position: Number.isInteger(link.position) && link.position >= 0 ? link.position : 0,
+    status: statuses.includes(link.status) ? link.status : 'proposed',
+    node
+  };
+}
+
 function normalizeStage(stage, nodesById) {
   if (!stage || typeof stage.id !== 'string' || !stage.id || typeof stage.slug !== 'string' || !stage.slug.trim() || typeof stage.title !== 'string' || !stage.title.trim() || typeof stage.objective !== 'string' || !stage.objective.trim()) {
     throw knowledgeSpaceError('Knowledge space contains an invalid product-path stage', 'KNOWLEDGE_SPACE_INVALID');
   }
 
-  const links = Array.isArray(stage.node_links) ? stage.node_links : [];
-  const positionedNodes = links.map((link) => {
-    const node = nodesById.get(link?.node_id);
-    if (!node) throw knowledgeSpaceError('Knowledge-space stage references an unavailable node', 'KNOWLEDGE_SPACE_INVALID');
-    return { position: Number.isInteger(link?.position) && link.position >= 0 ? link.position : 0, node };
-  });
-  const nodes = positionedNodes
+  const sortLinks = (left, right) => left.position - right.position || left.id.localeCompare(right.id);
+  const candidateNodes = (Array.isArray(stage.node_links) ? stage.node_links : [])
+    .map((link) => {
+      const node = nodesById.get(link?.node_id);
+      if (!node) throw knowledgeSpaceError('Knowledge-space stage references an unavailable node', 'KNOWLEDGE_SPACE_INVALID');
+      return { position: Number.isInteger(link?.position) && link.position >= 0 ? link.position : 0, node };
+    })
     .sort((left, right) => left.position - right.position || left.node.id.localeCompare(right.node.id))
     .map(({ node }) => node);
-  const coverageStatus = ['supported', 'partial', 'gap'].includes(stage.coverage_status) ? stage.coverage_status : 'gap';
-  if (coverageStatus === 'supported' && nodes.length === 0) {
-    throw knowledgeSpaceError('A supported product-path stage must include cited nodes', 'KNOWLEDGE_SPACE_INVALID');
-  }
+  const allEvidenceLinks = (Array.isArray(stage.evidence_links) ? stage.evidence_links : [])
+    .map((link) => normalizeEvidenceLink(link, nodesById))
+    .sort(sortLinks);
+  const evidenceLinks = allEvidenceLinks.filter((link) => link.status === 'accepted');
+  const proposedEvidenceLinks = allEvidenceLinks.filter((link) => link.status === 'proposed');
+  const requestedCoverage = ['supported', 'partial', 'gap'].includes(stage.coverage_status) ? stage.coverage_status : 'gap';
+  const coverageStatus = evidenceLinks.length > 0 ? requestedCoverage : 'gap';
 
   return {
     id: stage.id,
@@ -82,7 +105,9 @@ function normalizeStage(stage, nodesById) {
     gates: normalizeTextList(stage.gates),
     coverageStatus,
     status: typeof stage.status === 'string' ? stage.status : 'draft',
-    nodes,
+    evidenceLinks,
+    proposedEvidenceLinks,
+    candidateNodes,
     transitions: (Array.isArray(stage.transitions) ? stage.transitions : [])
       .filter((transition) => typeof transition?.to_stage_id === 'string' && transition.to_stage_id)
       .map((transition) => ({
@@ -152,7 +177,7 @@ export async function loadKnowledgeSpace({ spaceId, userId, supabaseClient }) {
 
   const { data, error } = await supabaseClient
     .from('knowledge_spaces')
-    .select('id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url))), stages:knowledge_space_path_stages!left(id, slug, title, objective, position, required_inputs, expected_outputs, gates, coverage_status, status, node_links:knowledge_space_stage_nodes!left(position, node_id), transitions:knowledge_space_stage_transitions!knowledge_space_stage_transitions_from_stage_id_fkey(to_stage_id, transition_type, condition))')
+    .select('id, slug, name, purpose, status, taxonomy_version, collections:knowledge_space_collections!inner(scope_role, position, collection:collection_collections!inner(id, name)), nodes:knowledge_map_nodes!inner(id, slug, node_type, title, problem, content, status, evidence:knowledge_node_evidence!inner(source_post_id, evidence_role, excerpt, evidence_status, note, source_post:collection_posts!inner(title, original_url))), stages:knowledge_space_path_stages!left(id, slug, title, objective, position, required_inputs, expected_outputs, gates, coverage_status, status, node_links:knowledge_space_stage_nodes!left(position, node_id), evidence_links:knowledge_space_stage_evidence_links!left(id, position, node_id, evidence_role, rationale, applicability, limitation, status), transitions:knowledge_space_stage_transitions!knowledge_space_stage_transitions_from_stage_id_fkey(to_stage_id, transition_type, condition))')
     .eq('id', spaceId)
     .eq('user_id', userId)
     .maybeSingle();

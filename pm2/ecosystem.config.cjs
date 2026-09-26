@@ -26,6 +26,8 @@ module.exports = {
     apps: [
         {
             name: 'media-collection-server',
+            // Reject credentials/session state inherited from the PM2 client shell.
+            filter_env: true,
             cwd: projectRoot,
             script: 'server/index.js',
             interpreter: 'node',
@@ -38,6 +40,8 @@ module.exports = {
         },
         {
             name: 'media-collection-capture-worker',
+            // Reject credentials/session state inherited from the PM2 client shell.
+            filter_env: true,
             cwd: projectRoot,
             script: 'server/scripts/workers/run_capture_worker.js',
             interpreter: 'node',

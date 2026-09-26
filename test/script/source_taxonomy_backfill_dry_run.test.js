@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { buildSourceTaxonomyManifest, parsePredictionRows } from '../../scripts/maintenance/propose-source-taxonomy-backfill.js';
+
+const ownerId = '50984520-69ad-4e64-b9c1-503f5c1b0e63';
+const posts = [
+  { id: 'a', user_id: ownerId, title: 'MCP tutorial', content: 'MCP tool calling workflow' },
+  { id: 'b', user_id: ownerId, title: 'Unknown', content: 'brief note' }
+];
+
+const classifications = new Map([
+  ['a', {
+    category_key: 'agent-systems-mcp-automation', confidence: 0.95,
+    evidence_excerpt: 'MCP tool calling', rationale: 'Agent workflow.'
+  }],
+  ['b', {
+    category_key: 'knowledge-learning-productivity', confidence: 0.4,
+    evidence_excerpt: 'brief note', rationale: 'Insufficient context.'
+  }]
+]);
+
+test('backfill manifest covers each unique owner post without collection or legacy-category fields', () => {
+  const result = buildSourceTaxonomyManifest({ posts, classifications, userId: ownerId });
+  assert.equal(result.summary.total_posts, 2);
+  assert.equal(result.summary.accepted, 1);
+  assert.equal(result.summary.needs_review, 1);
+  assert.deepEqual(result.proposals.map(item => item.post_id), ['a', 'b']);
+  for (const proposal of result.proposals) {
+    assert.equal('collection_id' in proposal, false);
+    assert.equal('primary_category' in proposal, false);
+    assert.equal('legacy_category' in proposal, false);
+  }
+});
+
+test('prediction parser refuses duplicate or malformed prediction rows', () => {
+  assert.throws(() => parsePredictionRows([{ post_id: 'a' }, { post_id: 'a' }]), /Duplicate prediction/);
+  assert.throws(() => parsePredictionRows([{ category_key: 'agent-systems-mcp-automation' }]), /post_id/);
+});
+
+test('backfill manifest refuses malformed owner ids, foreign or duplicate source ids, and unknown predictions', () => {
+  const singlePrediction = new Map([['a', classifications.get('a')]]);
+  assert.throws(() => buildSourceTaxonomyManifest({ posts, classifications, userId: 'owner-1' }), /valid UUID/);
+  assert.throws(() => buildSourceTaxonomyManifest({ posts: [{ ...posts[0], user_id: '50984520-69ad-4e64-b9c1-503f5c1b0e64' }], classifications: singlePrediction, userId: ownerId }), /does not belong/);
+  assert.throws(() => buildSourceTaxonomyManifest({ posts: [posts[0], posts[0]], classifications: singlePrediction, userId: ownerId }), /duplicate/);
+  assert.throws(() => buildSourceTaxonomyManifest({ posts, classifications: new Map([...classifications, ['unknown', classifications.get('a')]]), userId: ownerId }), /unknown post/);
+});

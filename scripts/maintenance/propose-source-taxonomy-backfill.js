@@ -76,21 +76,17 @@ async function loadJsonLines(filePath) {
   return parsePredictionRows(raw.split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line)));
 }
 
-async function fetchOwnerPosts(userId) {
-  const posts = [];
-  const pageSize = 100;
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
-      .from('collection_posts')
-      .select('id,user_id,title,content,full_json,created_at')
-      .eq('user_id', userId)
-      .order('id', { ascending: true })
-      .range(from, from + pageSize - 1);
-    if (error) throw new Error(`Owner post read failed: ${error.message}`);
-    posts.push(...(data || []));
-    if (!data || data.length < pageSize) break;
-  }
-  return posts;
+export const FIXED_DRY_RUN_POST_LIMIT = 25;
+
+export async function fetchFixedOwnerPosts(userId, supabaseClient = supabase) {
+  const { data, error } = await supabaseClient
+    .from('collection_posts')
+    .select('id,user_id,title,content,full_json,created_at')
+    .eq('user_id', userId)
+    .order('id', { ascending: true })
+    .limit(FIXED_DRY_RUN_POST_LIMIT);
+  if (error) throw new Error(`Owner post read failed: ${error.message}`);
+  return data || [];
 }
 
 async function approvedOutputPath(outputPath) {
@@ -119,7 +115,7 @@ async function main() {
   if (!isSupabaseConfigured) throw new Error('Supabase credentials are required for the read-only preflight');
 
   const safeOutputPath = await approvedOutputPath(outputPath);
-  const [posts, classifications] = await Promise.all([fetchOwnerPosts(userId), loadJsonLines(predictionsPath)]);
+  const [posts, classifications] = await Promise.all([fetchFixedOwnerPosts(userId), loadJsonLines(predictionsPath)]);
   const result = buildSourceTaxonomyManifest({ posts, classifications, userId });
   const serialized = JSON.stringify(result, null, 2);
   const manifestSha256 = crypto.createHash('sha256').update(serialized, 'utf8').digest('hex');

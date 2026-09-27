@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildSourceTaxonomyManifest, parsePredictionRows } from '../../scripts/maintenance/propose-source-taxonomy-backfill.js';
+import { buildSourceTaxonomyManifest, FIXED_DRY_RUN_POST_LIMIT, fetchFixedOwnerPosts, parsePredictionRows } from '../../scripts/maintenance/propose-source-taxonomy-backfill.js';
 
 const ownerId = '50984520-69ad-4e64-b9c1-503f5c1b0e63';
 const posts = [
@@ -19,6 +19,42 @@ const classifications = new Map([
     evidence_excerpt: 'brief note', rationale: 'Insufficient context.'
   }]
 ]);
+
+test('fixed dry-run selector reads exactly the first 25 owner posts in stable id order', async () => {
+  const calls = [];
+  const expectedPosts = [{ id: 'post-1', user_id: ownerId }];
+  const client = {
+    from(table) {
+      calls.push(['from', table]);
+      return {
+        select(columns) {
+          calls.push(['select', columns]);
+          return {
+            eq(column, value) {
+              calls.push(['eq', column, value]);
+              return {
+                order(column, options) {
+                  calls.push(['order', column, options]);
+                  return {
+                    limit(value) {
+                      calls.push(['limit', value]);
+                      return Promise.resolve({ data: expectedPosts, error: null });
+                    }
+                  };
+                }
+              };
+            }
+          };
+        }
+      };
+    }
+  };
+
+  assert.equal(FIXED_DRY_RUN_POST_LIMIT, 25);
+  assert.deepEqual(await fetchFixedOwnerPosts(ownerId, client), expectedPosts);
+  assert.deepEqual(calls.at(-1), ['limit', 25]);
+  assert.deepEqual(calls.find(call => call[0] === 'order'), ['order', 'id', { ascending: true }]);
+});
 
 test('backfill manifest covers each unique owner post without collection or legacy-category fields', () => {
   const result = buildSourceTaxonomyManifest({ posts, classifications, userId: ownerId });

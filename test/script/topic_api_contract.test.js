@@ -15,4 +15,13 @@ test('Topic APIs require a JWT and only operate within the authenticated tenant'
     assert.match(serverSource, /\.from\('collection_posts'\)[\s\S]+\.eq\('user_id', userId\)/);
     assert.match(serverSource, /origin: 'user',[\s\S]+status: 'active'/);
     assert.match(serverSource, /suggestTopicMatches\(source, topics \|\| \[\]\)/);
+    assert.match(serverSource, /attachAcceptedTopicSources\(topics, acceptedMatches \|\| \[\]\)/);
+    assert.match(serverSource, /\.from\('collection_topic_source_matches'\)[\s\S]+\.eq\('status', 'accepted'\)/);
+});
+
+test('topic lifecycle is owner-editable, archivable, and removes a source by preserving a rejected decision', () => {
+    assert.match(serverSource, /app\.patch\('\/api\/topics\/:topicId'/);
+    assert.match(serverSource, /\['active', 'archived'\]\.includes\(status\)/);
+    assert.match(serverSource, /\.eq\('origin', 'user'\)/);
+    assert.match(serverSource, /\['accepted', 'rejected'\]\.includes\(status\)/);
 });

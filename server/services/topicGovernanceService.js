@@ -34,7 +34,7 @@ export async function getAcceptedTopicsForSource(post, supabaseClient) {
         .from('collection_topic_source_matches')
         .select(`
             id, topic_id, source_id, status, score, rationale,
-            collection_topics!inner (id, title, slug, origin, status)
+            collection_topics!inner (id, title, slug, description, purpose, desired_outcomes, keywords, origin, status)
         `)
         .eq('user_id', post.user_id)
         .eq('source_id', post.id)

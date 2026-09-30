@@ -57,6 +57,7 @@ const PocWorkbenchPanel = ({ postId }) => {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-neutral-800">POC 工作台</p>
           {state?.scope && <p className="mt-1 text-xs leading-relaxed text-[#615d59]">{state.scope.objective || '此資料夾允許 POC 提案'} · {state.scope.project_targets.join(', ')}</p>}
+          {state?.accepted_topics?.length > 0 && <section className="mt-3 rounded-lg border border-[#0075de]/15 bg-white/70 p-3" aria-label="已接受主題脈絡"><p className="text-xs font-semibold text-neutral-800">已接受主題脈絡</p><div className="mt-2 space-y-2">{state.accepted_topics.map((topic) => <div key={topic.id} className="text-xs text-[#615d59]"><p className="font-medium text-neutral-800">{topic.title}</p>{topic.purpose && <p className="mt-0.5">目的：{topic.purpose}</p>}{topic.description && <p className="mt-0.5">說明：{topic.description}</p>}{topic.rationale && <p className="mt-0.5">接受理由：{topic.rationale}</p>}</div>)}</div></section>}
           {state?.successful_run ? (
             <p className="mt-2 text-xs font-medium text-emerald-700">已有驗證結果：{state.successful_run.run_id}</p>
           ) : (

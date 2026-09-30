@@ -26,9 +26,8 @@ import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
-import { rebuildTopicKnowledgeAggregate } from './services/topicKnowledgeAggregateService.js';
-import { loadKnowledgeMap } from './services/knowledgeMapService.js';
-import { listKnowledgeSpaces, loadKnowledgeSpace } from './services/knowledgeSpaceService.js';
+import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -213,8 +212,7 @@ app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
 app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
-app.use('/api/knowledge-map', requireSupabaseJwt);
-app.use('/api/knowledge-spaces', requireSupabaseJwt);
+
 
 function normalizeTopicTextList(value) {
     return Array.isArray(value)
@@ -234,68 +232,7 @@ function topicWithProject(topic) {
     return { ...rest, project };
 }
 
-// Reader-facing knowledge pages are stored in Supabase as an owner-scoped,
-// read-only projection. There is deliberately no write route here.
-app.get('/api/knowledge-map/:collectionId', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Knowledge map reader is not configured' });
-    }
 
-    try {
-        const knowledgeMap = await loadKnowledgeMap({
-            collectionId: req.params.collectionId,
-            userId: getAuthenticatedUserId(req),
-            supabaseClient: supabase
-        });
-        return res.json(knowledgeMap);
-    } catch (error) {
-        if (error.code === 'KNOWLEDGE_MAP_NOT_FOUND') {
-            return res.status(404).json({ error: '這個資料夾尚無可閱讀的知識地圖' });
-        }
-        console.error('[Knowledge map] read failed:', error.message);
-        return res.status(503).json({ error: 'Knowledge map reader is temporarily unavailable' });
-    }
-});
-
-// Cross-folder knowledge spaces are read-only projections. Their evidence may cite
-// posts from several source folders, while source-folder assignment remains separate.
-app.get('/api/knowledge-spaces', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Knowledge space reader is not configured' });
-    }
-
-    try {
-        const knowledgeSpaces = await listKnowledgeSpaces({
-            userId: getAuthenticatedUserId(req),
-            supabaseClient: supabase
-        });
-        return res.json(knowledgeSpaces);
-    } catch (error) {
-        console.error('[Knowledge spaces] list failed:', error.message);
-        return res.status(503).json({ error: 'Knowledge spaces are temporarily unavailable' });
-    }
-});
-
-app.get('/api/knowledge-spaces/:spaceId', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Knowledge space reader is not configured' });
-    }
-
-    try {
-        const knowledgeSpace = await loadKnowledgeSpace({
-            spaceId: req.params.spaceId,
-            userId: getAuthenticatedUserId(req),
-            supabaseClient: supabase
-        });
-        return res.json(knowledgeSpace);
-    } catch (error) {
-        if (error.code === 'KNOWLEDGE_SPACE_NOT_FOUND') {
-            return res.status(404).json({ error: '這個知識地圖尚無可閱讀內容' });
-        }
-        console.error('[Knowledge space] read failed:', error.message);
-        return res.status(503).json({ error: 'Knowledge space reader is temporarily unavailable' });
-    }
-});
 
 app.get('/api/projects', async (req, res) => {
     if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
@@ -395,7 +332,17 @@ app.get('/api/topics', async (req, res) => {
         }
 
         if (error) throw error;
-        return res.json({ topics: (data || []).map(topicWithProject), domains: TOPIC_DOMAIN_OPTIONS });
+        const topics = (data || []).map(topicWithProject);
+        const { data: acceptedMatches, error: acceptedMatchesError } = await supabase
+            .from('collection_topic_source_matches')
+            .select('topic_id, source_id, status, rationale, collection_posts (id, title)')
+            .eq('user_id', getAuthenticatedUserId(req))
+            .eq('status', 'accepted');
+        if (acceptedMatchesError) throw acceptedMatchesError;
+        return res.json({
+            topics: attachAcceptedTopicSources(topics, acceptedMatches || []),
+            domains: TOPIC_DOMAIN_OPTIONS
+        });
     } catch (error) {
         console.error('[Topics] list failed:', error.message);
         return res.status(500).json({ error: 'Failed to list topics' });
@@ -455,6 +402,49 @@ app.post('/api/topics', async (req, res) => {
         if (error.code === '23505') return res.status(409).json({ error: '此專案的這個領域已經有啟用中的主題' });
         console.error('[Topics] create failed:', error.message);
         return res.status(500).json({ error: 'Failed to create topic' });
+    }
+});
+
+app.patch('/api/topics/:topicId', async (req, res) => {
+    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
+    const { topicId } = req.params;
+    const body = req.body || {};
+    const update = {};
+    if (Object.hasOwn(body, 'title')) {
+        if (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 160) return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
+        update.title = body.title.trim();
+    }
+    for (const field of ['description', 'purpose']) {
+        if (Object.hasOwn(body, field)) {
+            if (body[field] !== null && typeof body[field] !== 'string') return res.status(400).json({ error: `${field} must be a string or null` });
+            update[field] = body[field]?.trim() || null;
+        }
+    }
+    for (const field of ['desired_outcomes', 'keywords']) {
+        if (Object.hasOwn(body, field)) update[field] = normalizeTopicTextList(body[field]);
+    }
+    if (Object.hasOwn(body, 'status')) {
+        const status = String(body.status || '').toLowerCase();
+        if (!['active', 'archived'].includes(status)) return res.status(400).json({ error: 'status must be active or archived' });
+        update.status = status;
+    }
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No editable topic fields were supplied' });
+    try {
+        const { data, error } = await supabase
+            .from('collection_topics')
+            .update(update)
+            .eq('id', topicId)
+            .eq('user_id', getAuthenticatedUserId(req))
+            .eq('origin', 'user')
+            .select()
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return res.status(404).json({ error: 'Editable topic was not found' });
+        return res.json({ topic: data });
+    } catch (error) {
+        if (isGovernanceSchemaError(error)) return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
+        console.error('[Topics] update failed:', error.message);
+        return res.status(500).json({ error: 'Failed to update topic' });
     }
 });
 
@@ -528,16 +518,8 @@ app.post('/api/topics/:topicId/matches/:sourceId/decision', async (req, res) => 
             .select()
             .single();
         if (error) throw error;
-        const aggregate = await rebuildTopicKnowledgeAggregate({
-            topicId,
-            userId,
-            supabaseClient: supabase
-        });
-        return res.json({ match: data, aggregate });
-    } catch (error) {
-        if (error.code === 'TOPIC_AGGREGATE_CONFLICT') {
-            return res.status(409).json({ error: error.message, code: error.code });
-        }
+        return res.json({ match: data });
+        } catch (error) {
         if (isGovernanceSchemaError(error)) {
             return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
         }

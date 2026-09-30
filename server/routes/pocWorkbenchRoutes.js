@@ -1,13 +1,14 @@
 import express from 'express';
 import { supabase } from '../supabaseClient.js';
 import { runWorkflowPoc } from '../../scripts/agent-sdk/run-poc-workflow.js';
+import { getAcceptedTopicsForSource } from '../services/topicGovernanceService.js';
 
 export const pocWorkbenchRouter = express.Router();
 
 async function loadWorkbench(userId, postId) {
   const { data: post, error: postError } = await supabase
     .from('collection_posts')
-    .select('id, collection_post_analysis(insights), collection_post_workflows(*)')
+    .select('id, user_id, collection_post_analysis(insights), collection_post_workflows(*)')
     .eq('id', postId)
     .eq('user_id', userId)
     .maybeSingle();
@@ -28,6 +29,7 @@ async function loadWorkbench(userId, postId) {
   const successfulRun = insights.find(item => item?.type === 'poc_run' && item?.status === 'success')
     || (executeAction?.outcome?.status === 'success' ? executeAction.outcome : null);
 
+  const acceptedTopics = await getAcceptedTopicsForSource(post, supabase);
   return {
     post_id: post.id,
     workflow_id: workflow?.id || null,
@@ -36,7 +38,12 @@ async function loadWorkbench(userId, postId) {
     scope: null,
     route: proposalAction ? { status: proposalAction.status, outcome: proposalAction.outcome || null } : null,
     execute_action: executeAction ? { status: executeAction.status, outcome: executeAction.outcome || null } : null,
-    successful_run: successfulRun ? { run_id: successfulRun.run_id, status: successfulRun.status } : null
+    successful_run: successfulRun ? { run_id: successfulRun.run_id, status: successfulRun.status } : null,
+    accepted_topics: acceptedTopics.map(({ topic, rationale }) => ({
+      id: topic.id, title: topic.title, purpose: topic.purpose || null,
+      description: topic.description || null, desired_outcomes: topic.desired_outcomes || [],
+      keywords: topic.keywords || [], rationale: rationale || null
+    }))
   };
 }
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import PostCard from '../components/PostCard';
-import CollectionKnowledgeMap from '../components/CollectionKnowledgeMap';
+
 import { Search, Filter, SearchX } from 'lucide-react';
 import { matchesWorkflowFilter, WORKFLOW_FILTER_OPTIONS } from '../utils/workflowPresentation';
 
@@ -137,7 +137,7 @@ const ViewAllPage = ({ onRemix }) => {
                 </div>
             </div>
 
-            {collectionId && <CollectionKnowledgeMap collectionId={collectionId} />}
+
 
             {loading ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">

@@ -176,12 +176,7 @@ const Layout = ({ children }) => {
                                     active={location.pathname === '/topics'}
                                     onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
                                 />
-                                <SidebarItem
-                                    icon={BookOpenText}
-                                    label="知識地圖"
-                                    active={location.pathname.startsWith('/knowledge-spaces')}
-                                    onClick={() => { navigate('/knowledge-spaces'); setIsMobileMenuOpen(false); }}
-                                />
+
                                 <SidebarItem
                                     icon={Library}
                                     label="收藏夾"
@@ -334,13 +329,7 @@ const Layout = ({ children }) => {
                         collapsed={isSidebarCollapsed}
                     />
 
-                    <SidebarItem
-                        icon={BookOpenText}
-                        label="知識地圖"
-                        active={location.pathname.startsWith('/knowledge-spaces')}
-                        onClick={() => navigate('/knowledge-spaces')}
-                        collapsed={isSidebarCollapsed}
-                    />
+
 
                     <SidebarItem
                         icon={Library}

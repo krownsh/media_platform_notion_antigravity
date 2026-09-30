@@ -8,6 +8,7 @@ import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import PocWorkbenchPanel from './PocWorkbenchPanel';
 import PocResultPanel from './PocResultPanel';
+import PostTopicMatchPanel from './PostTopicMatchPanel';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
 import { actionBadges, badgeClass, parallelTrackPresentation, workflowBadge, workflowGuidance, workflowNextStep } from '../utils/workflowPresentation';
 
@@ -273,6 +274,7 @@ const PostDetailView = ({ onRemix }) => {
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+                    <PostTopicMatchPanel sourceId={post.dbId || post.id} />
                     <button
                         onClick={() => onRemix && onRemix(post)}
                         className="notion-btn-secondary flex items-center gap-2 py-1.5 px-3 text-xs sm:text-sm"

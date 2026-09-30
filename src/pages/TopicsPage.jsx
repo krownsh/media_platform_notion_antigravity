@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Check, FolderGit2, Plus, RefreshCw, Sparkles, X } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 import { authenticatedFetch } from '../api/authenticatedFetch';
+import TopicCard from '../components/TopicCard';
 
 const PROJECT_PRESETS = [
     'media_platform_notion_antigravity',
@@ -44,27 +45,6 @@ async function responseData(response) {
     if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
     return data;
 }
-
-const TopicCard = ({ topic, domainLabel }) => (
-    <article className="notion-card p-5">
-        <div className="flex items-start justify-between gap-3">
-            <h4 className="font-semibold text-lg">{topic.title}</h4>
-            <span className="notion-badge shrink-0">{topic.status}</span>
-        </div>
-        <p className="mt-2 text-xs text-[#615d59]">{topic.project?.title || '尚未遷移的舊主題'} · {domainLabel(topic.domain_key)}</p>
-        {topic.purpose && <p className="mt-3 text-sm text-[#615d59]">{topic.purpose}</p>}
-        {topic.description && <p className="mt-2 text-sm text-[#615d59]/80">{topic.description}</p>}
-        <section className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3" aria-label="知識彙整">
-            <div className="flex items-center justify-between gap-2 text-xs font-medium text-[#615d59]"><span>知識彙整</span><span>r{topic.knowledge_revision || 0} · {topic.knowledge_source_count || 0} 個已接受來源</span></div>
-            {topic.knowledge_source_count > 0 ? <>
-                <p className="mt-2 text-sm text-[#615d59]">{topic.knowledge_summary}</p>
-                {topic.knowledge_concepts?.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{topic.knowledge_concepts.map((concept) => <span key={concept} className="rounded-md bg-white px-2 py-1 text-xs text-[#615d59]">{concept}</span>)}</div>}
-                {topic.knowledge_source_ids?.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5 text-xs"><span className="self-center text-[#615d59]">來源：</span>{topic.knowledge_source_ids.map((sourceId) => <a key={sourceId} href={`/post/${sourceId}`} className="rounded-md border notion-whisper-border bg-white px-2 py-1 text-[var(--accent)] hover:underline">查看來源</a>)}</div>}
-            </> : <p className="mt-2 text-sm text-[#615d59]">尚未彙整：接受來源後會在此建立可追溯摘要。</p>}
-        </section>
-        {topic.keywords?.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{topic.keywords.map((keyword) => <span key={keyword} className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#615d59]">#{keyword}</span>)}</div>}
-    </article>
-);
 
 const TopicsPage = () => {
     const [topics, setTopics] = useState([]);
@@ -179,6 +159,30 @@ const TopicsPage = () => {
         }
     };
 
+    const saveTopic = async (topicId, fields) => {
+        setSubmitting(true); setError(null);
+        try {
+            await responseData(await authenticatedFetch(`${API_BASE_URL}/api/topics/${topicId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) }));
+            await loadTopics();
+        } catch (requestError) { setError(requestError.message); throw requestError; } finally { setSubmitting(false); }
+    };
+
+    const updateTopicStatus = async (topic) => {
+        setSubmitting(true); setError(null);
+        try {
+            await responseData(await authenticatedFetch(`${API_BASE_URL}/api/topics/${topic.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: topic.status === 'archived' ? 'active' : 'archived' }) }));
+            await loadTopics();
+        } catch (requestError) { setError(requestError.message); } finally { setSubmitting(false); }
+    };
+
+    const removeSourceFromTopic = async (topicId, sourceId) => {
+        setSubmitting(true); setError(null);
+        try {
+            await responseData(await authenticatedFetch(`${API_BASE_URL}/api/topics/${topicId}/matches/${sourceId}/decision`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) }));
+            await loadTopics();
+        } catch (requestError) { setError(requestError.message); } finally { setSubmitting(false); }
+    };
+
     const availablePresets = PROJECT_PRESETS.filter((preset) => !projects.some((project) => project.repository_target?.toLowerCase() === preset.repository_target.toLowerCase()));
     const domainLabel = (key) => domains.find((domain) => domain.key === key)?.label || key || '未分類';
     const activeTopics = topics.filter((topic) => topic.origin === 'user' && topic.status === 'active');
@@ -233,8 +237,8 @@ const TopicsPage = () => {
 
             <section>
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="flow-kicker mb-1.5">持續推進</p><h3 className="text-xl font-bold tracking-[-0.035em]">進行中的主題</h3></div>{historicalTopics.length > 0 && <button type="button" onClick={() => setShowArchivedTopics((current) => !current)} className="self-start rounded-md border notion-whisper-border px-3 py-1.5 text-xs text-[#615d59] hover:bg-[var(--surface-muted)]">{showArchivedTopics ? `隱藏歷史主題（${historicalTopics.length}）` : `查看歷史主題（${historicalTopics.length}）`}</button>}</div>
-                {loading ? <div className="flow-surface flow-shimmer h-44" /> : activeTopics.length === 0 ? <div className="flow-panel border-dashed p-10 text-center text-sm text-[#615d59]">尚未建立進行中的主題。</div> : <div className="space-y-7">{activeTopicGroups.map((group) => <section key={group.project.id}><h4 className="mb-3 text-sm font-semibold text-[#615d59]">{group.project.title}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{group.topics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>)}{ungroupedActiveTopics.length > 0 && <section><h4 className="mb-3 text-sm font-semibold text-[#615d59]">尚未關聯專案</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{ungroupedActiveTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>}</div>}
-                {showArchivedTopics && historicalTopics.length > 0 && <section className="mt-8 border-t notion-whisper-border pt-6"><p className="flow-kicker mb-1.5">僅供查閱</p><h3 className="text-lg font-semibold">歷史主題</h3><p className="mt-2 text-sm text-[#615d59]">封存主題不參與新的來源匹配、研究或 POC。</p><div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">{historicalTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} />)}</div></section>}
+                {loading ? <div className="flow-surface flow-shimmer h-44" /> : activeTopics.length === 0 ? <div className="flow-panel border-dashed p-10 text-center text-sm text-[#615d59]">尚未建立進行中的主題。</div> : <div className="space-y-7">{activeTopicGroups.map((group) => <section key={group.project.id}><h4 className="mb-3 text-sm font-semibold text-[#615d59]">{group.project.title}</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{group.topics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} onToggleArchive={updateTopicStatus} onRemoveSource={removeSourceFromTopic} onSave={saveTopic} busy={submitting} />)}</div></section>)}{ungroupedActiveTopics.length > 0 && <section><h4 className="mb-3 text-sm font-semibold text-[#615d59]">尚未關聯專案</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{ungroupedActiveTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} onToggleArchive={updateTopicStatus} onRemoveSource={removeSourceFromTopic} onSave={saveTopic} busy={submitting} />)}</div></section>}</div>}
+                {showArchivedTopics && historicalTopics.length > 0 && <section className="mt-8 border-t notion-whisper-border pt-6"><p className="flow-kicker mb-1.5">僅供查閱</p><h3 className="text-lg font-semibold">歷史主題</h3><p className="mt-2 text-sm text-[#615d59]">封存主題不參與新的來源匹配、研究或 POC。</p><div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">{historicalTopics.map((topic) => <TopicCard key={topic.id} topic={topic} domainLabel={domainLabel} onToggleArchive={updateTopicStatus} onRemoveSource={removeSourceFromTopic} onSave={saveTopic} busy={submitting} />)}</div></section>}
             </section>
         </div>
     );

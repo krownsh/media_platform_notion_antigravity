@@ -84,8 +84,7 @@ export async function getDomainLeaderboard(userId, limit = 10) {
     const { data, error } = await supabase
         .from('collection_posts')
         .select('source_domains')
-        .eq('user_id', userId)
-        .not('source_domains', 'eq', '[]');
+        .eq('user_id', userId);
 
     if (error) throw new Error(`getDomainLeaderboard: ${error.message}`);
 

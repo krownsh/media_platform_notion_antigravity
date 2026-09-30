@@ -12,8 +12,7 @@ import ImageWorkflowPage from './pages/ImageWorkflowPage';
 import InsightPage from './pages/InsightPage';
 import TopicsPage from './pages/TopicsPage';
 import SearchPage from './pages/SearchPage';
-import KnowledgeSpacePage from './pages/KnowledgeSpacePage';
-import KnowledgeSpacesPage from './pages/KnowledgeSpacesPage';
+
 import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
 import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
@@ -89,16 +88,7 @@ function App() {
               <ViewAllPage onRemix={setRemixPost} />
             </ProtectedRoute>
           } />
-          <Route path="/knowledge-spaces" element={
-            <ProtectedRoute>
-              <KnowledgeSpacesPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/knowledge-spaces/:spaceId" element={
-            <ProtectedRoute>
-              <KnowledgeSpacePage />
-            </ProtectedRoute>
-          } />
+
           <Route path="/post/:postId" element={
             <ProtectedRoute>
               <PostDetailView onRemix={setRemixPost} />

@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
-import { upsertPostSearchDocument } from './postSearchService.js';
+import { refreshOwnerPostSearchDocument } from './ownerSearchService.js';
+import { prepareInitialReviewProposals } from './reviewProposalService.js';
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -21,7 +22,10 @@ export async function finalizeCapture(
     {
         supabaseClient = supabase,
         configured = isSupabaseConfigured,
-        pipelineVersion = 'capture-v2'
+        pipelineVersion = 'capture-v5-owner-guided',
+        captureQuality = 'complete',
+        reviewPreparer = prepareInitialReviewProposals,
+        searchIndexer = refreshOwnerPostSearchDocument
     } = {}
 ) {
     if (!configured) {
@@ -30,7 +34,6 @@ export async function finalizeCapture(
         throw error;
     }
 
-    const analysis = data.analysis || {};
     const originalUrl = data.original_url || data.originalUrl || data.url;
     if (!originalUrl) throw new Error('Capture is missing original_url');
 
@@ -39,24 +42,24 @@ export async function finalizeCapture(
             p_user_id: userId,
             p_correlation_id: correlationId,
             p_pipeline_version: pipelineVersion,
-            p_capture_quality: source === 'fallback' ? 'degraded' : 'complete',
+            p_capture_quality: captureQuality,
             p_post: {
                 platform: normalizeCapturePlatform(data.platform),
                 original_url: originalUrl,
                 title: data.title || null,
                 author_name: data.author || data.author_name || null,
                 author_id: data.authorHandle || data.author_id || null,
-                // External profile-image URLs are intentionally discarded. The
-                // UI renders a stable initial avatar from author_name instead.
                 author_avatar_url: null,
                 content: data.content || null,
                 posted_at: data.posted_at || data.postedAt || null,
                 is_archived: data.is_archived ?? false,
                 full_json: data.full_json || data.fullJson || null,
                 source_domains: data.source_domains || [],
-                source_type: data.source_type || data.full_json?.source_type || data.fullJson?.source_type || 'url_capture'
+                source_type: data.source_type
+                    || data.full_json?.source_type
+                    || data.fullJson?.source_type
+                    || (source === 'fallback' ? 'fallback_link' : source === 'upload' ? 'image_upload' : 'url_capture')
             },
-            // Capture-only mode deliberately stores no semantic interpretation.
             p_analysis: {},
             p_media: (data.images || []).map((media, index) => {
                 if (typeof media === 'string') return { url: media, order: index };
@@ -80,25 +83,22 @@ export async function finalizeCapture(
         .single();
 
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
-    if (!finalized?.post_id) {
-        throw new Error('Capture finalization returned no post identity');
+    if (!finalized?.post_id || !finalized?.source_revision_id) {
+        throw new Error('Capture finalization returned an incomplete result');
     }
 
-    // Search indexing is a projection. A missing/unapplied Stage N migration
-    // must never make the durable capture fail; the maintenance command can
-    // rebuild the projection later.
     try {
-        const { data: indexedPost, error: indexLookupError } = await supabaseClient
-            .from('collection_posts')
-            .select(`
-                id, user_id, platform, original_url, title, author_name, content, collection_id,
-                collection_post_analysis (*)
-            `)
-            .eq('id', finalized.post_id)
-            .eq('user_id', userId)
-            .maybeSingle();
-        if (indexLookupError) throw indexLookupError;
-        if (indexedPost) await upsertPostSearchDocument(indexedPost, { supabaseClient });
+        await reviewPreparer({
+            userId,
+            sourceRevisionId: finalized.source_revision_id,
+            supabaseClient
+        });
+    } catch (packetError) {
+        console.warn(`[Capture] Review packet projection deferred: ${packetError.message}`);
+    }
+
+    try {
+        await searchIndexer({ userId, postId: finalized.post_id, sourceRevisionId: finalized.source_revision_id, supabaseClient });
     } catch (error) {
         console.warn(`[Capture] Search projection deferred: ${error.message}`);
     }

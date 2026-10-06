@@ -9,7 +9,6 @@ const projectRoot = path.resolve(path.dirname(currentFile), '..', '..');
 const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'), 'utf8');
 const batchProcessorSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'batchProcessor.js'), 'utf8');
 const twitterCrawlerSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'crawlerService', 'twitterCrawler.js'), 'utf8');
-const imageWorkflowPageSource = fs.readFileSync(path.join(projectRoot, 'src', 'pages', 'ImageWorkflowPage.jsx'), 'utf8');
 const serverEnvTemplate = fs.readFileSync(path.join(projectRoot, 'server', '.env.example'), 'utf8');
 const twitterReference = fs.readFileSync(path.join(projectRoot, 'server', 'fixtures', 'crawler', 'twitter', 'example1', 'doc.md'), 'utf8');
 
@@ -34,11 +33,10 @@ test('only capture endpoints accept the mapped n8n key; interactive routes requi
     }
 });
 
-test('Gemini-dependent image workflow is explicitly retired and cannot receive a body userId', () => {
+test('Gemini-dependent image workflow endpoint is explicitly retired and cannot receive a body userId', () => {
     assert.match(serverSource, /imageWorkflowRetired/);
     assert.match(serverSource, /status\(410\)/);
     assert.doesNotMatch(serverSource, /const \{ postId, imageUrl, prompt, userId \} = req\.body/);
-    assert.doesNotMatch(imageWorkflowPageSource, /user-id-placeholder/);
 });
 
 test('batch classification is tenant-scoped and X crawler obtains credentials from env without logging guest tokens', () => {

@@ -159,7 +159,7 @@ const UrlInput = () => {
 
                 <div className="border-t notion-whisper-border px-4 py-3 sm:px-5 text-xs leading-5 text-[#615d59]">
                     {mode === 'image'
-                        ? '圖片會先存入私人空間，再交由 Hermes 非同步分析。'
+                        ? '圖片會先存入私人空間並建立原始來源，之後由你決定要整理什麼。'
                         : '支援公開社群連結與一般網頁來源。處理完成後可從收件匣繼續整理。'}
                 </div>
             </div>

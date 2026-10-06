@@ -15,7 +15,6 @@ const categoryProcessorSource = fs.readFileSync(
     'utf8'
 );
 const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'), 'utf8');
-const remixPanelSource = fs.readFileSync(path.join(projectRoot, 'src', 'components', 'RemixPanel.jsx'), 'utf8');
 const packageManifest = JSON.parse(fs.readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
 
 test('server has no callable LLM provider', () => {
@@ -29,8 +28,6 @@ test('AI entry points fail explicitly for Hermes handling', () => {
     assert.match(aiServiceSource, /async analyzeThreadsPost\(\) \{\s*throw new AiProviderRetiredError\(\);/);
     assert.match(aiServiceSource, /async generateStructuredJSON\(\) \{\s*throw new AiProviderRetiredError\(\);/);
     assert.match(serverSource, /status\(503\).*HERMES_AGENT_REQUIRED/s);
-    assert.doesNotMatch(remixPanelSource, /MiniMax|minimax-m2\.7/);
-    assert.match(remixPanelSource, /Hermes Codex agent/);
 });
 
 test('retired AI service never attempts provider work', async () => {

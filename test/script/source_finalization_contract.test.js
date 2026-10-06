@@ -30,13 +30,15 @@ test('Stage B finalization is one database transaction with an idempotent source
     assert.match(sql, /commit;/);
 });
 
-test('outbox finalization stays service-role-only and is called after crawler data is ready', () => {
+test('legacy outbox remains service-role-only while new capture calls the owner-guided finalizer', () => {
     assert.match(sql, /security invoker/);
     assert.match(sql, /revoke all on table public\.collection_capture_outbox from public, anon, authenticated/);
     assert.match(sql, /grant execute on function public\.finalize_collection_capture[\s\S]+to service_role/);
     assert.match(finalizationSource, /rpc\('finalize_collection_capture'/);
     assert.match(finalizationSource, /p_correlation_id: correlationId/);
-    assert.match(finalizationSource, /pipelineVersion = 'capture-v2'/);
+    assert.match(finalizationSource, /pipelineVersion = 'capture-v5-owner-guided'/);
+    assert.match(finalizationSource, /p_analysis: \{\}/);
+    assert.match(finalizationSource, /source_revision_id/);
     assert.match(finalizationSource, /normalizeCapturePlatform\(data\.platform\)/);
     assert.doesNotMatch(orchestratorSource, /data\.dbId\s*=/);
 });

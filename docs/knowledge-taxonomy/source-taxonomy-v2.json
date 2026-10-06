@@ -1,0 +1,71 @@
+{
+  "version": 2,
+  "artifact_type": "taxonomy_governance",
+  "status": "governance_only_not_live_routing",
+  "supersedes": {
+    "path": "docs/knowledge-taxonomy/source-taxonomy-v1.json",
+    "version": 1,
+    "sha256": "faed35ab09c99cca42344fb1b9b8f99088f78496085f7e8ee7d21e393c21ad0c",
+    "immutability": "v1 remains unchanged; this artifact does not rename, add, remove, or reorder its 20 categories."
+  },
+  "canonical_primary_category_set": {
+    "source": "docs/knowledge-taxonomy/source-taxonomy-v1.json",
+    "category_count": 20,
+    "assignment_policy": "one_source_folder_per_post",
+    "routing_question": "這篇來源未來主要幫我完成哪一種工作？",
+    "uncertain_destination": "inbox",
+    "prohibited_substitutes": [
+      "legacy collection",
+      "primary_category",
+      "automatic topic",
+      "tag"
+    ]
+  },
+  "new_category_governance": {
+    "policy": "governed_expansion_allowed",
+    "preconditions": [
+      "All existing category include and exclude rules are demonstrably inapplicable.",
+      "The proposed category is not a single tool, company, event, or short-lived trend.",
+      "The proposed category can recur and produce durable work outcomes.",
+      "The proposal states its name, include rule, exclude rule, first source, and difference from every existing category."
+    ],
+    "required_artifacts": [
+      "a new immutable source-taxonomy-v<N>.json",
+      "an immutable decision record",
+      "an owner-reviewable rationale and candidate source evidence"
+    ],
+    "prohibitions": [
+      "Do not silently modify v1.",
+      "Do not create a live collection, route a post, or mutate a knowledge map from this governance decision.",
+      "Do not use a single source or a model label as sufficient justification."
+    ]
+  },
+  "legacy_collection_policy": {
+    "status": "legacy_not_a_primary_routing_allowlist",
+    "preserve": "Existing post relations remain historical context.",
+    "no_bulk_reclassification": true,
+    "retirement": "A later authorized phase may retire or hide legacy collections only after manifest and readback.",
+    "physical_delete_requires": [
+      "zero post, map, scope, and workflow references",
+      "DevSSD backup with verified checksum",
+      "per-ID delete manifest",
+      "explicit Owner approval",
+      "live readback"
+    ]
+  },
+  "knowledge_map_policy": {
+    "folder_equivalence": "forbidden",
+    "node_types": ["System", "Architecture", "Idea"],
+    "allowed_relations": ["implements", "uses", "constrains", "evidenced_by", "contradicts", "extends"],
+    "owner_gate_question": "這篇要延伸哪一個既有專案／知識地圖？還是要以它建立一張新的知識地圖？",
+    "automatic_post_to_map": false
+  },
+  "phase_gate": {
+    "phase_0": "Documentation only. No DB, live collection, post, Vault, PM2, Cron, node, or relation mutation.",
+    "before_phase_4": "Capture remains capture-only; no automatic source-folder selection is enabled.",
+    "phase_4_prerequisite": "Docker and authorized live single-source validation must pass before runtime routing can be enabled."
+  },
+  "decision_record": "docs/knowledge-taxonomy/decisions/2026-09-25-governed-expansion-and-owner-first-map.md",
+  "recorded_on": "2026-09-25",
+  "owner_decision": "The canonical 20 categories remain the primary set. Future expansion is allowed only through the governed version-and-decision-record process above."
+}

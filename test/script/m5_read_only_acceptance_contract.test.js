@@ -9,7 +9,7 @@ const projectRoot = path.resolve(path.dirname(currentFile), '..', '..');
 const read = (...parts) => fs.readFileSync(path.join(projectRoot, ...parts), 'utf8');
 
 const server = read('server', 'index.js');
-const topicsPage = read('src', 'pages', 'TopicsPage.jsx');
+const sourceDetail = read('src', 'pages', 'OwnerPostPage.jsx');
 const topicAggregateService = read('server', 'services', 'topicKnowledgeAggregateService.js');
 const drain = read('scripts', 'agent-sdk', 'drain-vault-sync.js');
 
@@ -19,12 +19,8 @@ test('M5 read-only gate exposes reviewable topic evidence without a live batch-i
   assert.match(server, /suggestTopicMatches\(source, topics \|\| \[\]\)/);
   assert.doesNotMatch(server, /app\.post\(['"]\/api\/topics\/[^'"]*(?:batch|import|backfill|apply)/i);
 
-  assert.match(topicsPage, /aria-label="知識彙整"/);
-  assert.match(topicsPage, /knowledge_summary/);
-  assert.match(topicsPage, /knowledge_source_count/);
-  assert.match(topicsPage, /knowledge_revision/);
-  assert.match(topicsPage, /knowledge_source_ids/);
-  assert.match(topicsPage, /href=\{`\/post\/\$\{sourceId\}`\}/);
+  assert.match(sourceDetail, /已接受的知識/);
+  assert.match(sourceDetail, /尚待你確認的候選/);
 });
 
 test('M5 gate keeps aggregate writes scoped, revision-protected, and separate from Vault sync failures', () => {

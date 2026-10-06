@@ -1,21 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
-import ViewAllPage from './pages/ViewAllPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-import RemixPanel from './components/RemixPanel';
-import PostDetailView from './components/PostDetailView';
-import ImageWorkflowPage from './pages/ImageWorkflowPage';
-import InsightPage from './pages/InsightPage';
-import TopicsPage from './pages/TopicsPage';
+import OwnerTopicsPage from './pages/OwnerTopicsPage';
+import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
+import OwnerPostPage from './pages/OwnerPostPage';
 
-import { AnimatePresence } from 'framer-motion';
 import { setUser, setLoading } from './features/authSlice';
-import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
+import { fetchCaptureHistory } from './features/postsSlice';
 import { supabase } from './api/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
@@ -34,7 +30,6 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  const [remixPost, setRemixPost] = useState(null);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const loadedUserId = useRef(null);
@@ -65,7 +60,6 @@ function App() {
     // shared store, preventing each screen from requesting /api/posts again.
     if (loadedUserId.current === user.id) return;
     loadedUserId.current = user.id;
-    dispatch(fetchPosts());
     dispatch(fetchCaptureHistory());
   }, [user?.id, dispatch]);
 
@@ -75,40 +69,25 @@ function App() {
         <Routes>
           <Route path="/" element={
             <ProtectedRoute>
-              <HomePage onRemix={setRemixPost} />
+              <HomePage />
             </ProtectedRoute>
           } />
-          <Route path="/view-all" element={
-            <ProtectedRoute>
-              <ViewAllPage onRemix={setRemixPost} />
-            </ProtectedRoute>
-          } />
-          <Route path="/collection/:collectionId" element={
-            <ProtectedRoute>
-              <ViewAllPage onRemix={setRemixPost} />
-            </ProtectedRoute>
-          } />
+          <Route path="/view-all" element={<Navigate to="/search" replace />} />
+          <Route path="/collection/:collectionId" element={<Navigate to="/search" replace />} />
 
           <Route path="/post/:postId" element={
             <ProtectedRoute>
-              <PostDetailView onRemix={setRemixPost} />
+              <OwnerPostPage />
             </ProtectedRoute>
           } />
-          <Route path="/image-workflow/:postId" element={
-            <ProtectedRoute>
-              <ImageWorkflowPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/insight" element={
-            <ProtectedRoute>
-              <InsightPage />
-            </ProtectedRoute>
-          } />
+          <Route path="/image-workflow/:postId" element={<Navigate to="/" replace />} />
+          <Route path="/insight" element={<Navigate to="/search" replace />} />
           <Route path="/topics" element={
             <ProtectedRoute>
-              <TopicsPage />
+              <OwnerTopicsPage />
             </ProtectedRoute>
           } />
+          <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
           <Route path="/search" element={
             <ProtectedRoute>
               <SearchPage />
@@ -117,12 +96,6 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
         </Routes>
-
-        <AnimatePresence>
-          {remixPost && (
-            <RemixPanel post={remixPost} onClose={() => setRemixPost(null)} />
-          )}
-        </AnimatePresence>
       </Layout>
     </Router>
   );

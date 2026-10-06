@@ -15,6 +15,10 @@
 
 - [API flow diagram](architecture/api_flow_diagram.md)
 - [System agent responsibilities](../agents.md)
+- [Owner-guided media workflow contract](architecture/owner-guided-workflow-contract.md)
+- [Owner-guided workflow evidence ledger](architecture/owner-guided-workflow-evidence-ledger.md)
+- [Capture-service integration reconciliation matrix](plans/2026-10-06-capture-service-reconciliation-matrix.md)
+- [Legacy retirement inventory](architecture/legacy-retirement-inventory.md)
 
 ## Frontend
 

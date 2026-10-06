@@ -1,7 +1,5 @@
 import express from 'express';
-import { searchPostDocuments } from '../services/postSearchService.js';
-
-export const searchRouter = express.Router();
+import { searchOwnerPostDocuments } from '../services/ownerSearchService.js';
 
 function optionalText(value, maxLength = 200) {
     if (typeof value !== 'string') return null;
@@ -9,23 +7,30 @@ function optionalText(value, maxLength = 200) {
     return normalized ? normalized.slice(0, maxLength) : null;
 }
 
-searchRouter.get('/', async (req, res) => {
+function optionalBoolean(value) {
+    return value === 'true' || value === '1';
+}
+
+export function createSearchRouter({ search = searchOwnerPostDocuments } = {}) {
+    const searchRouter = express.Router();
+    searchRouter.get('/', async (req, res) => {
     const userId = req.auth?.userId;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     try {
-        const results = await searchPostDocuments({
+        const results = await search({
             userId,
             query: optionalText(req.query.q, 1_000),
             limit: req.query.limit,
-            platform: optionalText(req.query.platform, 50),
-            collectionId: optionalText(req.query.collectionId, 80),
-            workflowStage: optionalText(req.query.stage, 50),
-            workflowStatus: optionalText(req.query.status, 50)
+            includeCandidates: optionalBoolean(req.query.includeCandidates)
         });
-        return res.json({ results, query: optionalText(req.query.q, 1_000) || '' });
+        return res.json({ results, query: optionalText(req.query.q, 1_000) || '', include_candidates: optionalBoolean(req.query.includeCandidates) });
     } catch (error) {
         console.error('[Search] query failed:', error.message);
         return res.status(500).json({ error: 'Failed to search saved posts' });
     }
-});
+    });
+    return searchRouter;
+}
+
+export const searchRouter = createSearchRouter();

@@ -25,6 +25,9 @@ import { captureRouter } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
+import { reviewRouter } from './routes/reviewRoutes.js';
+import { ownerKnowledgeRouter } from './routes/ownerKnowledgeRoutes.js';
+import { ownerLibraryRouter } from './routes/ownerLibraryRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
 
@@ -212,6 +215,9 @@ app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
 app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
+app.use('/api/review', requireSupabaseJwt, reviewRouter);
+app.use('/api/owner-knowledge', requireSupabaseJwt, ownerKnowledgeRouter);
+app.use('/api/owner-library', requireSupabaseJwt, ownerLibraryRouter);
 
 
 function normalizeTopicTextList(value) {

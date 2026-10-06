@@ -108,6 +108,7 @@ Never commit secrets or a process-environment export.
 - Manual reconciliation required:
   `server/services/captureFinalizationService.js`
   `server/services/captureProcessingService.js`
+- Read first: `docs/plans/2026-10-06-capture-service-reconciliation-matrix.md`
 - Verify: `server/routes/*`, `server/index.js`, `src/App.jsx`, migrations under
   `database/deployments/stage_x_owner_guided_*.sql`
 
@@ -125,7 +126,9 @@ Preserve any user-specific capture handling from the running checkout while
 enforcing the M1 boundary: successful capture writes a source revision and
 capture state only; it must not enqueue automated analysis, Topic, note,
 workflow, or outbox writes. Preserve retry/idempotency behavior and failure
-recording.
+recording. The reconciliation matrix names the exact allowed carryovers and
+the `complete`/`partial` source-quality boundary; do not improvise a third
+semantic variant during conflict resolution.
 
 Expected: both old local fixes and the owner-guided capture-only contract are
 represented in the merged implementation.

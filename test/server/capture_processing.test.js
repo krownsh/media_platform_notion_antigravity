@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { processCaptureRequest } from '../../server/services/captureProcessingService.js';
+import { buildFallbackCapture, processCaptureRequest } from '../../server/services/captureProcessingService.js';
 import { runCaptureWorkerCycle, runCaptureWorkerLoop } from '../../server/workers/captureWorker.js';
 import { exitAfterCaptureWorkerFatal } from '../../server/workers/captureWorkerRuntime.js';
 
@@ -60,6 +60,14 @@ test('generic extraction failure becomes a partial link source record', async ()
     assert.equal(fallback.data.original_url, request.url);
     assert.equal(Object.hasOwn(fallback.data, 'analysis'), false);
     assert.match(fallback.data.full_json.capture_error.message, /unreadable page/);
+});
+
+test('fallback keeps the running checkout’s owner-facing label and bounded raw failure evidence', () => {
+    const fallback = buildFallbackCapture('https://example.com/unreadable', new Error('x'.repeat(5_000)));
+
+    assert.equal(fallback.title, '連結存檔（擷取降級）');
+    assert.equal(fallback.full_json.source_type, 'fallback_link');
+    assert.equal(fallback.full_json.capture_error.message.length, 4_000);
 });
 
 test('image capture finalizes persisted media without crawler or AI work', async () => {

@@ -9,12 +9,12 @@ export function buildFallbackCapture(url, error) {
     return {
         platform: 'generic',
         original_url: url,
-        title: '連結存檔 (自動容錯)',
+        title: '連結存檔（擷取降級）',
         content: url,
         full_json: {
             source_type: 'fallback_link',
             capture_error: {
-                message: String(error?.message || error || 'Unknown extraction error').slice(0, 1000),
+                message: String(error?.message || error || 'Unknown extraction error').slice(0, 4000),
                 occurred_at: new Date().toISOString()
             }
         }

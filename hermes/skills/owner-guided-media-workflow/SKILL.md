@@ -34,17 +34,23 @@ Accept a public URL or a private image. Create or observe only the durable
 evidence, not a folder, a **貼文學習筆記**, a Topic, a project reference, or
 an approval.
 
-- Complete source: offer the single action **建立候選整理**.
+- Complete source: candidates are prepared automatically. Offer the single
+  action **在 Focus Mode 確認**; the Owner reviews candidates but does not need
+  to create them first. If that projection is unavailable, offer the recovery
+  action **重新準備候選** and make clear it changes no formal knowledge.
 - **部分擷取**: first show what is missing and offer source repair or
   **以目前來源建立候選**. The agent must not 自動 create semantic candidates
   from a partial source.
 - Failed source: show the safe retry path and preserve the failure evidence.
 
-### 2. Create and review candidates
+### 2. Review automatically prepared candidates
 
-Only after the Owner starts candidate review, prepare drafts for at most one
+For a complete source, automatically prepare visible drafts for at most one
 folder, an optional **貼文學習筆記**, one primary Topic plus up to two related
-Topics, Topic knowledge deltas, and relevant project references.
+Topics, Topic knowledge deltas, and relevant project references. This creates
+candidate state only: the agent must not automatically accept or promote any
+candidate into **正式知識**. For a partial source, prepare no semantic drafts
+until the Owner explicitly chooses **以目前來源建立候選**.
 
 For every candidate, show source evidence, why it was suggested, what an
 acceptance changes, and one control: accept, edit then accept, reject, or

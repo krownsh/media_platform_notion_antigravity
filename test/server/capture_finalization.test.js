@@ -69,6 +69,36 @@ test('finalization submits only raw source facts and a partial quality when requ
     });
 });
 
+test('a complete capture automatically starts the owner-visible candidate projection', async () => {
+    const client = captureClient({
+        post_id: 'post-complete',
+        source_revision_id: 'revision-complete',
+        outbox_event_id: null,
+        outbox_event_created: false
+    });
+    const preparations = [];
+
+    await finalizeCapture(
+        'user-complete',
+        'capture-complete',
+        'crawler',
+        { platform: 'generic', original_url: 'https://example.com/complete', content: 'Captured source' },
+        {
+            supabaseClient: client,
+            configured: true,
+            reviewPreparer: async input => preparations.push(input),
+            searchIndexer: async () => {}
+        }
+    );
+
+    assert.equal(client.rpcInput.p_capture_quality, 'complete');
+    assert.deepEqual(preparations, [{
+        userId: 'user-complete',
+        sourceRevisionId: 'revision-complete',
+        supabaseClient: client
+    }]);
+});
+
 test('finalization rejects an RPC response that lacks a durable source revision', async () => {
     const client = captureClient({ post_id: 'post-1', outbox_event_id: null });
 

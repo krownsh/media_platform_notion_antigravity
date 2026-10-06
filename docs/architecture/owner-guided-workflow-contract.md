@@ -18,7 +18,7 @@ Capture quality is exactly one of:
 - `partial`: some material was preserved but review must first disclose what is missing.
 - `failed`: no reliable source material was persisted and semantic review cannot begin.
 
-`partial` and `failed` sources stop at the source-repair step until recapture succeeds or the Owner explicitly accepts use of partial material. A later successful recapture creates a new revision and proposes, rather than silently overwrites, downstream updates.
+For a `complete` source, the system automatically prepares an owner-visible Review Packet and candidate proposals. This projection never accepts or promotes formal knowledge; the Owner's next action is review, not candidate creation. `partial` and `failed` sources stop at the source-repair step until recapture succeeds or the Owner explicitly accepts use of partial material. A later successful recapture creates a new revision and proposes, rather than silently overwrites, downstream updates.
 
 ## Proposal and promotion contract
 

@@ -89,6 +89,50 @@ export function buildTopicProposalPayload({ post, sourceRevisionId }) {
     };
 }
 
+function topicLabels(topicPayload) {
+    return normalizeTopicAssignment({
+        primary_topic: topicPayload?.primary_topic,
+        related_topics: topicPayload?.related_topics
+    });
+}
+
+export function buildTopicKnowledgeProposalPayload({ topicPayload, post, sourceRevisionId }) {
+    const { primary_topic: primaryTopic, related_topics: relatedTopics } = topicLabels(topicPayload);
+    const labels = [primaryTopic, ...relatedTopics].filter(Boolean);
+    return {
+        source_revision_id: sourceRevisionId,
+        decision: labels.length && text(post?.content, 12_000).length >= 80 ? 'needs_discussion' : 'not_needed',
+        topics: labels.map(label => ({ label, summary: null, claims: [], open_questions: [] })),
+        rationale: labels.length
+            ? 'Topic labels remain candidates until the Owner confirms whether this source adds a concise, cited Topic knowledge delta.'
+            : 'No Topic was proposed for this source, so no Topic knowledge delta is needed.'
+    };
+}
+
+function compact(value) {
+    return text(value, 12_000).toLocaleLowerCase('zh-TW').replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+export function buildProjectReferenceProposalPayloads({ topicPayload, post, projects, sourceRevisionId }) {
+    const { primary_topic: primaryTopic, related_topics: relatedTopics } = topicLabels(topicPayload);
+    const labels = [primaryTopic, ...relatedTopics].filter(Boolean);
+    const sourceText = compact(`${post?.title || ''} ${post?.content || ''}`);
+    return (projects || []).map(project => {
+        const projectText = compact(`${project.title || ''} ${project.description || ''} ${project.reference || ''}`);
+        const matchingLabels = labels.filter(label => {
+            const key = compact(label);
+            return key.length >= 2 && (projectText.includes(key) || sourceText.includes(compact(project.title)));
+        });
+        if (!matchingLabels.length) return null;
+        return {
+            source_revision_id: sourceRevisionId,
+            project_id: project.id,
+            topic_labels: matchingLabels,
+            rationale: `The source and Topic candidate overlap with the Owner catalog entry “${text(project.title, 160)}”.`
+        };
+    }).filter(Boolean).slice(0, 3);
+}
+
 export async function prepareInitialReviewProposals({ userId, sourceRevisionId, supabaseClient = defaultSupabase }) {
     if (!userId || !sourceRevisionId) throw new Error('userId and sourceRevisionId are required');
     const packet = await ensureReviewPacket({ userId, sourceRevisionId, supabaseClient });
@@ -101,17 +145,35 @@ export async function prepareInitialReviewProposals({ userId, sourceRevisionId, 
         .from('collection_collections').select('id, name').eq('user_id', userId).order('name', { ascending: true });
     if (collectionsError) throw new Error(`Folder lookup failed: ${collectionsError.message}`);
     const post = Array.isArray(revision.collection_posts) ? revision.collection_posts[0] : revision.collection_posts;
+    let projects = null;
+    try {
+        const result = await supabaseClient
+            .from('owner_project_catalog').select('id, title, description, reference')
+            .eq('user_id', userId).eq('status', 'active').order('updated_at', { ascending: false });
+        if (!result.error) projects = result.data || [];
+    } catch {
+        // M4 is additive. A staged M3 deployment must keep creating its first
+        // three review candidates until the new catalog table exists.
+        projects = null;
+    }
+    const topicPayload = buildTopicProposalPayload({ post, sourceRevisionId });
     const candidates = [
         ['folder_assignment', buildFolderProposalPayload({ post, collections, sourceRevisionId })],
         ['post_learning_note', buildPostLearningNotePayload({ post, sourceRevisionId })],
-        ['topic_assignment', buildTopicProposalPayload({ post, sourceRevisionId })]
+        ['topic_assignment', topicPayload]
     ];
+    if (projects !== null) {
+        candidates.push(['topic_knowledge_delta', buildTopicKnowledgeProposalPayload({ topicPayload, post, sourceRevisionId })]);
+        buildProjectReferenceProposalPayloads({ topicPayload, post, projects, sourceRevisionId })
+            .forEach((payload, index) => candidates.push([`project_reference_${index + 1}`, payload]));
+    }
     const proposals = [];
     for (const [proposalType, payload] of candidates) {
+        const canonicalType = proposalType.startsWith('project_reference_') ? 'project_reference' : proposalType;
         proposals.push(await createReviewProposal({
             userId,
             packetId: packet.id,
-            proposalType,
+            proposalType: canonicalType,
             payload,
             idempotencyKey: `${sourceRevisionId}:${proposalType}:v1`,
             supabaseClient

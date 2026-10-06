@@ -10,7 +10,8 @@ import RemixPanel from './components/RemixPanel';
 import PostDetailView from './components/PostDetailView';
 import ImageWorkflowPage from './pages/ImageWorkflowPage';
 import InsightPage from './pages/InsightPage';
-import TopicsPage from './pages/TopicsPage';
+import OwnerTopicsPage from './pages/OwnerTopicsPage';
+import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
 
 import { AnimatePresence } from 'framer-motion';
@@ -106,9 +107,10 @@ function App() {
           } />
           <Route path="/topics" element={
             <ProtectedRoute>
-              <TopicsPage />
+              <OwnerTopicsPage />
             </ProtectedRoute>
           } />
+          <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
           <Route path="/search" element={
             <ProtectedRoute>
               <SearchPage />

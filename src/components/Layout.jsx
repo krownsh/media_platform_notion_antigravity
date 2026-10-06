@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target, BookOpenText } from 'lucide-react';
+import { LayoutGrid, Plus, Settings, Library, Search, ChevronDown, ChevronRight, ChevronLeft, Folder, Home, LogOut, LogIn, User as UserIcon, BarChart3, Menu, X, Target, BookOpenText, FolderGit2 } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -172,10 +172,11 @@ const Layout = ({ children }) => {
                                 />
                                 <SidebarItem
                                     icon={Target}
-                                    label="主題工作區"
+                                    label="Topics"
                                     active={location.pathname === '/topics'}
                                     onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
                                 />
+                                <SidebarItem icon={FolderGit2} label="Projects" active={location.pathname === '/projects'} onClick={() => { navigate('/projects'); setIsMobileMenuOpen(false); }} />
 
                                 <SidebarItem
                                     icon={Library}
@@ -323,9 +324,16 @@ const Layout = ({ children }) => {
 
                     <SidebarItem
                         icon={Target}
-                        label="主題工作區"
+                        label="Topics"
                         active={location.pathname === '/topics'}
                         onClick={() => navigate('/topics')}
+                        collapsed={isSidebarCollapsed}
+                    />
+                    <SidebarItem
+                        icon={FolderGit2}
+                        label="Projects"
+                        active={location.pathname === '/projects'}
+                        onClick={() => navigate('/projects')}
                         collapsed={isSidebarCollapsed}
                     />
 

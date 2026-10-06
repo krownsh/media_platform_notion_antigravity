@@ -6,14 +6,18 @@ export async function promoteReviewProposal({
 }) {
     if (!userId || !packetId || !proposalId) throw new Error('userId, packetId, and proposalId are required');
     if (!['accept', 'edit_and_accept'].includes(action)) throw new Error('action must be accept or edit_and_accept');
-    const { data, error } = await supabaseClient.rpc('promote_owner_review_proposal', {
+    const input = {
         p_user_id: userId,
         p_packet_id: packetId,
         p_proposal_id: proposalId,
         p_action: action,
         p_expected_version: expectedVersion,
         p_edited_payload: editedPayload
-    }).single();
+    };
+    let { data, error } = await supabaseClient.rpc('promote_owner_review_proposal', input).single();
+    if (error?.message?.includes('REVIEW_PROMOTION_TYPE_UNSUPPORTED')) {
+        ({ data, error } = await supabaseClient.rpc('promote_owner_knowledge_proposal', input).single());
+    }
     if (error) {
         const wrapped = new Error(`Review proposal promotion failed: ${error.message}`);
         wrapped.code = error.code;

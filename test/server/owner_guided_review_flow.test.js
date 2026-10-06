@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {
     normalizeTopicAssignment,
     buildPostLearningNotePayload,
-    buildFolderProposalPayload
+    buildFolderProposalPayload,
+    buildTopicKnowledgeProposalPayload,
+    buildProjectReferenceProposalPayloads
 } from '../../server/services/reviewProposalService.js';
 
 test('first review vertical keeps one folder, optional note, and bounded Topic assignment as candidates', () => {
@@ -33,6 +35,29 @@ test('first review vertical keeps one folder, optional note, and bounded Topic a
         primary_topic: 'UI UX',
         related_topics: ['Design Systems', 'Accessibility']
     });
+});
+
+test('Topic knowledge and Project candidates remain drafts and do not require a repository to create a Topic', () => {
+    const topicPayload = { primary_topic: 'UI UX', related_topics: ['Accessibility'] };
+    const topicDelta = buildTopicKnowledgeProposalPayload({
+        topicPayload,
+        post: { content: '這是一則足夠長的來源，值得由 Owner 決定是否把它寫成主題知識摘要。'.repeat(4) },
+        sourceRevisionId: 'source-1'
+    });
+    assert.equal(topicDelta.decision, 'needs_discussion');
+    assert.deepEqual(topicDelta.topics.map(item => item.label), ['UI UX', 'Accessibility']);
+
+    const references = buildProjectReferenceProposalPayloads({
+        topicPayload,
+        post: { title: 'UI UX accessibility audit', content: 'design review' },
+        sourceRevisionId: 'source-1',
+        projects: [
+            { id: 'project-ui', title: 'UI UX product refresh', description: 'Accessibility work', reference: 'local:/projects/ui' },
+            { id: 'project-data', title: 'Data pipeline', description: 'ETL', reference: 'https://example.test/data' }
+        ]
+    });
+    assert.deepEqual(references.map(item => item.project_id), ['project-ui']);
+    assert.equal(references[0].topic_labels[0], 'UI UX');
 });
 
 test('topic assignment rejects more than two related Topics and a duplicated primary Topic', () => {
@@ -68,4 +93,23 @@ test('promotion accepts only through the dedicated RPC and records edited values
             p_edited_payload: { note_status: 'recorded', content: 'Owner note' }
         }
     });
+});
+
+test('Topic knowledge promotion falls through to the dedicated M4 transaction only', async () => {
+    const calls = [];
+    const client = {
+        rpc(name, input) {
+            calls.push({ name, input });
+            const error = name === 'promote_owner_review_proposal'
+                ? { message: 'REVIEW_PROMOTION_TYPE_UNSUPPORTED', code: 'P0001' }
+                : null;
+            return { single: async () => ({ data: error ? null : { id: 'packet-1', status: 'open', version: 5 }, error }) };
+        }
+    };
+    const { promoteReviewProposal } = await import('../../server/services/reviewPromotionService.js');
+    const packet = await promoteReviewProposal({
+        userId: 'user-1', packetId: 'packet-1', proposalId: 'proposal-topic', action: 'accept', expectedVersion: 4, supabaseClient: client
+    });
+    assert.equal(packet.version, 5);
+    assert.deepEqual(calls.map(call => call.name), ['promote_owner_review_proposal', 'promote_owner_knowledge_proposal']);
 });

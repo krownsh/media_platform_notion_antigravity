@@ -9,7 +9,7 @@ const panel = fs.readFileSync(path.join(root, 'src/components/ReviewFocusPanel.j
 const home = fs.readFileSync(path.join(root, 'src/pages/HomePage.jsx'), 'utf8');
 
 test('Focus Mode explains current stage, why, one next action, defer, and resume', () => {
-    for (const requirement of ['目前階段', '為什麼現在要處理', '下一步', '來源依據', '稍後處理', '繼續處理']) {
+    for (const requirement of ['目前階段', '為什麼現在要處理', '下一步', '來源依據', '接受後會改變什麼', '稍後處理', '繼續處理']) {
         assert.match(panel, new RegExp(requirement));
     }
     assert.match(home, /ReviewFocusPanel/);

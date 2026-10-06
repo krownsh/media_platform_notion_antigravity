@@ -17,7 +17,19 @@ function readablePayload(proposal) {
     if (proposal.proposal_type === 'folder_assignment') return payload.suggested_name || '保持在收件匣';
     if (proposal.proposal_type === 'post_learning_note') return payload.note_status === 'not_needed' ? '這篇不需要另寫學習筆記' : payload.content || '需要你的學習筆記或明確跳過決定';
     if (proposal.proposal_type === 'topic_assignment') return [payload.primary_topic, ...(payload.related_topics || [])].filter(Boolean).join(' · ') || '尚無明確 Topic；可自行補上或保留空白';
+    if (proposal.proposal_type === 'topic_knowledge_delta') return (payload.topics || []).map(item => item.label).filter(Boolean).join(' · ') || '這則來源不需要新增 Topic 知識';
+    if (proposal.proposal_type === 'project_reference') return payload.rationale || '確認這個 Topic 是否可能應用到 Catalog 專案';
     return JSON.stringify(payload);
+}
+
+function acceptanceImpact(proposal) {
+    if (!proposal) return '不會有隱藏寫入。';
+    if (proposal.proposal_type === 'folder_assignment') return '只會更新這篇貼文的正式資料夾；空白表示維持 Inbox。';
+    if (proposal.proposal_type === 'post_learning_note') return '只會寫入你確認的貼文學習狀態，不會自動生成內容。';
+    if (proposal.proposal_type === 'topic_assignment') return '只會保存 Topic 選擇；下一步仍會獨立確認 Topic 知識。';
+    if (proposal.proposal_type === 'topic_knowledge_delta') return '會建立或連結獨立 Topic；只有「已記錄」摘要才會新增帶引用的知識 revision。';
+    if (proposal.proposal_type === 'project_reference') return '只會記錄 Topic 與 Catalog 專案的參考關係；不會修改 repo 或執行 POC。';
+    return '只會保存這個可稽核決定。';
 }
 
 export default function ReviewFocusPanel() {
@@ -29,7 +41,8 @@ export default function ReviewFocusPanel() {
     const packet = packets[0] || null;
     const next = packet?.next_action || { kind: 'awaiting_proposals' };
     const proposal = useMemo(() => packet?.proposals?.find(item => item.id === next.proposal_id) || null, [packet, next.proposal_id]);
-    const noteNeedsDiscussion = proposal?.proposal_type === 'post_learning_note' && proposal?.payload?.note_status === 'needs_discussion';
+    const requiresOwnerContent = (proposal?.proposal_type === 'post_learning_note' && proposal?.payload?.note_status === 'needs_discussion')
+        || (proposal?.proposal_type === 'topic_knowledge_delta' && proposal?.payload?.decision === 'needs_discussion');
     const [stage, why] = actionCopy[next.kind] || actionCopy.awaiting_proposals;
     const startEdit = () => { setDraft(JSON.stringify(proposal?.payload || {}, null, 2)); setEditing(true); };
     const accept = (decision, editedPayload = null) => {
@@ -58,11 +71,12 @@ export default function ReviewFocusPanel() {
                     <p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{proposal ? readablePayload(proposal) : '目前沒有需要你記住的隱藏步驟。'}</p>
                 </div>
             </div>
+            {proposal && <div className="mt-4 rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] p-4"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">接受後會改變什麼</p><p className="mt-2 text-sm leading-6 text-[var(--foreground)]">{acceptanceImpact(proposal)}</p></div>}
             {editing && <label className="mt-4 block text-sm font-medium text-[var(--foreground)]">編輯後接受<textarea value={draft} onChange={event => setDraft(event.target.value)} className="mt-2 min-h-32 w-full rounded-[var(--radius-control)] border border-[var(--input)] bg-[var(--surface-raised)] p-3 font-mono text-xs text-[var(--foreground)]" /></label>}
             <div className="mt-5 flex flex-wrap gap-2">
                 {next.kind === 'review_proposal' && proposal && <>
-                    {!noteNeedsDiscussion && <button disabled={actionPending} onClick={() => accept('accept')} className="notion-btn-primary inline-flex items-center gap-2"><Check size={16} /> 接受候選</button>}
-                    <button disabled={actionPending} onClick={startEdit} className="notion-btn-secondary inline-flex items-center gap-2"><Edit3 size={16} /> {noteNeedsDiscussion ? '補充筆記後接受' : '編輯後接受'}</button>
+                    {!requiresOwnerContent && <button disabled={actionPending} onClick={() => accept('accept')} className="notion-btn-primary inline-flex items-center gap-2"><Check size={16} /> 接受候選</button>}
+                    <button disabled={actionPending} onClick={startEdit} className="notion-btn-secondary inline-flex items-center gap-2"><Edit3 size={16} /> {requiresOwnerContent ? '補充內容後接受' : '編輯後接受'}</button>
                     {editing && <button disabled={actionPending} onClick={() => { try { accept('edit_and_accept', JSON.parse(draft)); } catch { window.alert('請使用有效的 JSON 格式'); } }} className="notion-btn-primary inline-flex items-center gap-2"><ChevronRight size={16} /> 儲存編輯</button>}
                     <button disabled={actionPending} onClick={() => accept('reject')} className="notion-btn-secondary inline-flex items-center gap-2"><X size={16} /> 不採用</button>
                 </>}

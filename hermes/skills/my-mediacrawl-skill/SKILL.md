@@ -5,6 +5,33 @@ description: Operate this project's resumable media workflow. Use when a user as
 
 # Media workflow
 
+## Current governance override — Phase 0 (2026-09-25)
+
+The capture-only policy in the active Hermes profile and the repository taxonomy
+v2 governance artifact override any older workflow paragraph below that permits
+automatic semantic analysis, classification, folder linking, Topic linking,
+outbox/workflow creation, research, POC, content output, or Vault writing.
+
+- Direct URL/image input is durable capture only: preserve source/media and
+  technical status, then leave it in process Inbox.
+- The sole canonical primary-category set is the 20 entries in
+  `docs/knowledge-taxonomy/source-taxonomy-v1.json`; legacy collections,
+  `primary_category`, old Topics, and tags are not a routing allowlist.
+- Before Phase 4 passes Docker and authorized live single-source validation,
+  runtime must not choose or write a source folder. Low-confidence,
+  cross-cutting, or insufficiently evidenced sources remain Inbox.
+- A future category requires the governed v2 process: new immutable taxonomy
+  version plus decision record. It never silently edits v1 or creates a live
+  collection by itself.
+- A folder is never a knowledge-map node, Topic, command, or authority to act.
+  Before any map evidence/node/relation work, ask the Owner whether to extend a
+  named existing project/map or explicitly create a new one.
+- Vault writes still require the Owner to explicitly say `記` and confirm an
+  existing destination.
+
+This Phase 0 documentation change has no DB, Vault, PM2, Cron, collection,
+post, node, relation, or routing mutation authority.
+
 Use only the repository's `agent:*` commands from the repository root. Let the
 scripts load `server/.env`; never read, print, copy, or request secrets.
 

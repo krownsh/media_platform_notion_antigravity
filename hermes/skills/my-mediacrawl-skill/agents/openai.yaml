@@ -1,4 +1,4 @@
 interface:
-  display_name: "MediaCrawl Inbox"
-  short_description: "Route captured URLs and analyze private images"
-  default_prompt: "Use $my-mediacrawl-skill to process the next resumable media workflow, show the first 1,000 characters, discuss the user's decision, and always write the final result to Claude-Obsidian."
+  display_name: "MediaCrawl Legacy Compatibility"
+  short_description: "Legacy runtime compatibility; use the owner-guided workflow for new work"
+  default_prompt: "Use $owner-guided-media-workflow to guide one source at a time. State the current phase, why it is current, and the one next action. Do not route a new user through legacy Hermes automation."

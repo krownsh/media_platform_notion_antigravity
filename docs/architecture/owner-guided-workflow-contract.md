@@ -48,6 +48,14 @@ A Review Packet is the resumable unit for a source. It contains source-quality i
 
 The default user experience is Focus Mode: present one main decision, why it matters, the recommendation, alternatives, what acceptance changes, what defer means, progress completed, and the next action. Full packet and batch review are optional. Every page and agent response must make the current phase, waiting party, and next action explicit; no user is expected to remember hidden workflow stages.
 
+The primary conversational entry is
+`hermes/skills/owner-guided-media-workflow/SKILL.md`. It applies the same
+source, packet, candidate, and formal-state boundaries as the web app. Its
+response contract is current phase, why it is current, and one next action.
+The older MediaCrawl skill and webhook examples are legacy-runtime
+compatibility artifacts only; they are not normal user entry points and remain
+subject to the separate physical-retirement gate.
+
 ## Search contract
 
 Search indexes raw captured sources immediately. Formal folder, accepted learning notes, accepted Topic knowledge, accepted project references, and user notes enrich retrieval after promotion. Candidate content is excluded from default search ranking and shown only through an explicit candidate toggle. Results show their match reason, source-quality state, formal/candidate state, and links back to the source.

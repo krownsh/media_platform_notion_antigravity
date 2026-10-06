@@ -1,0 +1,4 @@
+interface:
+  display_name: "Owner-Guided Media Workflow"
+  short_description: "Capture sources and guide owner-approved knowledge decisions"
+  default_prompt: "Use $owner-guided-media-workflow to guide one source at a time. State the current phase, why it is current, and the one next action. Keep raw evidence, candidates, and accepted knowledge separate."

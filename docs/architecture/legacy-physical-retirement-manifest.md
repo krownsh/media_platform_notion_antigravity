@@ -49,10 +49,12 @@ output.
 
 ## 2026-10-06 deployment-readiness readback
 
-The running checkout is `main`; it is an ancestor of this rebuild branch by
-12 commits, but it has uncommitted user changes and untracked local artifacts.
-Do not reset, checkout over, or force-update it. Deployment requires a
-separate Owner-approved integration step that first preserves/reconciles that
+The first read-only check found the running checkout (`main`) to be an ancestor
+of this rebuild branch by 12 commits. That count is historical and must be
+recomputed immediately before integration because documentation commits can
+increase it. The checkout also has uncommitted user changes and untracked local
+artifacts. Do not reset, checkout over, or force-update it. Deployment requires
+a separate Owner-approved integration step that first preserves/reconciles that
 working tree, then applies the reviewed commits, restarts only the intended
 services, and checks capture/review/search readback.
 

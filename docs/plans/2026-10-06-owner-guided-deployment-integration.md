@@ -32,7 +32,9 @@ Known state captured on 2026-10-06:
 
 - the running server and capture worker use the original project checkout on
   `main`, not this rebuild worktree;
-- `main` is an ancestor of the rebuild by 12 commits at the time of inspection;
+- the first inspection found `main` 12 commits behind the rebuild; recompute
+  this immediately before integration because subsequent documentation commits
+  intentionally change that count;
 - the original checkout has 23 dirty entries owned by the user;
 - exactly two dirty tracked files also changed in this rebuild:
   `server/services/captureFinalizationService.js` and
@@ -271,4 +273,3 @@ Record target, integration commit, migration IDs, backup verification,
 process revisions, smoke-test result, observation-window result, and any
 remaining legacy producer. Never state that B–E were retired unless their
 separate gates have been met.
-

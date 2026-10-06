@@ -36,3 +36,13 @@ M3/M4 owner tables, `owner_post_search_documents`, and
 
 Choose **none, A, A+B, or a custom batch**. B–E cannot proceed from repository
 inspection alone because they can affect external clients, jobs or history.
+
+## 2026-10-06 local process readback
+
+PM2 reports both `media-collection-server` and
+`media-collection-capture-worker` online from the original project checkout,
+not this rebuild worktree. This proves B–D are live-process changes and must
+not be removed or stopped from the rebuild branch. PM2 detailed process
+inspection can expose environment credentials; do not capture it in logs or
+documents, and rotate any credentials that appeared in a local diagnostic
+output.

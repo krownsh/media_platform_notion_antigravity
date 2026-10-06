@@ -63,7 +63,7 @@
 6. Run focused tests, Docker integration, and authenticated browser capture checks.
 7. Commit M1 only after the contract and evidence ledger are green.
 
-**Gate:** New capture creates a durable source record with `complete`, `partial`, or `failed` quality and never creates a formal semantic decision.
+**Gate:** New capture creates a durable source record with `complete` or `partial` quality, or records a failed capture request with no source revision; it never creates a formal semantic decision.
 
 ## Milestone 2 — Shared proposals, approvals, and review checkpoints
 

@@ -41,7 +41,7 @@ an approval.
 - **部分擷取**: first show what is missing and offer source repair or
   **以目前來源建立候選**. The agent must not 自動 create semantic candidates
   from a partial source.
-- Failed source: show the safe retry path and preserve the failure evidence.
+- Failed capture request: show the safe retry path and preserve the failure evidence. It has no source revision and cannot enter candidate review.
 
 ### 2. Review automatically prepared candidates
 

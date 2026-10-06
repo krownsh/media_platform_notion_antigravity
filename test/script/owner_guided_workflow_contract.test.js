@@ -19,7 +19,7 @@ test('owner-guided workflow contract makes source, proposal, and accepted state 
     'not_needed',
     'next_action',
     'partial',
-    'failed'
+    'failed capture request'
   ]) {
     assert.match(contract, new RegExp(requirement, 'i'), `missing contract requirement: ${requirement}`);
   }

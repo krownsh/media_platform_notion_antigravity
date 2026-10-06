@@ -12,13 +12,12 @@ Supabase is the only authoritative store for source facts, review state, formal 
 
 Capture persists source facts only: original URL or upload identity, platform, extracted body, media, comments, capture metadata, and a source revision. It never writes a formal folder, post learning note, Topic update, project reference, POC, or Vault entry.
 
-Capture quality is exactly one of:
+Persisted source quality is exactly one of:
 
 - `complete`: enough source material exists to prepare a review packet.
 - `partial`: some material was preserved but review must first disclose what is missing.
-- `failed`: no reliable source material was persisted and semantic review cannot begin.
 
-For a `complete` source, the system automatically prepares an owner-visible Review Packet and candidate proposals. This projection never accepts or promotes formal knowledge; the Owner's next action is review, not candidate creation. `partial` and `failed` sources stop at the source-repair step until recapture succeeds or the Owner explicitly accepts use of partial material. A later successful recapture creates a new revision and proposes, rather than silently overwrites, downstream updates.
+If no reliable source material is persisted, the result is a **failed capture request**, not a third source quality and not a source revision. It remains a retry/failure record and cannot begin semantic review. For a `complete` source, the system automatically prepares an owner-visible Review Packet and candidate proposals. This projection never accepts or promotes formal knowledge; the Owner's next action is review, not candidate creation. A `partial` source stops at the source-repair step until recapture succeeds or the Owner explicitly accepts use of its retained material. A later successful recapture creates a new revision and proposes, rather than silently overwrites, downstream updates.
 
 ## Proposal and promotion contract
 

@@ -90,20 +90,7 @@ class CategoryProcessor {
     /**
      * classifyWithLLM
      */
-    async classifyWithLLM(content, configs) {
-        // Build dynamic prompt from DB configs
-        const configLabels = configs.map(c => `- [${c.slug}]: ${c.description || 'General theme'}`).join('\n');
-
-        const prompt = `You are an expert digital content analyst. Your task is to classify the text into exactly ONE of the following categories:
-${configLabels}
-- [other]: Any content that strictly doesn't fit the themes above.
-
-If the content spans multiple, pick the most dominant one. Avoid "other" unless it's completely unrelated.
-Respond with ONLY a JSON object in this exact form: {"primary_category":"one of the allowed lowercase slugs"}.
-
-Text:
-${content.substring(0, 500)}`;
-
+    async classifyWithLLM(_content, _configs) {
         try {
             let aiResponse = 'other';
 

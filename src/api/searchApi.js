@@ -7,7 +7,8 @@ export async function searchLibrary({
     platform = '',
     collectionId = '',
     stage = '',
-    status = ''
+    status = '',
+    includeCandidates = false
 } = {}) {
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
@@ -15,6 +16,7 @@ export async function searchLibrary({
     if (collectionId) params.set('collectionId', collectionId);
     if (stage) params.set('stage', stage);
     if (status) params.set('status', status);
+    if (includeCandidates) params.set('includeCandidates', 'true');
     params.set('limit', String(limit));
     const response = await authenticatedFetch(`${API_BASE_URL}/api/search?${params.toString()}`);
     if (!response.ok) {

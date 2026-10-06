@@ -49,7 +49,8 @@ test('finalization submits only raw source facts and a partial quality when requ
             supabaseClient: client,
             configured: true,
             captureQuality: 'partial',
-            reviewPreparer: async input => { client.reviewPreparation = input; }
+            reviewPreparer: async input => { client.reviewPreparation = input; },
+            searchIndexer: async input => { client.searchIndexInput = input; }
         }
     );
 
@@ -62,6 +63,9 @@ test('finalization submits only raw source facts and a partial quality when requ
         userId: 'user-1',
         sourceRevisionId: 'revision-1',
         supabaseClient: client
+    });
+    assert.deepEqual(client.searchIndexInput, {
+        userId: 'user-1', postId: 'post-1', sourceRevisionId: 'revision-1', supabaseClient: client
     });
 });
 

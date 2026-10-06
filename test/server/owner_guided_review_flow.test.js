@@ -113,3 +113,18 @@ test('Topic knowledge promotion falls through to the dedicated M4 transaction on
     assert.equal(packet.version, 5);
     assert.deepEqual(calls.map(call => call.name), ['promote_owner_review_proposal', 'promote_owner_knowledge_proposal']);
 });
+
+test('a successful owner promotion asks the rebuildable search projection to refresh', async () => {
+    const indexed = [];
+    const client = {
+        rpc() {
+            return { single: async () => ({ data: { id: 'packet-1', status: 'open', version: 2, post_id: 'post-1', source_revision_id: 'source-1' }, error: null }) };
+        }
+    };
+    const { promoteReviewProposal } = await import('../../server/services/reviewPromotionService.js');
+    await promoteReviewProposal({
+        userId: 'user-1', packetId: 'packet-1', proposalId: 'proposal-1', action: 'accept', expectedVersion: 1,
+        supabaseClient: client, searchIndexer: async input => indexed.push(input)
+    });
+    assert.deepEqual(indexed, [{ userId: 'user-1', postId: 'post-1', sourceRevisionId: 'source-1', supabaseClient: client }]);
+});

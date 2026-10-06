@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
-import { upsertPostSearchDocument } from './postSearchService.js';
+import { refreshOwnerPostSearchDocument } from './ownerSearchService.js';
 import { prepareInitialReviewProposals } from './reviewProposalService.js';
 
 function normalizeCommentTimestamp(value) {
@@ -24,7 +24,8 @@ export async function finalizeCapture(
         configured = isSupabaseConfigured,
         pipelineVersion = 'capture-v5-owner-guided',
         captureQuality = 'complete',
-        reviewPreparer = prepareInitialReviewProposals
+        reviewPreparer = prepareInitialReviewProposals,
+        searchIndexer = refreshOwnerPostSearchDocument
     } = {}
 ) {
     if (!configured) {
@@ -103,21 +104,11 @@ export async function finalizeCapture(
         console.warn(`[Capture] Review packet projection deferred: ${packetError.message}`);
     }
 
-    // Search indexing is a projection. A missing/unapplied Stage N migration
+    // Search indexing is a projection. A missing/unapplied M5 migration
     // must never make the durable capture fail; the maintenance command can
     // rebuild the projection later.
     try {
-        const { data: indexedPost, error: indexLookupError } = await supabaseClient
-            .from('collection_posts')
-            .select(`
-                id, user_id, platform, original_url, title, author_name, content, collection_id,
-                collection_post_media (*)
-            `)
-            .eq('id', finalized.post_id)
-            .eq('user_id', userId)
-            .maybeSingle();
-        if (indexLookupError) throw indexLookupError;
-        if (indexedPost) await upsertPostSearchDocument(indexedPost, { supabaseClient });
+        await searchIndexer({ userId, postId: finalized.post_id, sourceRevisionId: finalized.source_revision_id, supabaseClient });
     } catch (error) {
         console.warn(`[Capture] Search projection deferred: ${error.message}`);
     }

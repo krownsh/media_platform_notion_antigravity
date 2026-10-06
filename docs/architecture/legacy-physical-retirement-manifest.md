@@ -46,3 +46,12 @@ not be removed or stopped from the rebuild branch. PM2 detailed process
 inspection can expose environment credentials; do not capture it in logs or
 documents, and rotate any credentials that appeared in a local diagnostic
 output.
+
+## 2026-10-06 deployment-readiness readback
+
+The running checkout is `main`; it is an ancestor of this rebuild branch by
+12 commits, but it has uncommitted user changes and untracked local artifacts.
+Do not reset, checkout over, or force-update it. Deployment requires a
+separate Owner-approved integration step that first preserves/reconciles that
+working tree, then applies the reviewed commits, restarts only the intended
+services, and checks capture/review/search readback.

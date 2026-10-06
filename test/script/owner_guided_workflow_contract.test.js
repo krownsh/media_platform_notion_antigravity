@@ -49,6 +49,7 @@ test('evidence ledger keeps milestone proof and limits explicit', async () => {
   for (const requirement of [
     'M0',
     'M1',
+    'M2',
     'Known limits',
     'Rollback',
     'isolated PostgreSQL',

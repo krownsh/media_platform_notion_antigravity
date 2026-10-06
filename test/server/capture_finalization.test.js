@@ -11,6 +11,10 @@ function captureClient(finalized) {
                 rpcInput = input;
                 return { single: async () => ({ data: finalized, error: null }) };
             }
+            if (name === 'ensure_owner_review_packet') {
+                this.reviewPacketInput = input;
+                return { single: async () => ({ data: { id: 'packet-1' }, error: null }) };
+            }
             throw new Error(`Unexpected RPC: ${name}`);
         },
         from() {
@@ -49,6 +53,10 @@ test('finalization submits only raw source facts and a partial quality when requ
     assert.equal(client.rpcInput.p_capture_quality, 'partial');
     assert.equal(client.rpcInput.p_post.source_type, 'fallback_link');
     assert.equal(Object.hasOwn(client.rpcInput.p_post, 'summary'), false);
+    assert.deepEqual(client.reviewPacketInput, {
+        p_user_id: 'user-1',
+        p_source_revision_id: 'revision-1'
+    });
 });
 
 test('finalization rejects an RPC response that lacks a durable source revision', async () => {

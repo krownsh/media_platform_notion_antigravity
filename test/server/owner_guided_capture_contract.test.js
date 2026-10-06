@@ -28,6 +28,7 @@ test('new finalization sends only source facts and keeps search projection non-f
     assert.doesNotMatch(finalizationSource, /collection_post_workflows/);
     assert.doesNotMatch(finalizationSource, /collection_post_analysis \(\*\)/);
     assert.match(finalizationSource, /Search projection deferred/);
+    assert.match(finalizationSource, /Review packet projection deferred/);
     assert.match(requestSource, /source_revision_id/);
     assert.match(requestSource, /p_source_revision_id/);
 });

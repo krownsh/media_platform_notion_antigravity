@@ -25,6 +25,7 @@ import { captureRouter } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
+import { reviewRouter } from './routes/reviewRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
 
@@ -212,6 +213,7 @@ app.use('/api/batch-classify', requireSupabaseJwt);
 app.use('/api/topics', requireSupabaseJwt);
 app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
+app.use('/api/review', requireSupabaseJwt, reviewRouter);
 
 
 function normalizeTopicTextList(value) {

@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { upsertPostSearchDocument } from './postSearchService.js';
+import { ensureReviewPacket } from './reviewPacketService.js';
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -86,6 +87,19 @@ export async function finalizeCapture(
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
     if (!finalized?.post_id || !finalized?.source_revision_id) {
         throw new Error('Capture finalization returned an incomplete result');
+    }
+
+    // A packet is a resumable review projection, not a semantic decision.
+    // It must never make durable source capture fail while staged deployments
+    // are catching up with the review-domain migration.
+    try {
+        await ensureReviewPacket({
+            userId,
+            sourceRevisionId: finalized.source_revision_id,
+            supabaseClient
+        });
+    } catch (packetError) {
+        console.warn(`[Capture] Review packet projection deferred: ${packetError.message}`);
     }
 
     // Search indexing is a projection. A missing/unapplied Stage N migration

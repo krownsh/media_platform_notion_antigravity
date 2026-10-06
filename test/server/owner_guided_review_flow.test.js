@@ -5,7 +5,8 @@ import {
     buildPostLearningNotePayload,
     buildFolderProposalPayload,
     buildTopicKnowledgeProposalPayload,
-    buildProjectReferenceProposalPayloads
+    buildProjectReferenceProposalPayloads,
+    prepareInitialReviewProposals
 } from '../../server/services/reviewProposalService.js';
 
 test('first review vertical keeps one folder, optional note, and bounded Topic assignment as candidates', () => {
@@ -69,6 +70,44 @@ test('topic assignment rejects more than two related Topics and a duplicated pri
         () => normalizeTopicAssignment({ primary_topic: 'UI UX', related_topics: ['UI UX'] }),
         /must not repeat/
     );
+});
+
+test('a partial source creates a repair packet before any semantic candidate exists', async () => {
+    const tablesRead = [];
+    const client = {
+        rpc(name) {
+            assert.equal(name, 'ensure_owner_review_packet');
+            return { single: async () => ({ data: { id: 'packet-partial', source_revision_id: 'source-partial' }, error: null }) };
+        },
+        from(table) {
+            tablesRead.push(table);
+            if (table !== 'collection_source_revisions') {
+                throw new Error(`partial source must not read candidate input from ${table}`);
+            }
+            const query = {
+                select() { return query; },
+                eq() { return query; },
+                maybeSingle: async () => ({
+                    data: {
+                        id: 'source-partial',
+                        post_id: 'post-partial',
+                        capture_quality: 'partial',
+                        collection_posts: { id: 'post-partial', title: 'Partial source', content: 'Only a link was saved.' }
+                    },
+                    error: null
+                })
+            };
+            return query;
+        }
+    };
+
+    const review = await prepareInitialReviewProposals({
+        userId: 'user-partial', sourceRevisionId: 'source-partial', supabaseClient: client
+    });
+
+    assert.equal(review.packet.id, 'packet-partial');
+    assert.deepEqual(review.proposals, []);
+    assert.deepEqual(tablesRead, ['collection_source_revisions']);
 });
 
 test('promotion accepts only through the dedicated RPC and records edited values', async () => {

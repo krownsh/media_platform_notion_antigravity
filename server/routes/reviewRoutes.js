@@ -55,7 +55,11 @@ export function createReviewRouter({
         const userId = req.auth?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized' });
         try {
-            return res.status(202).json({ review: await prepareProposals({ userId, sourceRevisionId: req.params.sourceRevisionId }) });
+            return res.status(202).json({ review: await prepareProposals({
+                userId,
+                sourceRevisionId: req.params.sourceRevisionId,
+                allowPartial: req.body?.allow_partial === true
+            }) });
         } catch (error) {
             return res.status(isReviewConflict(error) ? 409 : 400).json({ error: error.message });
         }

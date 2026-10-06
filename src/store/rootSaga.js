@@ -31,10 +31,11 @@ import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import { getCaptureStatus, listCaptureHistory, submitUrlCapture } from '../api/captureApi';
-import { listReviewPackets, deferReviewPacket as deferPacketApi, resumeReviewPacket as resumePacketApi, decideReviewProposal as decideProposalApi } from '../api/reviewApi';
+import { listReviewPackets, prepareReviewCandidates as prepareReviewCandidatesApi, deferReviewPacket as deferPacketApi, resumeReviewPacket as resumePacketApi, decideReviewProposal as decideProposalApi } from '../api/reviewApi';
 import {
-  fetchReviewPackets, fetchReviewPacketsSuccess, fetchReviewPacketsFailure,
-  deferReviewPacket, resumeReviewPacket, decideReviewProposal,
+    fetchReviewPackets, fetchReviewPacketsSuccess, fetchReviewPacketsFailure,
+    prepareReviewCandidates, reviewCandidatesPrepared,
+    deferReviewPacket, resumeReviewPacket, decideReviewProposal,
   reviewPacketUpdated, reviewActionFailure
 } from '../features/reviewSlice';
 
@@ -333,6 +334,21 @@ function* handleFetchReviewPackets() {
   }
 }
 
+function* handlePrepareReviewCandidates(action) {
+  try {
+    const { sourceRevisionId, allowPartial = false } = action.payload;
+    const review = yield call(prepareReviewCandidatesApi, sourceRevisionId, { allowPartial });
+    yield put(reviewCandidatesPrepared(review));
+    yield put(fetchReviewPackets());
+    yield put(addNotification({
+      message: '候選整理已建立；請在 Focus Mode 逐項確認。',
+      type: 'success'
+    }));
+  } catch (error) {
+    yield put(reviewActionFailure(error.message));
+  }
+}
+
 function* handleDeferReviewPacket(action) {
   try {
     const { packetId, expectedVersion, reason } = action.payload;
@@ -369,6 +385,7 @@ function* watchPosts() {
   yield takeLatest(movePostToCollection.type, handleMovePostToCollection);
   yield takeLatest(updateCollectionName.type, handleUpdateCollectionName);
   yield takeLatest(fetchReviewPackets.type, handleFetchReviewPackets);
+  yield takeLeading(prepareReviewCandidates.type, handlePrepareReviewCandidates);
   yield takeLeading(deferReviewPacket.type, handleDeferReviewPacket);
   yield takeLeading(resumeReviewPacket.type, handleResumeReviewPacket);
   yield takeLeading(decideReviewProposal.type, handleDecideReviewProposal);

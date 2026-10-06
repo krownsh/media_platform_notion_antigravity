@@ -11,6 +11,20 @@ export async function listReviewPackets() {
     return (await responseJson(await authenticatedFetch(`${API_BASE_URL}/api/review/packets`))).packets || [];
 }
 
+// Candidate generation is deliberately a separate owner action from capture.
+// Capture stores raw evidence only; this endpoint creates review drafts and
+// still cannot promote a folder, note, Topic, project reference, or POC.
+export async function prepareReviewCandidates(sourceRevisionId, { allowPartial = false } = {}) {
+    return (await responseJson(await authenticatedFetch(
+        `${API_BASE_URL}/api/review/source-revisions/${sourceRevisionId}/prepare`,
+        {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ allow_partial: allowPartial === true })
+        }
+    ))).review;
+}
+
 export async function deferReviewPacket(packetId, expectedVersion, reason = null) {
     return (await responseJson(await authenticatedFetch(`${API_BASE_URL}/api/review/packets/${packetId}/defer`, {
         method: 'POST', headers: { 'content-type': 'application/json' },

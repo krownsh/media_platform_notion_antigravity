@@ -1,5 +1,6 @@
 import React from 'react';
 import UrlInput from '../components/UrlInput';
+import CaptureReviewQueue from '../components/CaptureReviewQueue';
 import ReviewFocusPanel from '../components/ReviewFocusPanel';
 import { Link } from 'react-router-dom';
 import { BookOpenText, FolderGit2, Search } from 'lucide-react';
@@ -26,6 +27,8 @@ const HomePage = () => {
             </section>
 
             <UrlInput />
+
+            <CaptureReviewQueue />
 
             <section className="mt-8 sm:mt-10">
                 <ReviewFocusPanel />

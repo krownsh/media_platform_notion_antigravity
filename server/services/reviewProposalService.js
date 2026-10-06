@@ -133,14 +133,20 @@ export function buildProjectReferenceProposalPayloads({ topicPayload, post, proj
     }).filter(Boolean).slice(0, 3);
 }
 
-export async function prepareInitialReviewProposals({ userId, sourceRevisionId, supabaseClient = defaultSupabase }) {
+export async function prepareInitialReviewProposals({ userId, sourceRevisionId, allowPartial = false, supabaseClient = defaultSupabase }) {
     if (!userId || !sourceRevisionId) throw new Error('userId and sourceRevisionId are required');
     const packet = await ensureReviewPacket({ userId, sourceRevisionId, supabaseClient });
     const { data: revision, error: revisionError } = await supabaseClient
         .from('collection_source_revisions')
-        .select('id, post_id, collection_posts (id, title, content)')
+        .select('id, post_id, capture_quality, collection_posts (id, title, content)')
         .eq('id', sourceRevisionId).eq('user_id', userId).maybeSingle();
     if (revisionError || !revision) throw new Error(`Source revision lookup failed: ${revisionError?.message || 'not found'}`);
+    // A partial source can open a packet so the UI explains the situation,
+    // but it cannot generate semantic drafts until the Owner explicitly says
+    // the retained evidence is sufficient to continue.
+    if (revision.capture_quality === 'partial' && allowPartial !== true) {
+        return { packet, proposals: [] };
+    }
     const { data: collections, error: collectionsError } = await supabaseClient
         .from('collection_collections').select('id, name').eq('user_id', userId).order('name', { ascending: true });
     if (collectionsError) throw new Error(`Folder lookup failed: ${collectionsError.message}`);

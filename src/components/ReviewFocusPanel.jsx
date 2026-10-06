@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Check, ChevronRight, Clock3, Edit3, MessageSquareText, RefreshCw, ShieldCheck, X } from 'lucide-react';
-import { decideReviewProposal, deferReviewPacket, fetchReviewPackets, resumeReviewPacket } from '../features/reviewSlice';
+import { Link } from 'react-router-dom';
+import { decideReviewProposal, deferReviewPacket, fetchReviewPackets, prepareReviewCandidates, resumeReviewPacket } from '../features/reviewSlice';
 
 const actionCopy = {
-    repair_source: ['修復來源', '這筆來源是部分擷取；先確認缺少什麼，再決定是否以現有材料繼續。'],
+    repair_source: ['修復來源', '這筆來源是部分擷取；先查看缺少什麼，再選擇重試或明確以現有材料建立候選。'],
     review_proposal: ['確認一個候選', '這項決定會影響正式整理；接受前可以保留、修改或拒絕。'],
     resume_deferred: ['回到暫緩工作', '你先前選擇稍後再處理；恢復後會回到同一個下一步。'],
     awaiting_proposals: ['等待下一個候選', '目前沒有待決定的候選；來源會保留在收件匣，不會被自動歸檔。'],
@@ -34,11 +35,11 @@ function acceptanceImpact(proposal) {
 
 export default function ReviewFocusPanel() {
     const dispatch = useDispatch();
-    const { packets, loading, actionPending, error } = useSelector(state => state.review);
+    const { packets, activePacketId, loading, actionPending, error } = useSelector(state => state.review);
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState('');
     useEffect(() => { dispatch(fetchReviewPackets()); }, [dispatch]);
-    const packet = packets[0] || null;
+    const packet = packets.find(item => item.id === activePacketId) || packets[0] || null;
     const next = packet?.next_action || { kind: 'awaiting_proposals' };
     const proposal = useMemo(() => packet?.proposals?.find(item => item.id === next.proposal_id) || null, [packet, next.proposal_id]);
     const requiresOwnerContent = (proposal?.proposal_type === 'post_learning_note' && proposal?.payload?.note_status === 'needs_discussion')
@@ -52,7 +53,7 @@ export default function ReviewFocusPanel() {
     };
 
     return (
-        <section className="flow-panel p-5 sm:p-6" aria-label="Focus Mode review">
+        <section id="review-focus-mode" className="flow-panel p-5 sm:p-6" aria-label="Focus Mode review">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p className="flow-kicker mb-2">Focus Mode</p>
@@ -79,6 +80,10 @@ export default function ReviewFocusPanel() {
                     <button disabled={actionPending} onClick={startEdit} className="notion-btn-secondary inline-flex items-center gap-2"><Edit3 size={16} /> {requiresOwnerContent ? '補充內容後接受' : '編輯後接受'}</button>
                     {editing && <button disabled={actionPending} onClick={() => { try { accept('edit_and_accept', JSON.parse(draft)); } catch { window.alert('請使用有效的 JSON 格式'); } }} className="notion-btn-primary inline-flex items-center gap-2"><ChevronRight size={16} /> 儲存編輯</button>}
                     <button disabled={actionPending} onClick={() => accept('reject')} className="notion-btn-secondary inline-flex items-center gap-2"><X size={16} /> 不採用</button>
+                </>}
+                {next.kind === 'repair_source' && packet && <>
+                    {packet.post_id && <Link to={`/post/${packet.post_id}`} className="notion-btn-secondary inline-flex items-center gap-2">查看原始來源</Link>}
+                    <button disabled={actionPending} onClick={() => dispatch(prepareReviewCandidates({ sourceRevisionId: packet.source_revision_id, allowPartial: true }))} className="notion-btn-primary inline-flex items-center gap-2"><ChevronRight size={16} /> 以目前來源建立候選</button>
                 </>}
                 {next.kind === 'resume_deferred' && packet && <button disabled={actionPending} onClick={() => dispatch(resumeReviewPacket({ packetId: packet.id, expectedVersion: packet.version }))} className="notion-btn-primary inline-flex items-center gap-2"><RefreshCw size={16} /> 繼續處理</button>}
                 {packet && next.kind !== 'packet_complete' && <button disabled={actionPending} onClick={() => dispatch(deferReviewPacket({ packetId: packet.id, expectedVersion: packet.version, reason: 'Owner chose to continue later' }))} className="notion-btn-secondary inline-flex items-center gap-2"><Clock3 size={16} /> 稍後處理</button>}

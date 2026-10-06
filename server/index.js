@@ -27,6 +27,7 @@ import { processUrlThroughCaptureQueue } from './services/legacyProcessService.j
 import { searchRouter } from './routes/searchRoutes.js';
 import { reviewRouter } from './routes/reviewRoutes.js';
 import { ownerKnowledgeRouter } from './routes/ownerKnowledgeRoutes.js';
+import { ownerLibraryRouter } from './routes/ownerLibraryRoutes.js';
 import { normalizeParallelTracks } from './services/parallelTrackService.js';
 import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
 
@@ -216,6 +217,7 @@ app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
 app.use('/api/review', requireSupabaseJwt, reviewRouter);
 app.use('/api/owner-knowledge', requireSupabaseJwt, ownerKnowledgeRouter);
+app.use('/api/owner-library', requireSupabaseJwt, ownerLibraryRouter);
 
 
 function normalizeTopicTextList(value) {

@@ -134,7 +134,7 @@ const Layout = ({ children }) => {
                             <nav className="space-y-1">
                                 <SidebarItem
                                     icon={Home}
-                                    label="首頁"
+                                    label="收件匣"
                                     active={location.pathname === '/'}
                                     onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}
                                 />
@@ -225,7 +225,7 @@ const Layout = ({ children }) => {
                 <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar py-4">
                     <SidebarItem
                         icon={Home}
-                        label="首頁"
+                        label="收件匣"
                         active={location.pathname === '/'}
                         onClick={() => navigate('/')}
                         collapsed={isSidebarCollapsed}

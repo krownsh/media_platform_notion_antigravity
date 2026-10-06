@@ -14,6 +14,8 @@ test('normal navigation exposes only Inbox, Library, Topics, and Projects', asyn
     assert.match(app, /path="\/view-all" element={<Navigate to="\/search" replace \/>}/);
     assert.match(app, /path="\/collection\/:collectionId" element={<Navigate to="\/search" replace \/>}/);
     assert.match(layout, /label="Library 搜尋"/);
+    assert.match(layout, /label="收件匣"/);
+    assert.doesNotMatch(layout, /label="首頁"/);
     assert.doesNotMatch(layout, /新增資料夾/);
     assert.doesNotMatch(layout, /趨勢看板/);
     assert.match(home, /未接受前，不會寫進正式知識/);

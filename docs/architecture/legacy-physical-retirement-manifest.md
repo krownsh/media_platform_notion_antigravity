@@ -1,0 +1,38 @@
+# Legacy Physical Retirement Manifest (M7 — Prepared, Not Approved)
+
+**No deletion or schema change is authorized by this document.** M6 only
+removed old paths from normal navigation; historical code, endpoints, jobs and
+data remain until an explicit Owner decision.
+
+## Candidate retirement batches
+
+| Batch | Exact scope | Evidence / required gate | Reversible first move |
+| --- | --- | --- | --- |
+| A — unreachable frontend | `src/pages/ViewAllPage.jsx`, `src/pages/InsightPage.jsx`, `src/pages/ImageWorkflowPage.jsx`, `src/components/CollectionBoard.jsx`, `src/components/CollectionModal.jsx`, `src/components/SortablePostCard.jsx`, `src/components/PostCard.jsx`, `src/components/PostDetailView.jsx`, `src/components/RemixPanel.jsx` and legacy-only UI tests | `src/App.jsx` imports none; remaining imports are inside this retired cluster. Owner must approve after a fresh build and a decision to remove/replace its named tests. | Keep a release-window commit snapshot, then remove code/tests in one reviewed commit. |
+| B — legacy public API | `/api/posts`, `/api/stats`, `/api/analyze-post`, `/api/rewrite`, `/api/remix`, `/api/image-workflow`, `/api/publish`, `/api/batch-classify`, `/api/topics`, `/api/projects`, `/api/agent/jobs`, `/api/poc-workbench`, `/api/parallel-tracks` | Although the frontend no longer navigates here, external clients may exist. Require 14 days of endpoint telemetry and explicit Owner confirmation. | Return a documented deprecation response first; never silently repurpose a path. |
+| C — background workflow | `scripts/agent-sdk/*workflow*.js`, `analyze-item.js`, `outbox-lease.js`, `preprocess-workflow.js`, `vault-sync-workflow.js`; services `postWorkflowService.js`, `hermesOutboxService.js`, `autonomousKnowledgeService.js`, `codexRemotePreprocessService.js` | These still call one another and can write old analysis/workflow/outbox state. Inspect scheduler/PM2/crons and obtain Owner approval before stopping every producer. | Disable one job with an explicit logged config change and observe zero new legacy writes for 14 days. |
+| D — legacy search | `server/services/postSearchService.js`, `scripts/maintenance/rebuild-search-index.js`, `database/deployments/stage_n_post_search_documents.sql`, plus old agent callers | M5 replaces normal search but agent scripts still call this projection. Batch C must be frozen and remote consumers/readback checked. | Stop writers; preserve table; revoke legacy RPC only after approval. |
+| E — Knowledge Space / old Topic-project schema | `server/services/knowledgeSpaceService.js`, `stage_w*.sql`, legacy `collection_topics`, `collection_projects`, governance/aggregate services and migrations | User marked this as old architecture, but it may contain historical data. Require remote object inventory, per-user counts, verified backup, retention period, and explicit per-table Owner approval. | Hide/revoke routes first. Never delete applied deployment migration files; use a reviewed forward migration. |
+
+## Protected data
+
+Never use wildcard table drops. Preserve `collection_posts`,
+`collection_source_revisions`, `collection_post_media`,
+`collection_post_comments`, `collection_capture_requests`, review/audit records,
+M3/M4 owner tables, `owner_post_search_documents`, and
+`collection_collections` (still used by owner-guided folder decisions).
+
+## Mandatory evidence before any physical removal
+
+1. Export remote schema/object inventory and per-user row counts.
+2. Create and verify a restorable backup for each approved data-bearing table.
+3. Confirm no old endpoint traffic or scheduler/PM2/cron producer in the
+   agreed observation window.
+4. Run full owner-guided regression and authenticated staging readback.
+5. Present exact files, endpoints, jobs, tables, retention and rollback to
+   the Owner; obtain approval for the selected batch only.
+
+## Explicit decision needed
+
+Choose **none, A, A+B, or a custom batch**. B–E cannot proceed from repository
+inspection alone because they can affect external clients, jobs or history.

@@ -1,11 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { upsertPostSearchDocument } from './postSearchService.js';
-import { persistGeneratedTitle } from './autonomousKnowledgeService.js';
-
-function serializeAnalysisSummary(summary) {
-    if (!summary) return null;
-    return typeof summary === 'object' ? JSON.stringify(summary) : summary;
-}
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -62,13 +56,8 @@ export async function finalizeCapture(
                 source_domains: data.source_domains || [],
                 source_type: data.source_type || data.full_json?.source_type || data.fullJson?.source_type || 'url_capture'
             },
-            p_analysis: {
-                primary_category: analysis.primary_category || 'other',
-                summary: serializeAnalysisSummary(analysis.summary),
-                tags: analysis.tags || [],
-                topics: analysis.topics || [],
-                sentiment: analysis.sentiment || null
-            },
+            // Capture-only mode deliberately stores no semantic interpretation.
+            p_analysis: {},
             p_media: (data.images || []).map((media, index) => {
                 if (typeof media === 'string') return { url: media, order: index };
                 return {
@@ -91,16 +80,8 @@ export async function finalizeCapture(
         .single();
 
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
-    if (!finalized?.post_id || !finalized?.outbox_event_id) {
-        throw new Error('Capture finalization returned an incomplete result');
-    }
-
-    if (!data.title && analysis.generated_title) {
-        try {
-            await persistGeneratedTitle({ id: finalized.post_id, user_id: userId, title: data.title }, analysis.generated_title, supabaseClient, 'capture_ai');
-        } catch (titleError) {
-            console.warn(`[Capture] Generated title persistence deferred: ${titleError.message}`);
-        }
+    if (!finalized?.post_id) {
+        throw new Error('Capture finalization returned no post identity');
     }
 
     // Search indexing is a projection. A missing/unapplied Stage N migration
@@ -111,7 +92,7 @@ export async function finalizeCapture(
             .from('collection_posts')
             .select(`
                 id, user_id, platform, original_url, title, author_name, content, collection_id,
-                collection_post_analysis (*), collection_post_workflows (stage, status, updated_at)
+                collection_post_analysis (*)
             `)
             .eq('id', finalized.post_id)
             .eq('user_id', userId)

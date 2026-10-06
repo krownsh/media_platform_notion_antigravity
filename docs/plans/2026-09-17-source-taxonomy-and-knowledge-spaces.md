@@ -16,7 +16,7 @@
 
 - Source folders are the first layer. A post has one primary collection only.
 - Knowledge maps are a second layer. A node may cite posts from multiple collections.
-- No automatic new category creation. Low-confidence or cross-cutting source classification stays Inbox with an explainable proposal.
+- Low-confidence or cross-cutting source classification stays Inbox with an explainable proposal. Future expansion is allowed only through `docs/knowledge-taxonomy/source-taxonomy-v2.json`: a new immutable version plus decision record; it does not authorize a live collection, routing, or post mutation.
 - `Codex`, `prompt`, `skill`, and `package` are source attributes, not primary folders.
 - Every visible technical claim must retain at least one source citation and indicate whether it is source-captured, author-claimed, or independently verified.
 - The current `collection_knowledge_maps` reader remains intact during Phase B; no destructive migration.

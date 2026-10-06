@@ -1,7 +1,5 @@
 import { orchestrator } from './orchestrator.js';
 import { finalizeCapture } from './captureFinalizationService.js';
-import { analyzeCapturedUrl } from './captureAnalysisService.js';
-import { updateWorkflowAfterCapture } from './postWorkflowService.js';
 
 export function isCoreCaptureUrl(url) {
     return /(^|\.)threads\.(net|com)$|(^|\.)(twitter\.com|x\.com)$/i.test(new URL(url).hostname);
@@ -13,9 +11,12 @@ export function buildFallbackCapture(url, error) {
         original_url: url,
         title: '連結存檔 (自動容錯)',
         content: url,
-        analysis: {
-            primary_category: 'other',
-            summary: `⚠️ 此網址目前無法解析詳細內容，已自動轉為連結存檔模式。\n原因：${error.message}`
+        full_json: {
+            source_type: 'fallback_link',
+            capture_error: {
+                message: String(error?.message || error || 'Unknown extraction error').slice(0, 1000),
+                occurred_at: new Date().toISOString()
+            }
         }
     };
 }
@@ -51,20 +52,13 @@ export function buildImageCapture(request) {
             content_type: request.media_content_type,
             byte_size: request.media_size_bytes,
             original_filename: request.original_filename || null
-        }],
-        analysis: { primary_category: 'other' }
+        }]
     };
 }
 
 export async function processCaptureRequest(
     request,
-    {
-        acquisition = orchestrator,
-        finalizer = finalizeCapture,
-        analyzer = analyzeCapturedUrl,
-        workflowUpdater = updateWorkflowAfterCapture,
-        logger = console
-    } = {}
+    { acquisition = orchestrator, finalizer = finalizeCapture } = {}
 ) {
     if (request.input_type === 'image') {
         const imageCapture = buildImageCapture(request);
@@ -73,27 +67,15 @@ export async function processCaptureRequest(
             request.correlation_id,
             'upload',
             imageCapture,
-            { pipelineVersion: 'capture-v4-image-async' }
+            { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' }
         );
-
-        // Workflow persistence is additive. A deployment that has not yet run
-        // Stage G must not turn a successfully stored image into a failed
-        // capture request.
-        try {
-            await workflowUpdater({
-                outboxEventId: finalization.outbox_event_id,
-                sourceType: 'image_upload',
-                baseAnalysis: { status: 'pending', source: 'hermes_image', errors: [] }
-            });
-        } catch (error) {
-            logger.warn?.('[CaptureProcessing] Workflow initialization deferred:', error.message);
-        }
 
         return {
             status: 'finalized',
             captureQuality: 'complete',
             postId: finalization.post_id,
-            outboxEventId: finalization.outbox_event_id
+            sourceRevisionId: finalization.source_revision_id,
+            outboxEventId: finalization.outbox_event_id ?? null
         };
     }
 
@@ -110,43 +92,31 @@ export async function processCaptureRequest(
             request.correlation_id,
             'fallback',
             fallback,
-            { pipelineVersion: 'capture-v3-async' }
+            { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'partial' }
         );
 
         return {
-            status: 'degraded',
-            captureQuality: 'degraded',
+            status: 'finalized',
+            captureQuality: 'partial',
             postId: finalization.post_id,
-            outboxEventId: finalization.outbox_event_id
+            sourceRevisionId: finalization.source_revision_id,
+            outboxEventId: finalization.outbox_event_id ?? null
         };
     }
 
-    // Preserve the original URL contract: the worker performs capture-time
-    // classification and summary generation. Hermes later performs the
-    // deeper triage and discussion workflow.
-    const analyzed = await analyzer(result.data);
     const finalization = await finalizer(
         request.user_id,
         request.correlation_id,
         result.source,
-        analyzed.data,
-        { pipelineVersion: 'capture-v3-async' }
+        result.data,
+        { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' }
     );
-
-    try {
-        await workflowUpdater({
-            outboxEventId: finalization.outbox_event_id,
-            sourceType: 'url_capture',
-            baseAnalysis: analyzed.baseAnalysis
-        });
-    } catch (error) {
-        logger.warn?.('[CaptureProcessing] Workflow initialization deferred:', error.message);
-    }
 
     return {
         status: 'finalized',
         captureQuality: 'complete',
         postId: finalization.post_id,
-        outboxEventId: finalization.outbox_event_id
+        sourceRevisionId: finalization.source_revision_id,
+        outboxEventId: finalization.outbox_event_id ?? null
     };
 }

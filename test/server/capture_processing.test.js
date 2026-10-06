@@ -11,9 +11,8 @@ const request = {
     correlation_id: 'capture-test-1'
 };
 
-test('async capture restores URL base analysis before finalization', async () => {
+test('async capture persists normalized source facts without analysis or workflow work', async () => {
     let finalizedInput;
-    let workflowInput;
     const result = await processCaptureRequest(request, {
         acquisition: {
             processUrl: async () => ({
@@ -23,46 +22,44 @@ test('async capture restores URL base analysis before finalization', async () =>
         },
         finalizer: async (...args) => {
             finalizedInput = args;
-            return { post_id: 'post-1', outbox_event_id: 'event-1' };
-        },
-        analyzer: async data => ({
-            data: { ...data, analysis: { primary_category: 'tool', summary: '摘要', tags: ['sdk'], topics: ['tooling'] } },
-            baseAnalysis: { status: 'completed', source: 'capture_ai', errors: [] }
-        }),
-        workflowUpdater: async input => { workflowInput = input; }
+            return { post_id: 'post-1', source_revision_id: 'revision-1', outbox_event_id: null };
+        }
     });
 
     assert.deepEqual(result, {
         status: 'finalized',
         captureQuality: 'complete',
         postId: 'post-1',
-        outboxEventId: 'event-1'
+        sourceRevisionId: 'revision-1',
+        outboxEventId: null
     });
     assert.equal(finalizedInput[0], request.user_id);
     assert.equal(finalizedInput[1], request.correlation_id);
-    assert.deepEqual(finalizedInput[3].analysis, { primary_category: 'tool', summary: '摘要', tags: ['sdk'], topics: ['tooling'] });
-    assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v3-async' });
-    assert.deepEqual(workflowInput, {
-        outboxEventId: 'event-1',
-        sourceType: 'url_capture',
-        baseAnalysis: { status: 'completed', source: 'capture_ai', errors: [] }
-    });
+    assert.equal(Object.hasOwn(finalizedInput[3], 'analysis'), false);
+    assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' });
 });
 
-test('generic extraction failure becomes a degraded link record', async () => {
+test('generic extraction failure becomes a partial link source record', async () => {
     let fallback;
     const result = await processCaptureRequest(request, {
         acquisition: { processUrl: async () => { throw new Error('unreadable page'); } },
         finalizer: async (_userId, _correlationId, source, data) => {
             fallback = { source, data };
-            return { post_id: 'post-2', outbox_event_id: 'event-2' };
+            return { post_id: 'post-2', source_revision_id: 'revision-2', outbox_event_id: null };
         }
     });
 
-    assert.equal(result.status, 'degraded');
+    assert.deepEqual(result, {
+        status: 'finalized',
+        captureQuality: 'partial',
+        postId: 'post-2',
+        sourceRevisionId: 'revision-2',
+        outboxEventId: null
+    });
     assert.equal(fallback.source, 'fallback');
     assert.equal(fallback.data.original_url, request.url);
-    assert.match(fallback.data.analysis.summary, /unreadable page/);
+    assert.equal(Object.hasOwn(fallback.data, 'analysis'), false);
+    assert.match(fallback.data.full_json.capture_error.message, /unreadable page/);
 });
 
 test('image capture finalizes persisted media without crawler or AI work', async () => {
@@ -81,9 +78,8 @@ test('image capture finalizes persisted media without crawler or AI work', async
         acquisition: { processUrl: async () => { acquisitionCalls += 1; } },
         finalizer: async (...args) => {
             finalizedInput = args;
-            return { post_id: 'post-image', outbox_event_id: 'event-image' };
-        },
-        workflowUpdater: async () => {}
+            return { post_id: 'post-image', source_revision_id: 'revision-image', outbox_event_id: null };
+        }
     });
 
     assert.equal(acquisitionCalls, 0);
@@ -91,7 +87,9 @@ test('image capture finalizes persisted media without crawler or AI work', async
     assert.equal(finalizedInput[2], 'upload');
     assert.equal(finalizedInput[3].platform, 'image');
     assert.equal(finalizedInput[3].images[0].storage_bucket, 'collection_capture_uploads');
-    assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v4-image-async' });
+    assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' });
+    assert.equal(result.outboxEventId, null);
+    assert.equal(result.sourceRevisionId, 'revision-image');
 });
 
 test('core-platform extraction failure remains retryable and does not save fallback data', async () => {
@@ -138,7 +136,8 @@ test('worker completes a leased request through the durable status service', asy
             status: 'finalized',
             captureQuality: 'complete',
             postId: 'post-3',
-            outboxEventId: 'event-3'
+            sourceRevisionId: 'revision-3',
+            outboxEventId: null
         }),
         complete: async (input) => {
             calls.push(input);
@@ -154,7 +153,8 @@ test('worker completes a leased request through the durable status service', asy
         status: 'finalized',
         captureQuality: 'complete',
         postId: 'post-3',
-        outboxEventId: 'event-3'
+        sourceRevisionId: 'revision-3',
+        outboxEventId: null
     });
     assert.equal(Object.hasOwn(result, 'hermesDispatch'), false);
 });

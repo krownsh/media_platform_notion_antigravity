@@ -1,11 +1,5 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { upsertPostSearchDocument } from './postSearchService.js';
-import { persistGeneratedTitle } from './autonomousKnowledgeService.js';
-
-function serializeAnalysisSummary(summary) {
-    if (!summary) return null;
-    return typeof summary === 'object' ? JSON.stringify(summary) : summary;
-}
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -27,7 +21,8 @@ export async function finalizeCapture(
     {
         supabaseClient = supabase,
         configured = isSupabaseConfigured,
-        pipelineVersion = 'capture-v2'
+        pipelineVersion = 'capture-v5-owner-guided',
+        captureQuality = 'complete'
     } = {}
 ) {
     if (!configured) {
@@ -36,7 +31,6 @@ export async function finalizeCapture(
         throw error;
     }
 
-    const analysis = data.analysis || {};
     const originalUrl = data.original_url || data.originalUrl || data.url;
     if (!originalUrl) throw new Error('Capture is missing original_url');
 
@@ -45,7 +39,7 @@ export async function finalizeCapture(
             p_user_id: userId,
             p_correlation_id: correlationId,
             p_pipeline_version: pipelineVersion,
-            p_capture_quality: source === 'fallback' ? 'degraded' : 'complete',
+            p_capture_quality: captureQuality,
             p_post: {
                 platform: normalizeCapturePlatform(data.platform),
                 original_url: originalUrl,
@@ -60,15 +54,14 @@ export async function finalizeCapture(
                 is_archived: data.is_archived ?? false,
                 full_json: data.full_json || data.fullJson || null,
                 source_domains: data.source_domains || [],
-                source_type: data.source_type || data.full_json?.source_type || data.fullJson?.source_type || 'url_capture'
+                source_type: data.source_type
+                    || data.full_json?.source_type
+                    || data.fullJson?.source_type
+                    || (source === 'fallback' ? 'fallback_link' : source === 'upload' ? 'image_upload' : 'url_capture')
             },
-            p_analysis: {
-                primary_category: analysis.primary_category || 'other',
-                summary: serializeAnalysisSummary(analysis.summary),
-                tags: analysis.tags || [],
-                topics: analysis.topics || [],
-                sentiment: analysis.sentiment || null
-            },
+            // Semantic fields are intentionally never created during capture.
+            // M2 review proposals will own all candidate and accepted writes.
+            p_analysis: {},
             p_media: (data.images || []).map((media, index) => {
                 if (typeof media === 'string') return { url: media, order: index };
                 return {
@@ -91,16 +84,8 @@ export async function finalizeCapture(
         .single();
 
     if (error) throw new Error(`Capture finalization failed: ${error.message}`);
-    if (!finalized?.post_id || !finalized?.outbox_event_id) {
+    if (!finalized?.post_id || !finalized?.source_revision_id) {
         throw new Error('Capture finalization returned an incomplete result');
-    }
-
-    if (!data.title && analysis.generated_title) {
-        try {
-            await persistGeneratedTitle({ id: finalized.post_id, user_id: userId, title: data.title }, analysis.generated_title, supabaseClient, 'capture_ai');
-        } catch (titleError) {
-            console.warn(`[Capture] Generated title persistence deferred: ${titleError.message}`);
-        }
     }
 
     // Search indexing is a projection. A missing/unapplied Stage N migration
@@ -111,7 +96,7 @@ export async function finalizeCapture(
             .from('collection_posts')
             .select(`
                 id, user_id, platform, original_url, title, author_name, content, collection_id,
-                collection_post_analysis (*), collection_post_workflows (stage, status, updated_at)
+                collection_post_media (*)
             `)
             .eq('id', finalized.post_id)
             .eq('user_id', userId)

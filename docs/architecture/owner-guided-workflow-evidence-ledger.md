@@ -1,0 +1,23 @@
+# Owner-Guided Workflow Evidence Ledger
+
+This ledger records only evidence produced for the owner-guided rebuild. A
+passing unit or isolated-database check is not evidence that a remote
+environment was deployed, and a deployed environment is not evidence that an
+Owner accepted a proposal.
+
+| Milestone | Requirement | Files | Verification and actual result | Evidence tier | Known limits | Rollback | Next gate |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| M0 | Target state, official-write gates, and retirement boundaries are reviewable before behavior changes. | `docs/architecture/owner-guided-workflow-contract.md`, `docs/architecture/legacy-retirement-inventory.md`, `docs/plans/2026-10-06-owner-guided-media-workflow-rebuild.md` | `node --test test/script/owner_guided_workflow_contract.test.js test/server/capture_processing.test.js test/server/capture_routes.test.js test/script/source_finalization_contract.test.js && npm run build` — 22/22 tests passed and Vite build passed at baseline. | Static/unit + build | This is a repository baseline, not a remote deployment or data inventory readback. | Revert commit `f3e0e9e`; no data changed. | M1 capture-only persistence. |
+| M1 | New capture persists a durable `complete` or `partial` source revision and never creates automatic analysis, Topic, workflow, or outbox records. Failed capture remains a queue failure. | `server/services/captureProcessingService.js`, `server/services/captureFinalizationService.js`, `server/services/captureRequestService.js`, `database/deployments/stage_x_owner_guided_capture_cutover.sql` | Focused suite: `node --test test/server/capture_processing.test.js test/server/capture_finalization.test.js test/server/owner_guided_capture_contract.test.js test/script/source_finalization_contract.test.js` — 23/23 passed. `npm run build` passed. An isolated PostgreSQL 17 container applied base schema → Stage B → D.2 → E → F → M1. Complete capture and retry returned the same post/revision; queue stored `complete`; `collection_post_analysis = 0`; `collection_capture_outbox = 0`. | Unit/static + isolated PostgreSQL migration and end-to-end RPC | No authenticated browser or remote Supabase check: this checkout has no configured Supabase credentials or local Supabase project. The isolated test first found and then fixed a PL/pgSQL `post_id` ambiguity. The separate partial/rejected-payload SQL scenario was prevented by the local approval service after the complete/retry scenario; both paths are covered by service and static contract tests, but not by a second database execution. | Do not apply the cutover migration in a shared database until staging readback. Revert service code; database rollback requires a reviewed forward migration restoring the prior RPC signature, never deletion of `collection_source_revisions`. | Run the partial/rejection SQL scenario and authenticated staging capture when credentials are available; then begin M2 only if the Owner accepts this gate. |
+
+## Evidence interpretation
+
+- **Source revision** is raw captured evidence. It is not a post learning
+  note, folder, Topic, project reference, or approval.
+- **Partial** means a durable, searchable source record exists but the
+  extractor could not provide complete source facts. It requires source repair
+  or explicit Owner acceptance before semantic proposals are generated.
+- **Failed** has no durable source revision; it remains a retry/failure record
+  in `collection_capture_requests`.
+- Search projection is intentionally non-fatal. It may be rebuilt and must not
+  change capture completeness or semantic state.

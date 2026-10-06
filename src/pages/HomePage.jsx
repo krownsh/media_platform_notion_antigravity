@@ -1,6 +1,7 @@
 import React from 'react';
 import UrlInput from '../components/UrlInput';
 import CollectionBoard from '../components/CollectionBoard';
+import ReviewFocusPanel from '../components/ReviewFocusPanel';
 import { useNavigate } from 'react-router-dom';
 
 const HomePage = ({ onRemix }) => {
@@ -27,6 +28,10 @@ const HomePage = ({ onRemix }) => {
             </section>
 
             <UrlInput />
+
+            <section className="mt-8 sm:mt-10">
+                <ReviewFocusPanel />
+            </section>
 
             <section className="mt-10 sm:mt-14">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 sm:mb-6 px-1">

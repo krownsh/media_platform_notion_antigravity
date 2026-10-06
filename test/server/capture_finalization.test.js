@@ -45,7 +45,12 @@ test('finalization submits only raw source facts and a partial quality when requ
             content: 'https://example.com/unavailable',
             analysis: { summary: 'must never be persisted' }
         },
-        { supabaseClient: client, configured: true, captureQuality: 'partial' }
+        {
+            supabaseClient: client,
+            configured: true,
+            captureQuality: 'partial',
+            reviewPreparer: async input => { client.reviewPreparation = input; }
+        }
     );
 
     assert.equal(result.source_revision_id, 'revision-1');
@@ -53,9 +58,10 @@ test('finalization submits only raw source facts and a partial quality when requ
     assert.equal(client.rpcInput.p_capture_quality, 'partial');
     assert.equal(client.rpcInput.p_post.source_type, 'fallback_link');
     assert.equal(Object.hasOwn(client.rpcInput.p_post, 'summary'), false);
-    assert.deepEqual(client.reviewPacketInput, {
-        p_user_id: 'user-1',
-        p_source_revision_id: 'revision-1'
+    assert.deepEqual(client.reviewPreparation, {
+        userId: 'user-1',
+        sourceRevisionId: 'revision-1',
+        supabaseClient: client
     });
 });
 

@@ -31,6 +31,13 @@ create policy "Users can view their own source revisions"
     on public.collection_source_revisions for select to authenticated
     using ((select auth.uid()) is not null and (select auth.uid()) = user_id);
 
+-- Supabase's Data API no longer grants new public tables automatically.
+-- Browser clients can read only their own source evidence; all mutation is
+-- confined to server-side service-role RPCs.
+revoke all on table public.collection_source_revisions from anon, authenticated;
+grant select on table public.collection_source_revisions to authenticated;
+grant select, insert, update, delete on table public.collection_source_revisions to service_role;
+
 drop trigger if exists update_collection_source_revisions_updated_at on public.collection_source_revisions;
 create trigger update_collection_source_revisions_updated_at
     before update on public.collection_source_revisions

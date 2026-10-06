@@ -94,9 +94,8 @@
 **Goal:** Deliver the user-visible path: capture → folder proposal → optional post learning note → topic links/Topic delta → clear next step.
 
 **Files:**
-- Create: `server/services/folderProposalService.js`
-- Create: `server/services/postLearningNoteService.js`
-- Create: `server/services/topicProposalService.js`
+- Create: `server/services/reviewProposalService.js` (the bounded folder, post-note, and Topic candidate generators share one idempotent packet preparation boundary)
+- Create: `server/services/reviewPromotionService.js` (the only application entry point for M3 formal promotions)
 - Modify: `server/services/reviewPacketService.js`
 - Modify: `server/routes/reviewRoutes.js`
 - Create: `src/api/reviewApi.js`

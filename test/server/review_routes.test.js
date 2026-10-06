@@ -47,7 +47,7 @@ test('review list and packet endpoints pass only the authenticated owner scope',
 test('accept endpoint requires optimistic version and cannot accept on behalf of another owner', async () => {
     let decision;
     await withServer({
-        decideProposal: async input => {
+        promoteProposal: async input => {
             decision = input;
             return { id: 'packet-1', version: 2, next_action: { kind: 'awaiting_proposals' } };
         }

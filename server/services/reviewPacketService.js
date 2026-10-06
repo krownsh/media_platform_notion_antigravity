@@ -91,7 +91,7 @@ export async function listReviewPackets({ userId, limit = 20, supabaseClient = d
         .select(`
             id, user_id, source_revision_id, post_id, status, version, deferred_until, deferred_reason, created_at, updated_at,
             collection_source_revisions (id, capture_quality),
-            owner_review_proposals (id, proposal_type, status, created_at),
+            owner_review_proposals (id, proposal_type, status, payload, created_at),
             owner_review_checkpoints (id, checkpoint_key, status, updated_at)
         `)
         .eq('user_id', userId)

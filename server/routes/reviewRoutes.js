@@ -6,6 +6,8 @@ import {
     resumeReviewPacket,
     decideReviewProposal
 } from '../services/reviewPacketService.js';
+import { prepareInitialReviewProposals } from '../services/reviewProposalService.js';
+import { promoteReviewProposal } from '../services/reviewPromotionService.js';
 
 function positiveInteger(value) {
     const parsed = Number(value);
@@ -21,7 +23,9 @@ export function createReviewRouter({
     loadPacket = loadReviewPacket,
     deferPacket = deferReviewPacket,
     resumePacket = resumeReviewPacket,
-    decideProposal = decideReviewProposal
+    decideProposal = decideReviewProposal,
+    prepareProposals = prepareInitialReviewProposals,
+    promoteProposal = promoteReviewProposal
 } = {}) {
     const router = express.Router();
 
@@ -44,6 +48,16 @@ export function createReviewRouter({
             return res.json({ packet });
         } catch (error) {
             return res.status(500).json({ error: error.message });
+        }
+    });
+
+    router.post('/source-revisions/:sourceRevisionId/prepare', async (req, res) => {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+        try {
+            return res.status(202).json({ review: await prepareProposals({ userId, sourceRevisionId: req.params.sourceRevisionId }) });
+        } catch (error) {
+            return res.status(isReviewConflict(error) ? 409 : 400).json({ error: error.message });
         }
     });
 
@@ -88,14 +102,17 @@ export function createReviewRouter({
             return res.status(400).json({ error: 'edited_payload must be an object' });
         }
         try {
-            const packet = await decideProposal({
+            const input = {
                 userId,
                 packetId: req.params.packetId,
                 proposalId: req.params.proposalId,
                 action,
                 expectedVersion,
                 editedPayload: req.body?.edited_payload ?? null
-            });
+            };
+            const packet = action === 'reject'
+                ? await decideProposal(input)
+                : await promoteProposal(input);
             return res.json({ packet });
         } catch (error) {
             return res.status(isReviewConflict(error) ? 409 : 400).json({ error: error.message });

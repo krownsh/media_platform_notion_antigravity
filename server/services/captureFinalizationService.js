@@ -1,6 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { upsertPostSearchDocument } from './postSearchService.js';
-import { ensureReviewPacket } from './reviewPacketService.js';
+import { prepareInitialReviewProposals } from './reviewProposalService.js';
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -23,7 +23,8 @@ export async function finalizeCapture(
         supabaseClient = supabase,
         configured = isSupabaseConfigured,
         pipelineVersion = 'capture-v5-owner-guided',
-        captureQuality = 'complete'
+        captureQuality = 'complete',
+        reviewPreparer = prepareInitialReviewProposals
     } = {}
 ) {
     if (!configured) {
@@ -93,7 +94,7 @@ export async function finalizeCapture(
     // It must never make durable source capture fail while staged deployments
     // are catching up with the review-domain migration.
     try {
-        await ensureReviewPacket({
+        await reviewPreparer({
             userId,
             sourceRevisionId: finalized.source_revision_id,
             supabaseClient

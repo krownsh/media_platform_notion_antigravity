@@ -118,6 +118,21 @@ drop policy if exists "Owners view their review audit events" on public.owner_re
 create policy "Owners view their review audit events" on public.owner_review_audit_events for select to authenticated
     using ((select auth.uid()) = user_id);
 
+-- Keep the review domain readable to its Owner, while only the trusted server
+-- service role can invoke its mutation RPCs. These explicit grants are needed
+-- for Supabase projects that no longer auto-expose new public tables.
+revoke all on table public.owner_review_packets from anon, authenticated;
+revoke all on table public.owner_review_proposals from anon, authenticated;
+revoke all on table public.owner_review_approvals from anon, authenticated;
+revoke all on table public.owner_review_checkpoints from anon, authenticated;
+revoke all on table public.owner_review_audit_events from anon, authenticated;
+grant select on table public.owner_review_packets, public.owner_review_proposals,
+    public.owner_review_approvals, public.owner_review_checkpoints,
+    public.owner_review_audit_events to authenticated;
+grant select, insert, update, delete on table public.owner_review_packets,
+    public.owner_review_proposals, public.owner_review_approvals,
+    public.owner_review_checkpoints, public.owner_review_audit_events to service_role;
+
 drop trigger if exists update_owner_review_packets_updated_at on public.owner_review_packets;
 create trigger update_owner_review_packets_updated_at before update on public.owner_review_packets
     for each row execute procedure public.collection_update_updated_at_column();

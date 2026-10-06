@@ -31,6 +31,12 @@ import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import { getCaptureStatus, listCaptureHistory, submitUrlCapture } from '../api/captureApi';
+import { listReviewPackets, deferReviewPacket as deferPacketApi, resumeReviewPacket as resumePacketApi, decideReviewProposal as decideProposalApi } from '../api/reviewApi';
+import {
+  fetchReviewPackets, fetchReviewPacketsSuccess, fetchReviewPacketsFailure,
+  deferReviewPacket, resumeReviewPacket, decideReviewProposal,
+  reviewPacketUpdated, reviewActionFailure
+} from '../features/reviewSlice';
 
 
 // Worker Saga: Fetch all posts AND collections
@@ -108,11 +114,12 @@ function* handleMonitorCapture(action) {
       if (capture.status === 'finalized' || capture.status === 'degraded') {
         yield put(fetchPosts());
         yield put(fetchCaptureHistory());
+        yield put(fetchReviewPackets());
         yield put(removeTask(taskId));
         yield put(addNotification({
           message: capture.input_type === 'image'
-            ? '圖片已儲存，等待 Hermes 進行圖片分析'
-            : '貼文已擷取並完成初步分析，等待 Hermes 分類',
+            ? '圖片來源已儲存；請在 Focus Mode 確認候選整理。'
+            : '貼文來源已擷取；請在 Focus Mode 確認候選整理。',
           type: 'success'
         }));
         return;
@@ -318,6 +325,35 @@ function* handleUpdateCollectionName(action) {
   }
 }
 
+function* handleFetchReviewPackets() {
+  try {
+    yield put(fetchReviewPacketsSuccess(yield call(listReviewPackets)));
+  } catch (error) {
+    yield put(fetchReviewPacketsFailure(error.message));
+  }
+}
+
+function* handleDeferReviewPacket(action) {
+  try {
+    const { packetId, expectedVersion, reason } = action.payload;
+    yield put(reviewPacketUpdated(yield call(deferPacketApi, packetId, expectedVersion, reason)));
+  } catch (error) { yield put(reviewActionFailure(error.message)); }
+}
+
+function* handleResumeReviewPacket(action) {
+  try {
+    const { packetId, expectedVersion } = action.payload;
+    yield put(reviewPacketUpdated(yield call(resumePacketApi, packetId, expectedVersion)));
+  } catch (error) { yield put(reviewActionFailure(error.message)); }
+}
+
+function* handleDecideReviewProposal(action) {
+  try {
+    const { packetId, proposalId, decision, expectedVersion, editedPayload } = action.payload;
+    yield put(reviewPacketUpdated(yield call(decideProposalApi, packetId, proposalId, decision, expectedVersion, editedPayload)));
+  } catch (error) { yield put(reviewActionFailure(error.message)); }
+}
+
 // Watcher Saga
 function* watchPosts() {
   yield takeEvery(addPostByUrl.type, handleFetchPost);
@@ -332,6 +368,10 @@ function* watchPosts() {
   yield takeLatest(deleteCollection.type, handleDeleteCollection);
   yield takeLatest(movePostToCollection.type, handleMovePostToCollection);
   yield takeLatest(updateCollectionName.type, handleUpdateCollectionName);
+  yield takeLatest(fetchReviewPackets.type, handleFetchReviewPackets);
+  yield takeLeading(deferReviewPacket.type, handleDeferReviewPacket);
+  yield takeLeading(resumeReviewPacket.type, handleResumeReviewPacket);
+  yield takeLeading(decideReviewProposal.type, handleDecideReviewProposal);
 }
 
 export default function* rootSaga() {

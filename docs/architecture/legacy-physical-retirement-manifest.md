@@ -55,3 +55,16 @@ Do not reset, checkout over, or force-update it. Deployment requires a
 separate Owner-approved integration step that first preserves/reconciles that
 working tree, then applies the reviewed commits, restarts only the intended
 services, and checks capture/review/search readback.
+
+The read-only overlap check found 95 rebuild-branch file changes and 23 dirty
+main-worktree entries. Exactly two tracked files overlap:
+`server/services/captureFinalizationService.js` and
+`server/services/captureProcessingService.js`. Those files require a manual
+three-way reconciliation; all other dirty entries must still be preserved, but
+are not file conflicts with this rebuild.
+
+The exact approval-gated sequence for that reconciliation, migration, process
+switch, end-to-end owner smoke test, and forward recovery is in
+`docs/plans/2026-10-06-owner-guided-deployment-integration.md`. It is a
+deployment preparation document, not authorization for B–E or for changing the
+running services.

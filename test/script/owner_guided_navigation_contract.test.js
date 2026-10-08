@@ -37,6 +37,8 @@ test('normal navigation keeps owner-guided workflow while restoring library comp
     assert.match(allPosts, /所有貼文/);
     assert.match(card, /直接選擇/);
     assert.match(card, /onMove/);
+    assert.match(card, /刪除此貼文/);
+    assert.match(card, /onDelete/);
     assert.match(analytics, /這個頁面只讀取資料/);
     assert.doesNotMatch(analytics, /batch-classify/);
     assert.match(design, /Physical removal of[\s\S]+is deferred to M7/);

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { LayoutGrid, Search, SearchX, SlidersHorizontal } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchPosts, movePostToCollection } from '../features/postsSlice';
+import { deletePost, fetchPosts, movePostToCollection } from '../features/postsSlice';
 import { visibleCollections } from '../utils/collectionVisibility';
 import { matchesWorkflowFilter, WORKFLOW_FILTER_OPTIONS } from '../utils/workflowPresentation';
 import LibraryPostCard from '../components/LibraryPostCard';
@@ -92,7 +92,7 @@ export default function AllPostsPage() {
 
         {error && <p role="alert" className="mt-5 flow-panel border-destructive/30 p-4 text-sm text-destructive">無法讀取收藏庫：{error}</p>}
         {!initialized || loading ? <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">{[1, 2, 3].map(index => <div key={index} className="flow-surface flow-shimmer h-[27rem] w-full" />)}</div> : posts.length === 0 ? <div className="mt-6 flow-panel flex min-h-64 flex-col items-center justify-center px-6 text-center"><SearchX size={28} className="text-[var(--accent)]" /><p className="mt-4 font-semibold">沒有符合條件的貼文</p><p className="mt-2 text-sm text-[#615d59]">調整篩選條件，或回到所有貼文重新查看。</p></div> : <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
-            {posts.map(post => <LibraryPostCard key={getPostId(post)} post={post} collections={folders} onOpen={() => navigate(`/post/${getPostId(post)}`)} onMove={(postId, nextCollectionId) => dispatch(movePostToCollection({ postId, collectionId: nextCollectionId }))} />)}
+            {posts.map(post => <LibraryPostCard key={getPostId(post)} post={post} collections={folders} onOpen={() => navigate(`/post/${getPostId(post)}`)} onMove={(postId, nextCollectionId) => dispatch(movePostToCollection({ postId, collectionId: nextCollectionId }))} onDelete={postId => dispatch(deletePost(postId))} />)}
         </div>}
     </div>;
 }

@@ -4,6 +4,8 @@ import {
     createPocProposal,
     createProjectCatalogEntry,
     decidePocProposal,
+    importLegacyProjectToCatalog,
+    listLegacyProjects,
     listOwnerTopics,
     listProjectCatalog,
     listTopicProjectReferences
@@ -11,7 +13,7 @@ import {
 
 function statusFor(error) {
     if (error?.code === '23505') return 409;
-    if (/must be|PROJECT_REFERENCE_NOT_FOUND/.test(error?.message || '')) return 400;
+    if (/must be|PROJECT_REFERENCE_NOT_FOUND|LEGACY_PROJECT_NOT_FOUND/.test(error?.message || '')) return 400;
     if (error?.code === 'POC_PROPOSAL_CONFLICT') return 409;
     return 500;
 }
@@ -23,6 +25,8 @@ export function createOwnerKnowledgeRouter(dependencies = {}) {
         createPocProposal,
         createProjectCatalogEntry,
         decidePocProposal,
+        importLegacyProjectToCatalog,
+        listLegacyProjects,
         listOwnerTopics,
         listProjectCatalog,
         listTopicProjectReferences,
@@ -48,6 +52,17 @@ export function createOwnerKnowledgeRouter(dependencies = {}) {
     router.get('/projects', async (req, res) => {
         try { return res.json({ projects: await services.listProjectCatalog({ userId: userId(req) }) }); }
         catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
+    });
+    router.get('/legacy-projects', async (req, res) => {
+        try { return res.json({ projects: await services.listLegacyProjects({ userId: userId(req) }) }); }
+        catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
+    });
+    router.post('/legacy-projects/:projectId/import', async (req, res) => {
+        try {
+            return res.status(201).json({ project: await services.importLegacyProjectToCatalog({
+                userId: userId(req), legacyProjectId: req.params.projectId
+            }) });
+        } catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
     });
     router.post('/projects', async (req, res) => {
         try { return res.status(201).json({ project: await services.createProjectCatalogEntry({ userId: userId(req), input: req.body }) }); }

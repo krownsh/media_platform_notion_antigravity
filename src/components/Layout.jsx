@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Search, ChevronRight, ChevronLeft, Home, LogOut, LogIn, User as UserIcon, Menu, X, Target, FolderGit2 } from 'lucide-react';
+import { Search, ChevronRight, ChevronLeft, Home, LogOut, LogIn, User as UserIcon, Menu, X, Target, FolderGit2, FolderOpen } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -144,6 +144,7 @@ const Layout = ({ children }) => {
                                     active={location.pathname === '/search'}
                                     onClick={() => { navigate('/search'); setIsMobileMenuOpen(false); }}
                                 />
+                                <SidebarItem icon={FolderOpen} label="資料夾整理" active={location.pathname === '/library' || location.pathname.startsWith('/library/')} onClick={() => { navigate('/library'); setIsMobileMenuOpen(false); }} />
                                 <SidebarItem
                                     icon={Target}
                                     label="Topics"
@@ -236,6 +237,13 @@ const Layout = ({ children }) => {
                         label="Library 搜尋"
                         active={location.pathname === '/search'}
                         onClick={() => navigate('/search')}
+                        collapsed={isSidebarCollapsed}
+                    />
+                    <SidebarItem
+                        icon={FolderOpen}
+                        label="資料夾整理"
+                        active={location.pathname === '/library' || location.pathname.startsWith('/library/')}
+                        onClick={() => navigate('/library')}
                         collapsed={isSidebarCollapsed}
                     />
 

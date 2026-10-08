@@ -77,6 +77,61 @@ export async function listProjectCatalog({ userId, supabaseClient = defaultSupab
     return data || [];
 }
 
+export async function listLegacyProjects({ userId, supabaseClient = defaultSupabase }) {
+    const { data, error } = await supabaseClient
+        .from('collection_projects')
+        .select('id, title, slug, repository_target, description, status, created_at, updated_at')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false });
+    if (error) throw new Error(`Legacy Project lookup failed: ${error.message}`);
+    return data || [];
+}
+
+export async function importLegacyProjectToCatalog({ userId, legacyProjectId, supabaseClient = defaultSupabase }) {
+    const { data: legacy, error: legacyError } = await supabaseClient
+        .from('collection_projects')
+        .select('id, title, slug, repository_target, description, status')
+        .eq('id', legacyProjectId)
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .maybeSingle();
+    if (legacyError) throw new Error(`Legacy Project lookup failed: ${legacyError.message}`);
+    if (!legacy) {
+        const error = new Error('Legacy Project was not found');
+        error.code = 'LEGACY_PROJECT_NOT_FOUND';
+        throw error;
+    }
+    const description = [legacy.description, 'Imported after explicit Owner approval from the previous project list.']
+        .filter(Boolean)
+        .join('\n\n');
+    try {
+        return await createProjectCatalogEntry({
+            userId,
+            input: {
+                title: legacy.title,
+                slug: legacy.slug,
+                project_kind: 'remote_repository',
+                reference: legacy.repository_target,
+                description
+            },
+            supabaseClient
+        });
+    } catch (error) {
+        if (error?.code !== '23505') throw error;
+        const { data: existing, error: existingError } = await supabaseClient
+            .from('owner_project_catalog')
+            .select('id, title, slug, project_kind, reference, description, status, created_at, updated_at')
+            .eq('user_id', userId)
+            .eq('project_kind', 'remote_repository')
+            .eq('reference', legacy.repository_target)
+            .maybeSingle();
+        if (existingError) throw new Error(`Project Catalog lookup failed: ${existingError.message}`);
+        if (existing) return existing;
+        throw error;
+    }
+}
+
 export async function createProjectCatalogEntry({ userId, input, supabaseClient = defaultSupabase }) {
     const project = normalizeProjectCatalogInput(input);
     const { data, error } = await supabaseClient

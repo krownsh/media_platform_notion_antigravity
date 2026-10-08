@@ -9,9 +9,10 @@ import OwnerTopicsPage from './pages/OwnerTopicsPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
 import OwnerPostPage from './pages/OwnerPostPage';
+import LibraryPage from './pages/LibraryPage';
 
 import { setUser, setLoading } from './features/authSlice';
-import { fetchCaptureHistory } from './features/postsSlice';
+import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
 import { supabase } from './api/supabaseClient';
 
 const ProtectedRoute = ({ children }) => {
@@ -61,6 +62,7 @@ function App() {
     if (loadedUserId.current === user.id) return;
     loadedUserId.current = user.id;
     dispatch(fetchCaptureHistory());
+    dispatch(fetchPosts());
   }, [user?.id, dispatch]);
 
   return (
@@ -72,8 +74,10 @@ function App() {
               <HomePage />
             </ProtectedRoute>
           } />
-          <Route path="/view-all" element={<Navigate to="/search" replace />} />
-          <Route path="/collection/:collectionId" element={<Navigate to="/search" replace />} />
+          <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+          <Route path="/library/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+          <Route path="/view-all" element={<Navigate to="/library" replace />} />
+          <Route path="/collection/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
 
           <Route path="/post/:postId" element={
             <ProtectedRoute>

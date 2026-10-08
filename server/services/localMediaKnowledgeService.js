@@ -27,11 +27,21 @@ export async function createPostCaseFileManifest({
     };
     const { data, error } = await supabaseClient
         .from('owner_local_note_manifests')
-        .insert(payload)
+        .upsert(payload, { onConflict: 'user_id,post_id', ignoreDuplicates: true })
         .select()
-        .single();
+        .maybeSingle();
     if (error) throw new Error(`Local note manifest creation failed: ${error.message}`);
-    return data;
+    if (data) return data;
+
+    const { data: existing, error: existingError } = await supabaseClient
+        .from('owner_local_note_manifests')
+        .select()
+        .eq('user_id', payload.user_id)
+        .eq('post_id', payload.post_id)
+        .maybeSingle();
+    if (existingError) throw new Error(`Local note manifest lookup failed: ${existingError.message}`);
+    if (!existing) throw new Error('Local note manifest was not returned after idempotent creation');
+    return existing;
 }
 
 function optionalText(value, label) {

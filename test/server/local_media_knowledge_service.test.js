@@ -6,14 +6,17 @@ import {
 } from '../../server/services/localMediaKnowledgeService.js';
 
 test('a new post case-file manifest is owner-scoped and starts pending in Inbox', async () => {
-    let inserted;
+    let upserted;
     const client = {
         from(table) {
             assert.equal(table, 'owner_local_note_manifests');
             return {
-                insert(value) { inserted = value; return this; },
+                upsert(value, options) {
+                    upserted = { value, options };
+                    return this;
+                },
                 select() { return this; },
-                single: async () => ({ data: { id: 'manifest-1', ...inserted }, error: null })
+                maybeSingle: async () => ({ data: { id: 'manifest-1', ...upserted.value }, error: null })
             };
         }
     };
@@ -26,7 +29,9 @@ test('a new post case-file manifest is owner-scoped and starts pending in Inbox'
         supabaseClient: client
     });
 
-    assert.deepEqual(inserted, {
+    assert.deepEqual(upserted, {
+        options: { onConflict: 'user_id,post_id', ignoreDuplicates: true },
+        value: {
         user_id: 'user-1',
         note_kind: 'post_case_file',
         post_id: 'post-1',
@@ -37,8 +42,41 @@ test('a new post case-file manifest is owner-scoped and starts pending in Inbox'
         relative_path: null,
         sync_state: 'pending',
         last_error: null
+        }
     });
     assert.equal(manifest.id, 'manifest-1');
+});
+
+test('a duplicate manifest request returns the existing owner-scoped manifest without creating a second note', async () => {
+    let selected = false;
+    let fromCalls = 0;
+    const client = {
+        from(table) {
+            assert.equal(table, 'owner_local_note_manifests');
+            fromCalls += 1;
+            const isLookup = fromCalls === 2;
+            return {
+                upsert() { return this; },
+                select() { return this; },
+                maybeSingle: async () => isLookup
+                    ? { data: { id: 'existing-manifest', user_id: 'user-1', post_id: 'post-1' }, error: null }
+                    : { data: null, error: null },
+                eq(column, value) {
+                    if (column === 'user_id') assert.equal(value, 'user-1');
+                    if (column === 'post_id') assert.equal(value, 'post-1');
+                    selected = true;
+                    return this;
+                }
+            };
+        }
+    };
+
+    const manifest = await createPostCaseFileManifest({
+        userId: 'user-1', postId: 'post-1', sourceRevisionId: 'revision-1', supabaseClient: client
+    });
+
+    assert.equal(selected, true);
+    assert.equal(manifest.id, 'existing-manifest');
 });
 
 test('a local note event is appended through the owner-scoped atomic event RPC', async () => {

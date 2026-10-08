@@ -11,12 +11,14 @@ test('normal navigation exposes only Inbox, Library, Topics, and Projects', asyn
         readFile(new URL('../../docs/architecture/owner-guided-navigation-cutover-design.md', import.meta.url), 'utf8')
     ]);
     assert.match(app, /OwnerPostPage/);
-    assert.match(app, /path="\/view-all" element={<Navigate to="\/search" replace \/>}/);
-    assert.match(app, /path="\/collection\/:collectionId" element={<Navigate to="\/search" replace \/>}/);
+    assert.match(app, /path="\/library" element={<ProtectedRoute><LibraryPage \/><\/ProtectedRoute>}/);
+    assert.match(app, /path="\/library\/:collectionId" element={<ProtectedRoute><LibraryPage \/><\/ProtectedRoute>}/);
+    assert.match(app, /path="\/view-all" element={<Navigate to="\/library" replace \/>}/);
+    assert.match(app, /path="\/collection\/:collectionId" element={<ProtectedRoute><LibraryPage \/><\/ProtectedRoute>}/);
     assert.match(layout, /label="Library 搜尋"/);
     assert.match(layout, /label="收件匣"/);
     assert.doesNotMatch(layout, /label="首頁"/);
-    assert.doesNotMatch(layout, /新增資料夾/);
+    assert.match(layout, /label="資料夾整理"/);
     assert.doesNotMatch(layout, /趨勢看板/);
     assert.match(home, /未接受前，不會寫進正式知識/);
     assert.doesNotMatch(home, /CollectionBoard/);

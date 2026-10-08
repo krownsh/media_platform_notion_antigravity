@@ -131,8 +131,7 @@ begin
         nullif(btrim(p_actor_id), ''), p_event_payload, coalesce(p_occurred_at, now())
     ) returning * into v_event;
     update public.owner_local_note_manifests
-    set last_written_event_sequence = v_sequence,
-        version = version + 1,
+    set version = version + 1,
         updated_at = now()
     where id = v_manifest.id;
     return v_event;

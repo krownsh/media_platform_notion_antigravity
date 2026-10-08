@@ -26,3 +26,10 @@ test('local media knowledge records are additive, owner-scoped, and browser read
     assert.match(sql, /grant select, insert, update, delete on table public\.owner_local_note_manifests,[\s\S]+owner_local_note_change_candidates to service_role/);
     assert.doesNotMatch(sql, /update public\.collection_posts/);
 });
+
+test('appending an event never claims it was already written to the local file', async () => {
+    const sql = await readFile(migration, 'utf8');
+    const rpc = sql.slice(sql.indexOf('create or replace function public.append_owner_local_note_event'));
+    assert.match(rpc, /set version = version \+ 1,/);
+    assert.doesNotMatch(rpc, /set last_written_event_sequence\s*=/);
+});

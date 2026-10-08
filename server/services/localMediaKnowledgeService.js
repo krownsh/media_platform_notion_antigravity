@@ -56,6 +56,88 @@ function objectPayload(value) {
     return value;
 }
 
+function expectedManifestVersion(value) {
+    const version = Number(value);
+    if (!Number.isInteger(version) || version < 1) throw new Error('expectedVersion must be a positive integer');
+    return version;
+}
+
+function safeRelativePath(value) {
+    const normalized = String(value || '').trim().replace(/\\/g, '/');
+    if (!normalized || normalized.startsWith('/') || normalized.split('/').includes('..')) {
+        throw new Error('relativePath must be a safe relative path');
+    }
+    return normalized;
+}
+
+function sha256(value) {
+    const checksum = String(value || '').trim();
+    if (!/^[a-f0-9]{64}$/.test(checksum)) throw new Error('checksum must be a lowercase SHA-256 digest');
+    return checksum;
+}
+
+async function updateManifestAtExpectedVersion({ userId, manifestId, expectedVersion, payload, supabaseClient }) {
+    const version = expectedManifestVersion(expectedVersion);
+    const { data, error } = await supabaseClient
+        .from('owner_local_note_manifests')
+        .update({ ...payload, version: version + 1 })
+        .eq('id', requiredText(manifestId, 'manifestId'))
+        .eq('user_id', requiredText(userId, 'userId'))
+        .eq('version', version)
+        .select()
+        .maybeSingle();
+    if (error) throw new Error(`Local note manifest update failed: ${error.message}`);
+    if (!data) {
+        const conflict = new Error('LOCAL_NOTE_VERSION_CONFLICT');
+        conflict.code = 'LOCAL_NOTE_VERSION_CONFLICT';
+        throw conflict;
+    }
+    return data;
+}
+
+export async function recordLocalNoteDelivery({
+    userId,
+    manifestId,
+    expectedVersion,
+    relativePath,
+    checksum,
+    lastWrittenEventSequence = 0,
+    supabaseClient = defaultSupabase
+}) {
+    const sequence = Number(lastWrittenEventSequence);
+    if (!Number.isInteger(sequence) || sequence < 0) throw new Error('lastWrittenEventSequence must be a non-negative integer');
+    return updateManifestAtExpectedVersion({
+        userId,
+        manifestId,
+        expectedVersion,
+        supabaseClient,
+        payload: {
+            relative_path: safeRelativePath(relativePath),
+            last_content_sha256: sha256(checksum),
+            last_written_event_sequence: sequence,
+            sync_state: 'synchronized',
+            last_error: null
+        }
+    });
+}
+
+export async function recordLocalNoteFailure({
+    userId,
+    manifestId,
+    expectedVersion,
+    error,
+    supabaseClient = defaultSupabase
+}) {
+    const message = String(error || 'Local note delivery failed').replace(/\0/g, '').trim().slice(0, 4000);
+    return updateManifestAtExpectedVersion({
+        userId,
+        manifestId,
+        expectedVersion,
+        supabaseClient,
+        payload: { sync_state: 'failed', last_error: message || 'Local note delivery failed' }
+    });
+}
+
 export async function appendLocalNoteEvent({
     userId,
     manifestId,

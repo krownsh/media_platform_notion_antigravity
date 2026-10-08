@@ -37,7 +37,7 @@ module.exports = {
             env: {
                 // Keep port 3001 stable while isolating this API from
                 // developer tooling that reserves 127.0.0.1:3001.
-                MEDIA_API_BIND_HOST: '127.0.0.2'
+                MEDIA_API_BIND_HOST: '::1'
             }
             // PORT and all secrets continue to come from server/.env.
         },

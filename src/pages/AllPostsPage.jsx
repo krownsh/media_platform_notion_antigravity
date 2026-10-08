@@ -62,7 +62,7 @@ export default function AllPostsPage() {
                     <h1 className="text-3xl sm:text-[2.25rem] font-bold tracking-[-0.05em]">{heading}</h1>
                     <span className="text-sm font-medium tabular-nums text-[#615d59]">{posts.length} 篇貼文</span>
                 </div>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-[#615d59]">這是你完整的可回看收藏庫。資料夾只負責整理；Topic 與候選審核仍維持各自的知識流程。</p>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-[#615d59]">這是你完整的可回看收藏庫。資料夾只負責整理；直接變更資料夾是你的明確選擇，若有待確認資料夾候選會以此完成確認。Topic 與其知識審核仍維持各自流程。</p>
             </div>
             <div className="flex items-center gap-2">
                 <Link to="/library" className="notion-btn-secondary px-3 py-2 text-sm">資料夾管理</Link>

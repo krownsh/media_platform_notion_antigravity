@@ -29,6 +29,8 @@ Only an accepted proposal may create or update formal records. Accept, reject, d
 
 Each post has zero or one accepted primary folder. A missing accepted folder means Inbox, not a hidden or fabricated category. Folder taxonomy is versioned and Owner-governed; no tool name, company, transient trend, legacy collection, tag, or auto-topic is a substitute for an accepted primary folder.
 
+The Library may expose a direct folder selector because it is an explicit Owner action, not an automatic classification. When an open folder candidate exists, that selector must use the same reviewed promotion path (including an edited acceptance when the Owner chooses a different folder). When no candidate exists, the selector is a manual Owner override and must be handled by an owner-scoped server endpoint with an append-only activity record. Browser clients must not write `collection_posts.collection_id` or create folders directly.
+
 Each post may have one primary Topic and up to two related Topics. Topic links are accepted separately from the folder. A Topic is an independent living knowledge note, not a repository requirement or an alias for a folder.
 
 Each post may have an optional post learning note. A note may be accepted as `recorded`, explicitly accepted as `not_needed`, or remain `needs_discussion`; an empty note must never be represented as a completed learning result.

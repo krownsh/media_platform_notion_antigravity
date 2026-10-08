@@ -31,6 +31,7 @@ import { addNotification } from '../features/uiSlice';
 import { supabase } from '../api/supabaseClient';
 import { API_BASE_URL } from '../api/config';
 import { getCaptureStatus, listCaptureHistory, submitUrlCapture } from '../api/captureApi';
+import { createOwnerLibraryFolder, setOwnerLibraryFolder } from '../api/ownerLibraryApi';
 import { listReviewPackets, prepareReviewCandidates as prepareReviewCandidatesApi, deferReviewPacket as deferPacketApi, resumeReviewPacket as resumePacketApi, decideReviewProposal as decideProposalApi } from '../api/reviewApi';
 import {
     fetchReviewPackets, fetchReviewPacketsSuccess, fetchReviewPacketsFailure,
@@ -222,20 +223,8 @@ function* handleDeletePost(action) {
 function* handleCreateCollection(action) {
   try {
     const { name } = action.payload;
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
-
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = yield call(() =>
-      supabase.from('collection_collections').insert({
-        name,
-        user_id: user.id
-      }).select().single()
-    );
-
-    if (error) throw error;
-
-    yield put(createCollectionSuccess(data));
+    const collection = yield call(createOwnerLibraryFolder, name);
+    yield put(createCollectionSuccess(collection));
   } catch (error) {
     console.error('[Saga] Create Collection Error:', error);
     yield put(addNotification({ message: '建立資料夾失敗', type: 'error' }));
@@ -281,20 +270,11 @@ function* handleDeleteCollection(action) {
 function* handleMovePostToCollection(action) {
   try {
     const { postId, collectionId } = action.payload;
-    const { data: { user } } = yield call(() => supabase.auth.getUser());
-
-    if (!user) throw new Error('User not authenticated');
-
-    const { error } = yield call(() =>
-      supabase.from('collection_posts')
-        .update({ collection_id: collectionId })
-        .eq('id', postId)
-        .eq('user_id', user.id)
-    );
-
-    if (error) throw error;
-
-    yield put(movePostToCollectionSuccess({ postId, collectionId }));
+    const result = yield call(setOwnerLibraryFolder, postId, collectionId);
+    yield put(movePostToCollectionSuccess({ postId, collectionId: result.collection_id }));
+    if (result.decision_path === 'review_promotion') {
+      yield put(fetchReviewPackets());
+    }
   } catch (error) {
     console.error('[Saga] Move Post Error:', error);
     yield put(addNotification({ message: '移動貼文失敗', type: 'error' }));

@@ -39,5 +39,5 @@ test('normal navigation keeps owner-guided workflow while restoring library comp
     assert.match(card, /onMove/);
     assert.match(analytics, /這個頁面只讀取資料/);
     assert.doesNotMatch(analytics, /batch-classify/);
-    assert.match(design, /Physical removal is deferred to M7/);
+    assert.match(design, /Physical removal of[\s\S]+is deferred to M7/);
 });

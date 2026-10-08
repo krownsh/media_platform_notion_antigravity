@@ -8,6 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const deployment = fs.readFileSync(path.join(root, 'database/deployments/stage_p_collection_rls_hardening.sql'), 'utf8');
 const schema = fs.readFileSync(path.join(root, 'database/schema/schema.sql'), 'utf8');
 const saga = fs.readFileSync(path.join(root, 'src/store/rootSaga.js'), 'utf8');
+const organizationService = fs.readFileSync(path.join(root, 'server/services/ownerLibraryOrganizationService.js'), 'utf8');
 
 function sagaSection(start, end) {
     const from = saga.indexOf(`function* ${start}`);
@@ -44,9 +45,12 @@ test('reference schema places the tenant-aware key on Collections, not post comm
     assert.doesNotMatch(comments, /collection_collections_id_user_unique/);
 });
 
-test('browser mutations include the authenticated tenant in their target filter', () => {
+test('remaining browser mutations are tenant-scoped and Library assignment moved to an owner-scoped server service', () => {
     assert.match(sagaSection('handleDeletePost', 'handleCreateCollection'), /\.eq\('id', postId\)\s*\.eq\('user_id', user\.id\)/);
     assert.match(sagaSection('handleDeleteCollection', 'handleMovePostToCollection'), /\.eq\('collection_id', collectionId\)\s*\.eq\('user_id', user\.id\)/);
     assert.match(sagaSection('handleDeleteCollection', 'handleMovePostToCollection'), /\.eq\('id', collectionId\)\s*\.eq\('user_id', user\.id\)/);
-    assert.match(sagaSection('handleMovePostToCollection', 'handleUpdateCollectionName'), /\.eq\('id', postId\)\s*\.eq\('user_id', user\.id\)/);
+    assert.match(sagaSection('handleMovePostToCollection', 'handleUpdateCollectionName'), /setOwnerLibraryFolder/);
+    assert.match(organizationService, /\.eq\('id', postId\)\s*\.eq\('user_id', userId\)/);
+    assert.match(organizationService, /\.eq\('id', targetCollectionId\)\s*\.eq\('user_id', userId\)/);
+    assert.match(organizationService, /promote\(\{/);
 });

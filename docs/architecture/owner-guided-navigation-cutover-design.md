@@ -2,8 +2,11 @@
 
 ## Decision
 
-M6 removes legacy boards, automatic-analysis views, collection creation, and
-legacy workflow controls from normal navigation. The normal path is:
+M6 removes legacy boards and legacy workflow controls that can create a second
+semantic workflow. It retains compatible Library navigation, folder browsing,
+an explicit Owner folder selector, folder creation, and a read-only historical
+source-analysis view. These are a compatibility shell, not the old automation
+model. The normal path is:
 
 1. **Inbox** — capture a source and complete the visible Owner review step.
 2. **Library search** — recover a source by raw evidence or accepted knowledge.
@@ -12,17 +15,21 @@ legacy workflow controls from normal navigation. The normal path is:
 4. **Topics / Projects** — maintain the independent knowledge catalog and
    propose a separately-approved POC.
 
-Legacy views remain in the repository and their historical database records are
-preserved. Their former routes redirect to the Library rather than keeping a
-second day-to-day workflow alive. Physical removal is deferred to M7 after an
-Owner-approved deletion manifest and backup/readback gate.
+Legacy records remain preserved and the restored shell keeps them findable.
+Historical categories, tags, and charts are labelled as source analysis rather
+than formal folders, Topics, or accepted knowledge. Physical removal of
+unneeded legacy runtime is deferred to M7 after an Owner-approved deletion
+manifest and backup/readback gate.
 
 ## Write boundary
 
 M6 does not introduce a new automatic write. Capture still writes source facts;
 Owner review promotion remains the only path to formal note/Topic/project
-writes. The new source-detail endpoint is read-only and is mounted behind the
-same user JWT guard as the rest of the interactive owner-guided API.
+writes. A direct Library folder choice is an explicit Owner decision: it uses
+the reviewed promotion endpoint when a folder candidate is open, otherwise an
+owner-scoped audited manual-override endpoint. Folder creation is likewise
+owner-scoped and audited. The source-detail endpoint remains read-only and all
+interactive owner-guided routes share the same user JWT guard.
 
 ## Accessibility / ADHD guardrails
 

@@ -34,6 +34,11 @@ import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+// Keep the collection API on its stable port while allowing the deployment
+// runtime to select a dedicated loopback address when another local tool owns
+// 127.0.0.1. Undefined preserves Node's normal host binding for every other
+// environment.
+const BIND_HOST = process.env.MEDIA_API_BIND_HOST || undefined;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost";
 
 app.use(cors());
@@ -1074,8 +1079,9 @@ app.use('/api', (req, res) => {
 });
 
 if (process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, () => {
-        console.log(`Server running on ${FRONTEND_URL}:${PORT}`);
+    app.listen(PORT, BIND_HOST, () => {
+        const displayHost = BIND_HOST || FRONTEND_URL;
+        console.log(`Server running on ${displayHost}:${PORT}`);
     });
 }
 

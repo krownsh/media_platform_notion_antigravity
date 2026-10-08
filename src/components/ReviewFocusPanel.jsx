@@ -27,7 +27,7 @@ function acceptanceImpact(proposal) {
     if (!proposal) return '不會有隱藏寫入。';
     if (proposal.proposal_type === 'folder_assignment') return '只會更新這篇貼文的正式資料夾；空白表示維持 Inbox。';
     if (proposal.proposal_type === 'post_learning_note') return '只會寫入你確認的貼文學習狀態，不會自動生成內容。';
-    if (proposal.proposal_type === 'topic_assignment') return '會保留相容的舊選擇，並建立貼文與獨立 Topic 的正式連結；不會自動寫知識摘要。';
+    if (proposal.proposal_type === 'topic_assignment') return '會保留 Topic 選擇；獨立 Topic 連結會在 production migration 完成後啟用，且不會自動寫知識摘要。';
     if (proposal.proposal_type === 'topic_knowledge_delta') return '會建立或連結獨立 Topic；只有「已記錄」摘要才會新增帶引用的知識 revision。';
     if (proposal.proposal_type === 'project_reference') return '只會記錄 Topic 與 Catalog 專案的參考關係；不會修改 repo 或執行 POC。';
     return '只會保存這個可稽核決定。';

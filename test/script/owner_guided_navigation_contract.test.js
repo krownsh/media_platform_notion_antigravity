@@ -3,13 +3,14 @@ import test from 'node:test';
 import { readFile } from 'node:fs/promises';
 
 test('normal navigation keeps owner-guided workflow while restoring library compatibility', async () => {
-    const [app, layout, home, detail, analytics, allPosts, design] = await Promise.all([
+    const [app, layout, home, detail, analytics, allPosts, card, design] = await Promise.all([
         readFile(new URL('../../src/App.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../src/components/Layout.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../src/pages/HomePage.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../src/pages/OwnerPostPage.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../src/pages/AnalyticsPage.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../src/pages/AllPostsPage.jsx', import.meta.url), 'utf8'),
+        readFile(new URL('../../src/components/LibraryPostCard.jsx', import.meta.url), 'utf8'),
         readFile(new URL('../../docs/architecture/owner-guided-navigation-cutover-design.md', import.meta.url), 'utf8')
     ]);
     assert.match(app, /OwnerPostPage/);
@@ -30,9 +31,12 @@ test('normal navigation keeps owner-guided workflow while restoring library comp
     assert.match(home, /未接受前，不會寫進正式知識/);
     assert.doesNotMatch(home, /CollectionBoard/);
     assert.match(detail, /尚待你確認的候選/);
-    assert.match(detail, /貼文媒體/);
-    assert.match(detail, /已擷取留言/);
+    assert.match(detail, /知識與整理/);
+    assert.match(detail, /留言回覆/);
+    assert.match(detail, /flex-\[3\]/);
     assert.match(allPosts, /所有貼文/);
+    assert.match(card, /直接選擇/);
+    assert.match(card, /onMove/);
     assert.match(analytics, /這個頁面只讀取資料/);
     assert.doesNotMatch(analytics, /batch-classify/);
     assert.match(design, /Physical removal is deferred to M7/);

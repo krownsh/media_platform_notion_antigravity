@@ -14,7 +14,7 @@ function existingPacket(packets, sourceRevisionId) {
 
 export default function CaptureReviewQueue() {
     const dispatch = useDispatch();
-    const { captureHistory } = useSelector(state => state.posts);
+    const { captureHistory, items } = useSelector(state => state.posts);
     const { packets, actionPending } = useSelector(state => state.review);
     const completed = captureHistory
         .filter(capture => ['finalized', 'degraded'].includes(capture.status) && capture.source_revision_id)
@@ -49,30 +49,19 @@ export default function CaptureReviewQueue() {
                     const packet = existingPacket(packets, capture.source_revision_id);
                     const reviewIsOpen = packet && packet.next_action?.kind !== 'packet_complete';
                     const sourceIsPartial = capture.capture_quality === 'partial' || capture.status === 'degraded';
+                    const post = items.find(item => (item.dbId || item.id) === capture.post_id) || null;
+                    const image = post?.images?.[0] || post?.screenshot || null;
+                    const title = post?.title || post?.analysis?.generated_title || capture.original_filename || captureLabel(capture);
+                    const content = post?.content || '來源已保存；開啟後可查看完整內容與待確認的整理項目。';
+                    const author = post?.author || post?.author_name || post?.platform || (capture.input_type === 'image' ? '圖片來源' : '網頁來源');
+                    const proposal = packet?.proposals?.find(item => item.id === packet.next_action?.proposal_id);
+                    const proposalLabel = ({ folder_assignment: '資料夾分類', post_learning_note: '貼文筆記', topic_assignment: 'Topic 關聯', topic_knowledge_delta: 'Topic 知識', project_reference: '專案參考' })[proposal?.proposal_type] || '查看候選';
                     return (
-                        <article key={capture.id} className="rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)] p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-[var(--foreground)] break-all">{captureLabel(capture)}</p>
-                                    <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
-                                        {capture.status === 'degraded'
-                                            ? '已降級保存：可先確認原始資料是否足夠。'
-                                            : '擷取完成：候選已自動準備，下一步是在 Focus Mode 確認。'}
-                                    </p>
-                                </div>
-                                {reviewIsOpen ? (
-                                    <button type="button" onClick={() => openFocus(packet.id)} className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[var(--accent)] hover:underline"><CheckCircle2 size={15} /> 在 Focus Mode 確認</button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        disabled={actionPending}
-                                        onClick={() => dispatch(prepareReviewCandidates({ sourceRevisionId: capture.source_revision_id }))}
-                                        className="notion-btn-primary inline-flex shrink-0 items-center justify-center gap-2 disabled:cursor-not-allowed"
-                                    >
-                                        {actionPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}
-                                        {sourceIsPartial ? '確認來源品質' : '重新準備候選'}
-                                    </button>
-                                )}
+                        <article key={capture.id} className="overflow-hidden rounded-[var(--radius-control)] border border-[var(--border)] bg-[var(--surface)]">
+                            <div className="grid gap-0 sm:grid-cols-[9rem_minmax(0,1fr)_auto]">
+                                {image ? <img src={image} alt="貼文媒體預覽" className="h-44 w-full object-cover sm:h-full" /> : <div className="flex min-h-32 items-end bg-[linear-gradient(135deg,#e9e1d4_0%,#f7f4ee_58%,#ddd3c3_100%)] p-3"><span className="rounded-full bg-white/70 px-2 py-1 text-[10px] font-bold text-[#615d59]">{post?.platform || '來源'}</span></div>}
+                                <div className="min-w-0 p-4"><p className="text-xs font-semibold text-[var(--muted-foreground)]">{author}</p><h3 className="mt-1 line-clamp-2 text-sm font-bold leading-6 text-[var(--foreground)]">{title}</h3><p className="mt-1 line-clamp-2 whitespace-pre-wrap text-sm leading-6 text-[#615d59]">{content}</p><p className="mt-3 text-xs leading-5 text-[var(--muted-foreground)]">{capture.status === 'degraded' ? '來源不完整：先確認保留內容是否足夠。' : reviewIsOpen ? `待確認：${proposalLabel}` : '候選尚未準備。'}</p></div>
+                                <div className="flex items-center border-t border-[var(--border)] p-3 sm:border-l sm:border-t-0">{reviewIsOpen ? <button type="button" onClick={() => openFocus(packet.id)} className="notion-btn-primary inline-flex w-full shrink-0 items-center justify-center gap-1.5 text-xs"><CheckCircle2 size={15} />處理這篇</button> : <button type="button" disabled={actionPending} onClick={() => dispatch(prepareReviewCandidates({ sourceRevisionId: capture.source_revision_id }))} className="notion-btn-primary inline-flex w-full shrink-0 items-center justify-center gap-2 text-xs disabled:cursor-not-allowed">{actionPending ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} />}{sourceIsPartial ? '確認來源' : '準備候選'}</button>}</div>
                             </div>
                         </article>
                     );

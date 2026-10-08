@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FolderOpen, LayoutGrid, Search, SearchX, SlidersHorizontal } from 'lucide-react';
+import { LayoutGrid, Search, SearchX, SlidersHorizontal } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPosts, movePostToCollection } from '../features/postsSlice';
 import { visibleCollections } from '../utils/collectionVisibility';
 import { matchesWorkflowFilter, WORKFLOW_FILTER_OPTIONS } from '../utils/workflowPresentation';
+import LibraryPostCard from '../components/LibraryPostCard';
 
 const CATEGORIES = [
     { value: 'all', label: '全部類別' },
@@ -23,14 +24,6 @@ const CATEGORIES = [
 
 function getPostId(post) { return post.dbId || post.id; }
 function getCollectionId(post) { return post.collectionId || post.collection_id || null; }
-function getTitle(post) { return post.title || post.analysis?.generated_title || post.author || '未命名來源'; }
-function getSummary(post) { return post.content || post.analysis?.summary || '這篇來源尚沒有可顯示的文字摘要。'; }
-function getDate(post) {
-    const value = post.createdAt || post.created_at || post.capturedAt;
-    if (!value) return '日期未記錄';
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? '日期未記錄' : date.toLocaleDateString('zh-TW');
-}
 
 export default function AllPostsPage() {
     const dispatch = useDispatch();
@@ -98,18 +91,8 @@ export default function AllPostsPage() {
         </section>
 
         {error && <p role="alert" className="mt-5 flow-panel border-destructive/30 p-4 text-sm text-destructive">無法讀取收藏庫：{error}</p>}
-        {!initialized || loading ? <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[1, 2, 3].map(index => <div key={index} className="flow-surface flow-shimmer h-64" />)}</div> : posts.length === 0 ? <div className="mt-6 flow-panel flex min-h-64 flex-col items-center justify-center px-6 text-center"><SearchX size={28} className="text-[var(--accent)]" /><p className="mt-4 font-semibold">沒有符合條件的貼文</p><p className="mt-2 text-sm text-[#615d59]">調整篩選條件，或回到所有貼文重新查看。</p></div> : <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {posts.map(post => <article key={getPostId(post)} className="flow-panel flex min-h-64 flex-col p-5 transition-shadow hover:shadow-soft-card">
-                <div className="flex items-center justify-between gap-3 text-xs text-[#615d59]"><span className="truncate">{post.platform || '來源'}{post.author ? ` · ${post.author}` : ''}</span><span className="shrink-0">{getDate(post)}</span></div>
-                <button type="button" onClick={() => navigate(`/post/${getPostId(post)}`)} className="mt-3 text-left text-lg font-semibold leading-6 hover:text-[var(--accent)]"><span className="line-clamp-2">{getTitle(post)}</span></button>
-                <p className="mt-3 line-clamp-5 text-sm leading-6 text-[#615d59]">{getSummary(post)}</p>
-                <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-                    <Link to={`/post/${getPostId(post)}`} className="text-sm font-semibold text-[var(--accent)] hover:underline">查看貼文</Link>
-                    <select value={getCollectionId(post) || ''} onChange={event => dispatch(movePostToCollection({ postId: getPostId(post), collectionId: event.target.value || null }))} className="notion-input max-w-36 py-1.5 text-xs" aria-label={`移動「${getTitle(post)}」到資料夾`}>
-                        <option value="">Inbox</option>{folders.map(folder => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-                    </select>
-                </div>
-            </article>)}
+        {!initialized || loading ? <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">{[1, 2, 3].map(index => <div key={index} className="flow-surface flow-shimmer h-[27rem] w-full" />)}</div> : posts.length === 0 ? <div className="mt-6 flow-panel flex min-h-64 flex-col items-center justify-center px-6 text-center"><SearchX size={28} className="text-[var(--accent)]" /><p className="mt-4 font-semibold">沒有符合條件的貼文</p><p className="mt-2 text-sm text-[#615d59]">調整篩選條件，或回到所有貼文重新查看。</p></div> : <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 xl:grid-cols-3">
+            {posts.map(post => <LibraryPostCard key={getPostId(post)} post={post} collections={folders} onOpen={() => navigate(`/post/${getPostId(post)}`)} onMove={(postId, nextCollectionId) => dispatch(movePostToCollection({ postId, collectionId: nextCollectionId }))} />)}
         </div>}
     </div>;
 }

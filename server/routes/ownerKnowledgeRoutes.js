@@ -6,6 +6,8 @@ import {
     decidePocProposal,
     importLegacyProjectToCatalog,
     listLegacyProjects,
+    listLegacyTopics,
+    importLegacyTopicToOwner,
     listOwnerTopics,
     listProjectCatalog,
     listTopicProjectReferences
@@ -13,7 +15,8 @@ import {
 
 function statusFor(error) {
     if (error?.code === '23505') return 409;
-    if (/must be|PROJECT_REFERENCE_NOT_FOUND|LEGACY_PROJECT_NOT_FOUND/.test(error?.message || '')) return 400;
+    if (['LEGACY_PROJECT_NOT_FOUND', 'LEGACY_TOPIC_NOT_FOUND'].includes(error?.code)) return 404;
+    if (/must be|PROJECT_REFERENCE_NOT_FOUND|LEGACY_PROJECT_NOT_FOUND|LEGACY_TOPIC_NOT_FOUND/.test(error?.message || '')) return 400;
     if (error?.code === 'POC_PROPOSAL_CONFLICT') return 409;
     return 500;
 }
@@ -27,6 +30,8 @@ export function createOwnerKnowledgeRouter(dependencies = {}) {
         decidePocProposal,
         importLegacyProjectToCatalog,
         listLegacyProjects,
+        listLegacyTopics,
+        importLegacyTopicToOwner,
         listOwnerTopics,
         listProjectCatalog,
         listTopicProjectReferences,
@@ -56,6 +61,17 @@ export function createOwnerKnowledgeRouter(dependencies = {}) {
     router.get('/legacy-projects', async (req, res) => {
         try { return res.json({ projects: await services.listLegacyProjects({ userId: userId(req) }) }); }
         catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
+    });
+    router.get('/legacy-topics', async (req, res) => {
+        try { return res.json({ topics: await services.listLegacyTopics({ userId: userId(req) }) }); }
+        catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
+    });
+    router.post('/legacy-topics/:topicId/import', async (req, res) => {
+        try {
+            return res.status(201).json({ topic: await services.importLegacyTopicToOwner({
+                userId: userId(req), legacyTopicId: req.params.topicId
+            }) });
+        } catch (error) { return res.status(statusFor(error)).json({ error: error.message }); }
     });
     router.post('/legacy-projects/:projectId/import', async (req, res) => {
         try {

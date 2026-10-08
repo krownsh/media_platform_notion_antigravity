@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
     decidePocProposal,
+    importLegacyTopicToOwner,
     importLegacyProjectToCatalog,
     normalizeOwnerTopicLabel,
     normalizeProjectCatalogInput
@@ -38,6 +39,26 @@ test('legacy projects become Catalog records only after an explicit import', asy
         user_id: 'user-1', title: 'UIUX', slug: 'uiux', project_kind: 'remote_repository', reference: 'github:owner/uiux',
         description: 'Imported after explicit Owner approval from the previous project list.'
     });
+});
+
+test('a user-authored active legacy Topic becomes a new Topic only after an explicit import', async () => {
+    const inserts = [];
+    const client = {
+        from(table) {
+            if (table === 'collection_topics') return {
+                select() { return this; }, eq() { return this; }, maybeSingle: async () => ({ data: {
+                    id: 'legacy-topic-1', title: 'UI UX', origin: 'user', status: 'active'
+                }, error: null })
+            };
+            assert.equal(table, 'owner_topics');
+            return {
+                insert(value) { inserts.push(value); return this; }, select() { return this; }, single: async () => ({ data: { id: 'topic-1', ...inserts[0] }, error: null })
+            };
+        }
+    };
+    const imported = await importLegacyTopicToOwner({ userId: 'user-1', legacyTopicId: 'legacy-topic-1', supabaseClient: client });
+    assert.equal(imported.id, 'topic-1');
+    assert.deepEqual(inserts[0], { user_id: 'user-1', label: 'UI UX', normalized_label: 'ui ux' });
 });
 
 test('POC approval uses an explicit second action with an optimistic version lock', async () => {

@@ -20,6 +20,8 @@ test('owner knowledge routes retain the authenticated owner and keep POC approva
     const calls = [];
     await withServer({
         listOwnerTopics: async input => { calls.push(['topics', input]); return [{ id: 'topic-1', label: 'UI UX' }]; },
+        listLegacyTopics: async input => { calls.push(['legacy-topics', input]); return [{ id: 'legacy-topic-1', title: 'UX research' }]; },
+        importLegacyTopicToOwner: async input => { calls.push(['import-topic', input]); return { id: 'topic-2', label: 'UX research' }; },
         listLegacyProjects: async input => { calls.push(['legacy', input]); return [{ id: 'legacy-1', title: 'Existing project' }]; },
         importLegacyProjectToCatalog: async input => { calls.push(['import', input]); return { id: 'catalog-1', title: 'Existing project' }; },
         createPocProposal: async input => { calls.push(['propose', input]); return { id: 'poc-1', status: 'proposed' }; },
@@ -28,6 +30,11 @@ test('owner knowledge routes retain the authenticated owner and keep POC approva
         const topics = await fetch(`${baseUrl}/api/owner-knowledge/topics`);
         assert.equal(topics.status, 200);
         assert.equal((await topics.json()).topics[0].label, 'UI UX');
+        const legacyTopics = await fetch(`${baseUrl}/api/owner-knowledge/legacy-topics`);
+        assert.equal(legacyTopics.status, 200);
+        assert.equal((await legacyTopics.json()).topics[0].id, 'legacy-topic-1');
+        const importedTopic = await fetch(`${baseUrl}/api/owner-knowledge/legacy-topics/legacy-topic-1/import`, { method: 'POST' });
+        assert.equal(importedTopic.status, 201);
         const legacy = await fetch(`${baseUrl}/api/owner-knowledge/legacy-projects`);
         assert.equal(legacy.status, 200);
         assert.equal((await legacy.json()).projects[0].id, 'legacy-1');
@@ -44,6 +51,8 @@ test('owner knowledge routes retain the authenticated owner and keep POC approva
     });
     assert.deepEqual(calls, [
         ['topics', { userId: USER_ID }],
+        ['legacy-topics', { userId: USER_ID }],
+        ['import-topic', { userId: USER_ID, legacyTopicId: 'legacy-topic-1' }],
         ['legacy', { userId: USER_ID }],
         ['import', { userId: USER_ID, legacyProjectId: 'legacy-1' }],
         ['propose', { userId: USER_ID, projectReferenceId: 'ref-1', objective: 'Try in an isolated workspace', isolationSpec: {} }],

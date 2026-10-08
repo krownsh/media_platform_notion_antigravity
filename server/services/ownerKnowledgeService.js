@@ -88,6 +88,50 @@ export async function listLegacyProjects({ userId, supabaseClient = defaultSupab
     return data || [];
 }
 
+export async function listLegacyTopics({ userId, supabaseClient = defaultSupabase }) {
+    const { data, error } = await supabaseClient
+        .from('collection_topics')
+        .select('id, title, slug, description, purpose, keywords, desired_outcomes, created_at, updated_at')
+        .eq('user_id', userId)
+        .eq('origin', 'user')
+        .eq('status', 'active')
+        .order('updated_at', { ascending: false });
+    if (error) throw new Error(`Legacy Topic lookup failed: ${error.message}`);
+    return data || [];
+}
+
+export async function importLegacyTopicToOwner({ userId, legacyTopicId, supabaseClient = defaultSupabase }) {
+    const { data: legacy, error: legacyError } = await supabaseClient
+        .from('collection_topics')
+        .select('id, title, slug, description, purpose, keywords, desired_outcomes, origin, status')
+        .eq('id', legacyTopicId)
+        .eq('user_id', userId)
+        .eq('origin', 'user')
+        .eq('status', 'active')
+        .maybeSingle();
+    if (legacyError) throw new Error(`Legacy Topic lookup failed: ${legacyError.message}`);
+    if (!legacy) {
+        const error = new Error('Legacy Topic was not found');
+        error.code = 'LEGACY_TOPIC_NOT_FOUND';
+        throw error;
+    }
+    try {
+        return await createOwnerTopic({ userId, label: legacy.title, supabaseClient });
+    } catch (error) {
+        if (error?.code !== '23505') throw error;
+        const { normalizedLabel } = normalizeOwnerTopicLabel(legacy.title);
+        const { data: existing, error: existingError } = await supabaseClient
+            .from('owner_topics')
+            .select('id, label, normalized_label, status, created_at, updated_at')
+            .eq('user_id', userId)
+            .eq('normalized_label', normalizedLabel)
+            .maybeSingle();
+        if (existingError) throw new Error(`Owner Topic lookup failed: ${existingError.message}`);
+        if (existing) return existing;
+        throw error;
+    }
+}
+
 export async function importLegacyProjectToCatalog({ userId, legacyProjectId, supabaseClient = defaultSupabase }) {
     const { data: legacy, error: legacyError } = await supabaseClient
         .from('collection_projects')

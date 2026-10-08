@@ -13,5 +13,5 @@ test('retired knowledge-space index has no normal route or navigation entry', as
 
   assert.doesNotMatch(app, /KnowledgeSpacesPage|knowledge-spaces/);
   assert.doesNotMatch(layout, /知識地圖|knowledge-spaces/);
-  assert.match(layout, /label="Library 搜尋"/);
+  assert.match(layout, /label="記憶搜尋"/);
 });

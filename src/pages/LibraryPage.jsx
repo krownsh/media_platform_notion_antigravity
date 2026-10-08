@@ -16,7 +16,7 @@ export default function LibraryPage() {
     useEffect(() => { if (!initialized) dispatch(fetchPosts()); }, [dispatch, initialized]);
     const visiblePosts = useMemo(() => collectionId ? items.filter(post => postCollectionId(post) === collectionId) : items, [items, collectionId]);
     const activeCollection = collections.find(collection => collection.id === collectionId);
-    const submitFolder = event => { event.preventDefault(); const name = newFolder.trim(); if (!name) return; dispatch(createCollection(name)); setNewFolder(''); };
+    const submitFolder = event => { event.preventDefault(); const name = newFolder.trim(); if (!name) return; dispatch(createCollection({ name })); setNewFolder(''); };
 
     return <div className="flow-page max-w-6xl px-1 sm:px-2">
         <header className="flex flex-wrap items-end justify-between gap-4 pt-5 sm:pt-8 md:pt-12"><div><p className="flow-kicker mb-2">既有收藏與資料夾</p><h1 className="text-3xl sm:text-[2.25rem] font-bold tracking-[-0.05em]">Library</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-[#615d59]">原本的貼文與資料夾整理仍在這裡。Focus Mode 只負責候選確認，不會取代你的 Library。</p></div><button onClick={() => dispatch(fetchPosts())} disabled={loading || refreshing} className="flow-icon-button border notion-whisper-border" aria-label="重新整理 Library"><RefreshCw size={16} className={loading || refreshing ? 'animate-spin' : ''} /></button></header>

@@ -10,6 +10,8 @@ import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
 import OwnerPostPage from './pages/OwnerPostPage';
 import LibraryPage from './pages/LibraryPage';
+import AllPostsPage from './pages/AllPostsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 import { setUser, setLoading } from './features/authSlice';
 import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
@@ -76,8 +78,8 @@ function App() {
           } />
           <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
           <Route path="/library/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
-          <Route path="/view-all" element={<Navigate to="/library" replace />} />
-          <Route path="/collection/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+          <Route path="/view-all" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
+          <Route path="/collection/:collectionId" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
 
           <Route path="/post/:postId" element={
             <ProtectedRoute>
@@ -85,7 +87,7 @@ function App() {
             </ProtectedRoute>
           } />
           <Route path="/image-workflow/:postId" element={<Navigate to="/" replace />} />
-          <Route path="/insight" element={<Navigate to="/search" replace />} />
+          <Route path="/insight" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
           <Route path="/topics" element={
             <ProtectedRoute>
               <OwnerTopicsPage />

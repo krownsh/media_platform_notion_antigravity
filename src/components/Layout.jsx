@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Search, ChevronRight, ChevronLeft, Home, LogOut, LogIn, User as UserIcon, Menu, X, Target, FolderGit2, FolderOpen } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, ChevronLeft, Home, LogOut, LogIn, User as UserIcon, Menu, X, Target, FolderGit2, FolderOpen, Folder, LayoutGrid, Library, BarChart3, Plus } from 'lucide-react';
 import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
@@ -10,8 +10,10 @@ import TaskCenter from './TaskCenter';
 import { toggleTaskCenter } from '../features/uiSlice';
 import { useDispatch } from 'react-redux';
 import { Activity } from 'lucide-react';
+import { createCollection } from '../features/postsSlice';
+import { visibleCollections } from '../utils/collectionVisibility';
 
-const SidebarItem = ({ icon: _Icon, label, active, onClick, collapsed }) => (
+const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu = false, expanded = false, collapsed }) => (
     <Motion.button
         type="button"
         layout
@@ -27,17 +29,25 @@ const SidebarItem = ({ icon: _Icon, label, active, onClick, collapsed }) => (
         {!collapsed && (
             <span className="flex-1 whitespace-nowrap overflow-hidden text-sm">{label}</span>
         )}
+        {!collapsed && hasSubmenu && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
     </Motion.button>
 );
 
 const Layout = ({ children }) => {
-    const { tasks } = useSelector((state) => state.posts);
+    const { collections, tasks } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
+    const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const [user, setUser] = useState(null);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const activeCollections = visibleCollections(collections);
+
+    const createFolder = () => {
+        const name = window.prompt('請輸入新資料夾名稱：');
+        if (name?.trim()) dispatch(createCollection({ name: name.trim() }));
+    };
 
     React.useEffect(() => {
         // Check active session
@@ -140,11 +150,12 @@ const Layout = ({ children }) => {
                                 />
                                 <SidebarItem
                                     icon={Search}
-                                    label="Library 搜尋"
+                                    label="記憶搜尋"
                                     active={location.pathname === '/search'}
                                     onClick={() => { navigate('/search'); setIsMobileMenuOpen(false); }}
                                 />
-                                <SidebarItem icon={FolderOpen} label="資料夾整理" active={location.pathname === '/library' || location.pathname.startsWith('/library/')} onClick={() => { navigate('/library'); setIsMobileMenuOpen(false); }} />
+                                <SidebarItem icon={LayoutGrid} label="所有貼文" active={location.pathname === '/view-all' || location.pathname.startsWith('/collection/')} onClick={() => { navigate('/view-all'); setIsMobileMenuOpen(false); }} />
+                                <SidebarItem icon={BarChart3} label="分析數據" active={location.pathname === '/insight'} onClick={() => { navigate('/insight'); setIsMobileMenuOpen(false); }} />
                                 <SidebarItem
                                     icon={Target}
                                     label="Topics"
@@ -152,6 +163,13 @@ const Layout = ({ children }) => {
                                     onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
                                 />
                                 <SidebarItem icon={FolderGit2} label="Projects" active={location.pathname === '/projects'} onClick={() => { navigate('/projects'); setIsMobileMenuOpen(false); }} />
+                                <SidebarItem icon={Library} label="收藏夾" active={location.pathname === '/library' || location.pathname.startsWith('/collection/')} onClick={() => setIsCollectionsExpanded(value => !value)} hasSubmenu expanded={isCollectionsExpanded} />
+                                {isCollectionsExpanded && <div className="ml-5 border-l border-black/10 pl-2">
+                                    {activeCollections.map(collection => <button key={collection.id} type="button" onClick={() => { navigate(`/collection/${collection.id}`); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${location.pathname === `/collection/${collection.id}` ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[#615d59] hover:bg-black/5'}`}><Folder size={14} /><span className="truncate">{collection.name}</span></button>)}
+                                    {!activeCollections.length && <p className="px-3 py-2 text-xs text-[#615d59]">尚無收藏夾</p>}
+                                    <button type="button" onClick={createFolder} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--accent)] hover:bg-[var(--accent-soft)]"><Plus size={14} />新增資料夾</button>
+                                    <button type="button" onClick={() => { navigate('/library'); setIsMobileMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[#615d59] hover:bg-black/5"><FolderOpen size={14} />資料夾管理</button>
+                                </div>}
 
                             </nav>
 
@@ -234,18 +252,19 @@ const Layout = ({ children }) => {
 
                     <SidebarItem
                         icon={Search}
-                        label="Library 搜尋"
+                        label="記憶搜尋"
                         active={location.pathname === '/search'}
                         onClick={() => navigate('/search')}
                         collapsed={isSidebarCollapsed}
                     />
                     <SidebarItem
-                        icon={FolderOpen}
-                        label="資料夾整理"
-                        active={location.pathname === '/library' || location.pathname.startsWith('/library/')}
-                        onClick={() => navigate('/library')}
+                        icon={LayoutGrid}
+                        label="所有貼文"
+                        active={location.pathname === '/view-all' || location.pathname.startsWith('/collection/')}
+                        onClick={() => navigate('/view-all')}
                         collapsed={isSidebarCollapsed}
                     />
+                    <SidebarItem icon={BarChart3} label="分析數據" active={location.pathname === '/insight'} onClick={() => navigate('/insight')} collapsed={isSidebarCollapsed} />
 
                     <SidebarItem
                         icon={Target}
@@ -261,6 +280,15 @@ const Layout = ({ children }) => {
                         onClick={() => navigate('/projects')}
                         collapsed={isSidebarCollapsed}
                     />
+                    <SidebarItem icon={Library} label="收藏夾" active={location.pathname === '/library' || location.pathname.startsWith('/collection/')} onClick={() => setIsCollectionsExpanded(value => !value)} hasSubmenu expanded={isCollectionsExpanded} collapsed={isSidebarCollapsed} />
+                    <AnimatePresence>
+                        {isCollectionsExpanded && !isSidebarCollapsed && <Motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="ml-5 overflow-hidden border-l border-black/10 pl-2">
+                            {activeCollections.map(collection => <button key={collection.id} type="button" onClick={() => navigate(`/collection/${collection.id}`)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${location.pathname === `/collection/${collection.id}` ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[#615d59] hover:bg-black/5'}`}><Folder size={14} /><span className="truncate">{collection.name}</span></button>)}
+                            {!activeCollections.length && <p className="px-3 py-2 text-xs text-[#615d59]">尚無收藏夾</p>}
+                            <button type="button" onClick={createFolder} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--accent)] hover:bg-[var(--accent-soft)]"><Plus size={14} />新增資料夾</button>
+                            <button type="button" onClick={() => navigate('/library')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[#615d59] hover:bg-black/5"><FolderOpen size={14} />資料夾管理</button>
+                        </Motion.div>}
+                    </AnimatePresence>
 
                 </nav>
 

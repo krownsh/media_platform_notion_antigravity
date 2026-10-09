@@ -12,7 +12,6 @@ export const DEFAULT_MEDIA_KNOWLEDGE_VAULT_ROOT = '/Volumes/DevSSD/10_Projects/P
 export async function createOrRetryLocalPostCaseFile({
     userId,
     postId,
-    sourceRevisionId = null,
     vaultRoot = process.env.MEDIA_KNOWLEDGE_VAULT_PATH || DEFAULT_MEDIA_KNOWLEDGE_VAULT_ROOT,
     loadInputs = loadOwnerSearchInputs,
     createManifest = createPostCaseFileManifest,
@@ -20,10 +19,9 @@ export async function createOrRetryLocalPostCaseFile({
     appendEvent = appendLocalNoteEvent,
     loadManifest = loadPostCaseFileManifest,
     writeFile = writeInitialPostCaseFile,
-    recordDelivery = recordLocalNoteDelivery,
-    historicalImport = null
+    recordDelivery = recordLocalNoteDelivery
 }) {
-    const inputs = await loadInputs({ userId, postId, sourceRevisionId });
+    const inputs = await loadInputs({ userId, postId });
     if (!inputs?.sourceRevision?.id) throw new Error('LOCAL_NOTE_SOURCE_REVISION_REQUIRED');
     const manifest = await createManifest({ userId, postId, sourceRevisionId: inputs.sourceRevision.id });
     if (manifest.sync_state === 'synchronized') return { manifest, outcome: 'already_synchronized' };
@@ -37,8 +35,7 @@ export async function createOrRetryLocalPostCaseFile({
     if (!currentManifest) throw new Error('LOCAL_NOTE_MANIFEST_NOT_FOUND');
     const file = await writeFile({
         vaultRoot, post: inputs.post, sourceRevisionId: inputs.sourceRevision.id,
-        sourcePayload: inputs.sourceRevision.source_payload || null,
-        historicalImport
+        sourcePayload: inputs.sourceRevision.source_payload || null
     });
     const delivered = await recordDelivery({
         userId, manifestId: currentManifest.id, expectedVersion: currentManifest.version,

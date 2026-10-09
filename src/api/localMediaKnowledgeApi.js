@@ -10,3 +10,12 @@ export async function getLocalPostRecord(postId) {
     const payload = await response.json();
     return payload.local_record;
 }
+
+export async function syncLocalPostRecord(postId) {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/local-records/posts/${encodeURIComponent(postId)}/sync`, { method: 'POST' });
+    if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || '無法建立本機紀錄');
+    }
+    return response.json();
+}

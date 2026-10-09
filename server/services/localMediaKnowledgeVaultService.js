@@ -100,7 +100,7 @@ export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevision
     const relativePath = path.relative(root, filePath).split(path.sep).join('/');
     const content = `---\nschema_version: 1\nnote_kind: media-post-case-file\npost_id: ${postId}\nsource_revision_id: ${text(sourceRevisionId)}\nworkflow_id: ${text(workflowId)}\nsource_url: ${text(post?.original_url)}\nsource_platform: ${text(post?.platform, 'generic')}\ncaptured_at: ${text(post?.created_at)}\ntitle_status: provisional\nprimary_folder: Inbox\nlocal_record_state: pending\n---\n\n# 暫定：${title}\n\n<!-- BEGIN MEDIA CURRENT STATE -->\n## 目前狀態\n- 為何保留：尚待整理\n- 下一步：等待審核\n<!-- END MEDIA CURRENT STATE -->\n\n<!-- BEGIN MEDIA SOURCE SNAPSHOT -->\n## 來源快照\n${renderSourceSnapshot(post, sourcePayload)}\n<!-- END MEDIA SOURCE SNAPSHOT -->\n\n${EVENT_LOG_START}\n## 工作歷程\n### ${date} ${displayTime}｜擷取｜已記錄\n- source_revision_id: ${text(sourceRevisionId)}\n- workflow_id: ${text(workflowId)}\n${EVENT_LOG_END}\n\n## 你的自由筆記\n`;
     await atomicWrite(filePath, content);
-    return { relativePath, filePath };
+    return { relativePath, filePath, checksum: crypto.createHash('sha256').update(content).digest('hex') };
 }
 
 export async function appendPostCaseFileEvent({ vaultRoot, relativePath, event }) {

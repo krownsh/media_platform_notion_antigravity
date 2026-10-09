@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { supabase, isSupabaseConfigured } from '../../server/supabaseClient.js';
 import { buildLegacyVaultInventory } from '../../server/services/legacyVaultInventoryService.js';
@@ -13,8 +14,14 @@ function requiredEnvironment(name) {
     return value;
 }
 
-function requestedPostIds() {
-    const ids = requiredEnvironment('LEGACY_IMPORT_POST_IDS').split(',').map(value => value.trim()).filter(Boolean);
+export function selectLegacyPostIds({ inventory = [], requestedIds = [], importAll = false } = {}) {
+    if (importAll) {
+        return [...new Set(inventory
+            .filter(record => record.candidateKind === 'post_candidate' && record.postId)
+            .map(record => record.postId))]
+            .sort();
+    }
+    const ids = requestedIds.map(value => String(value).trim()).filter(Boolean);
     if (!ids.length || ids.length > MAX_BATCH_SIZE) throw new Error(`LEGACY_IMPORT_POST_IDS must contain 1-${MAX_BATCH_SIZE} IDs`);
     if (new Set(ids).size !== ids.length) throw new Error('LEGACY_IMPORT_POST_IDS must not contain duplicate IDs');
     return ids;
@@ -114,8 +121,13 @@ async function main() {
     const userId = requiredEnvironment('OWNER_ID');
     const legacyVaultRoot = path.resolve(requiredEnvironment('LEGACY_MEDIA_VAULT_ROOT'));
     const vaultRoot = path.resolve(requiredEnvironment('MEDIA_KNOWLEDGE_VAULT_ROOT'));
-    const postIds = requestedPostIds();
     const inventory = await buildLegacyVaultInventory({ vaultRoot: legacyVaultRoot });
+    const postIds = selectLegacyPostIds({
+        inventory,
+        requestedIds: String(process.env.LEGACY_IMPORT_POST_IDS || '').split(','),
+        importAll: process.env.LEGACY_IMPORT_ALL_EXACT === '1'
+    });
+    if (!postIds.length) throw new Error('No post-backed legacy candidates are available for full import');
     const inventoryByPostId = new Map();
     for (const record of inventory.filter(item => item.candidateKind === 'post_candidate' && item.postId)) {
         const records = inventoryByPostId.get(record.postId) || [];
@@ -145,7 +157,9 @@ async function main() {
     console.log(JSON.stringify({ imported: results.length, results }, null, 2));
 }
 
-main().catch(error => {
-    console.error(error.stack || error.message);
-    process.exitCode = 1;
-});
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+    main().catch(error => {
+        console.error(error.stack || error.message);
+        process.exitCode = 1;
+    });
+}

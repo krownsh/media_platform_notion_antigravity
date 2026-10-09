@@ -99,6 +99,22 @@ test('a complete capture automatically starts the owner-visible candidate projec
     }]);
 });
 
+test('a finalized capture requests local case-file delivery without blocking source persistence', async () => {
+    const client = captureClient({ post_id: 'post-local', source_revision_id: 'revision-local' });
+    const deliveries = [];
+    const result = await finalizeCapture(
+        'user-local', 'capture-local', 'crawler',
+        { platform: 'threads', original_url: 'https://threads.net/example', content: 'Captured source' },
+        {
+            supabaseClient: client, configured: true,
+            reviewPreparer: async () => {}, searchIndexer: async () => {},
+            localNoteWriter: async input => deliveries.push(input)
+        }
+    );
+    assert.equal(result.post_id, 'post-local');
+    assert.deepEqual(deliveries, [{ userId: 'user-local', postId: 'post-local' }]);
+});
+
 test('finalization rejects an RPC response that lacks a durable source revision', async () => {
     const client = captureClient({ post_id: 'post-1', outbox_event_id: null });
 

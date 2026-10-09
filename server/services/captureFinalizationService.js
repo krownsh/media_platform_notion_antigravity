@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { refreshOwnerPostSearchDocument } from './ownerSearchService.js';
 import { prepareInitialReviewProposals } from './reviewProposalService.js';
+import { createOrRetryLocalPostCaseFile } from './localMediaKnowledgeWorkflowService.js';
 
 function normalizeCommentTimestamp(value) {
     const timestamp = value ? new Date(value) : new Date();
@@ -25,7 +26,8 @@ export async function finalizeCapture(
         pipelineVersion = 'capture-v5-owner-guided',
         captureQuality = 'complete',
         reviewPreparer = prepareInitialReviewProposals,
-        searchIndexer = refreshOwnerPostSearchDocument
+        searchIndexer = refreshOwnerPostSearchDocument,
+        localNoteWriter = createOrRetryLocalPostCaseFile
     } = {}
 ) {
     if (!configured) {
@@ -101,6 +103,12 @@ export async function finalizeCapture(
         await searchIndexer({ userId, postId: finalized.post_id, sourceRevisionId: finalized.source_revision_id, supabaseClient });
     } catch (error) {
         console.warn(`[Capture] Search projection deferred: ${error.message}`);
+    }
+
+    try {
+        await localNoteWriter({ userId, postId: finalized.post_id });
+    } catch (error) {
+        console.warn(`[Capture] Local case-file delivery deferred: ${error.message}`);
     }
 
     return finalized;

@@ -75,7 +75,19 @@ function renderEvent(event) {
     return `${lines.join('\n')}\n`;
 }
 
-export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, workflowId = null }) {
+function renderSourceSnapshot(post, sourcePayload) {
+    const capturedText = text(post?.content, '（來源未提供可用文字）');
+    if (!sourcePayload || typeof sourcePayload !== 'object') return capturedText;
+    let payload;
+    try {
+        payload = JSON.stringify(sourcePayload, null, 2).replace(/\0/g, '');
+    } catch {
+        return capturedText;
+    }
+    return `${capturedText}\n\n### 完整擷取結構\n\`\`\`json\n${payload}\n\`\`\``;
+}
+
+export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, workflowId = null, sourcePayload = null }) {
     const root = path.resolve(text(vaultRoot));
     const marker = await fs.stat(path.join(root, '.obsidian')).catch(() => null);
     if (!marker?.isDirectory()) throw new Error('Configured local media collection is not an initialized Obsidian Vault');
@@ -86,7 +98,7 @@ export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevision
     const filename = `${date}｜暫定：${title}｜${segment(postId.slice(0, 8), 'unknown')}.md`;
     const filePath = path.resolve(root, ROOT, 'Posts', 'Inbox', filename); assertInside(root, filePath);
     const relativePath = path.relative(root, filePath).split(path.sep).join('/');
-    const content = `---\nschema_version: 1\nnote_kind: media-post-case-file\npost_id: ${postId}\nsource_revision_id: ${text(sourceRevisionId)}\nworkflow_id: ${text(workflowId)}\nsource_url: ${text(post?.original_url)}\nsource_platform: ${text(post?.platform, 'generic')}\ncaptured_at: ${text(post?.created_at)}\ntitle_status: provisional\nprimary_folder: Inbox\nlocal_record_state: pending\n---\n\n# 暫定：${title}\n\n<!-- BEGIN MEDIA CURRENT STATE -->\n## 目前狀態\n- 為何保留：尚待整理\n- 下一步：等待審核\n<!-- END MEDIA CURRENT STATE -->\n\n<!-- BEGIN MEDIA SOURCE SNAPSHOT -->\n## 來源快照\n${text(post?.content, '（來源未提供可用文字）')}\n<!-- END MEDIA SOURCE SNAPSHOT -->\n\n${EVENT_LOG_START}\n## 工作歷程\n### ${date} ${displayTime}｜擷取｜已記錄\n- source_revision_id: ${text(sourceRevisionId)}\n- workflow_id: ${text(workflowId)}\n${EVENT_LOG_END}\n\n## 你的自由筆記\n`;
+    const content = `---\nschema_version: 1\nnote_kind: media-post-case-file\npost_id: ${postId}\nsource_revision_id: ${text(sourceRevisionId)}\nworkflow_id: ${text(workflowId)}\nsource_url: ${text(post?.original_url)}\nsource_platform: ${text(post?.platform, 'generic')}\ncaptured_at: ${text(post?.created_at)}\ntitle_status: provisional\nprimary_folder: Inbox\nlocal_record_state: pending\n---\n\n# 暫定：${title}\n\n<!-- BEGIN MEDIA CURRENT STATE -->\n## 目前狀態\n- 為何保留：尚待整理\n- 下一步：等待審核\n<!-- END MEDIA CURRENT STATE -->\n\n<!-- BEGIN MEDIA SOURCE SNAPSHOT -->\n## 來源快照\n${renderSourceSnapshot(post, sourcePayload)}\n<!-- END MEDIA SOURCE SNAPSHOT -->\n\n${EVENT_LOG_START}\n## 工作歷程\n### ${date} ${displayTime}｜擷取｜已記錄\n- source_revision_id: ${text(sourceRevisionId)}\n- workflow_id: ${text(workflowId)}\n${EVENT_LOG_END}\n\n## 你的自由筆記\n`;
     await atomicWrite(filePath, content);
     return { relativePath, filePath };
 }

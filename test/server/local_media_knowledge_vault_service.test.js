@@ -23,7 +23,11 @@ test('an initial post case file is written under Inbox with the full source snap
                 created_at: '2026-10-09T03:20:00.000Z'
             },
             sourceRevisionId: 'revision-1',
-            workflowId: 'workflow-1'
+            workflowId: 'workflow-1',
+            sourcePayload: {
+                comments: [{ author_name: 'Reader', content: 'A useful response.' }],
+                media: [{ type: 'image', url: 'https://example.test/image.jpg', alt_text: 'A reference image.' }]
+            }
         });
 
         assert.equal(result.relativePath, 'Media Knowledge/Posts/Inbox/2026-10-09｜暫定：Figma design systems｜post-123.md');
@@ -32,6 +36,8 @@ test('an initial post case file is written under Inbox with the full source snap
         assert.match(content, /source_revision_id: revision-1/);
         assert.match(content, /<!-- BEGIN MEDIA SOURCE SNAPSHOT -->/);
         assert.match(content, /Complete captured source text\./);
+        assert.match(content, /完整擷取結構/);
+        assert.match(content, /https:\/\/example\.test\/image\.jpg/);
         assert.match(content, /<!-- BEGIN MEDIA EVENT LOG -->/);
         assert.match(content, /### 2026-10-09 03:20｜擷取｜已記錄/);
         assert.match(content, /## 你的自由筆記/);

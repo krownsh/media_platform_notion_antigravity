@@ -36,7 +36,10 @@ test('an initial post case file is written under Inbox with the full source snap
         assert.match(content, /source_revision_id: revision-1/);
         assert.match(content, /<!-- BEGIN MEDIA SOURCE SNAPSHOT -->/);
         assert.match(content, /Complete captured source text\./);
-        assert.match(content, /完整擷取結構/);
+        assert.doesNotMatch(content, /完整擷取結構|\`\`\`json/);
+        assert.match(content, /### 媒體參考/);
+        assert.match(content, /### 來源留言/);
+        assert.match(content, /Reader：A useful response\./);
         assert.match(content, /https:\/\/example\.test\/image\.jpg/);
         assert.match(content, /<!-- BEGIN MEDIA EVENT LOG -->/);
         assert.match(content, /### 2026-10-09 03:20｜擷取｜已記錄/);

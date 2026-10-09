@@ -78,13 +78,23 @@ function renderEvent(event) {
 function renderSourceSnapshot(post, sourcePayload) {
     const capturedText = text(post?.content, '（來源未提供可用文字）');
     if (!sourcePayload || typeof sourcePayload !== 'object') return capturedText;
-    let payload;
-    try {
-        payload = JSON.stringify(sourcePayload, null, 2).replace(/\0/g, '');
-    } catch {
-        return capturedText;
-    }
-    return `${capturedText}\n\n### 完整擷取結構\n\`\`\`json\n${payload}\n\`\`\``;
+    const media = Array.isArray(sourcePayload.media) ? sourcePayload.media : [];
+    const comments = Array.isArray(sourcePayload.comments) ? sourcePayload.comments : [];
+    const sections = [capturedText];
+    const mediaLines = media.map(item => {
+        const url = singleLine(item?.url);
+        if (!url) return null;
+        const label = singleLine(item?.alt_text || item?.type, '媒體');
+        return `- ${label}：${url}`;
+    }).filter(Boolean);
+    if (mediaLines.length) sections.push(`### 媒體參考\n${mediaLines.join('\n')}`);
+    const commentLines = comments.map(item => {
+        const body = singleLine(item?.content);
+        if (!body) return null;
+        return `- ${singleLine(item?.author_name, '未具名')}：${body}`;
+    }).filter(Boolean);
+    if (commentLines.length) sections.push(`### 來源留言\n${commentLines.join('\n')}`);
+    return sections.join('\n\n');
 }
 
 export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, workflowId = null, sourcePayload = null }) {

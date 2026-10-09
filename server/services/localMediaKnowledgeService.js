@@ -44,6 +44,17 @@ export async function createPostCaseFileManifest({
     return existing;
 }
 
+export async function loadPostCaseFileManifest({ userId, postId, supabaseClient = defaultSupabase }) {
+    const { data, error } = await supabaseClient
+        .from('owner_local_note_manifests')
+        .select('id, post_id, source_revision_id, title_status, primary_folder, relative_path, sync_state, last_written_event_sequence, last_content_sha256, last_error, version, updated_at')
+        .eq('user_id', requiredText(userId, 'userId'))
+        .eq('post_id', requiredText(postId, 'postId'))
+        .maybeSingle();
+    if (error) throw new Error(`Local note manifest lookup failed: ${error.message}`);
+    return data || null;
+}
+
 function optionalText(value, label) {
     if (value === null || value === undefined || value === '') return null;
     return requiredText(value, label);

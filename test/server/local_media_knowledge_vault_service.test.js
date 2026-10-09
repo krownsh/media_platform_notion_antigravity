@@ -46,6 +46,40 @@ test('an initial post case file is written under Inbox with the full source snap
     }
 });
 
+test('a legacy import keeps the old note as clearly provisional history without promoting its conclusions', async () => {
+    const vaultRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'media-knowledge-vault-'));
+    await fs.mkdir(path.join(vaultRoot, '.obsidian'));
+    try {
+        const result = await writeInitialPostCaseFile({
+            vaultRoot,
+            post: {
+                id: 'post-legacy-0000-4000-8000-000000000000',
+                title: 'Database title',
+                content: 'Current source snapshot.',
+                created_at: '2026-09-13T15:53:22.000Z'
+            },
+            sourceRevisionId: 'revision-legacy-1',
+            historicalImport: {
+                title: 'Rethinking skills and prompts for GPT-6 Astra',
+                legacyPath: 'wiki/threads/generic/2026-09-13-Rethinking-skills.md',
+                sha256: 'a'.repeat(64),
+                content: '## 舊版討論\n- 此為舊系統歷史內容。'
+            }
+        });
+
+        assert.match(result.relativePath, /暫定：Rethinking skills and prompts for GPT-6 Astra/);
+        const content = await fs.readFile(path.join(vaultRoot, result.relativePath), 'utf8');
+        assert.match(content, /<!-- BEGIN MEDIA LEGACY IMPORT -->/);
+        assert.match(content, /legacy_path: wiki\/threads\/generic\/2026-09-13-Rethinking-skills\.md/);
+        assert.match(content, /legacy_sha256: a{64}/);
+        assert.match(content, /未轉為正式知識/);
+        assert.match(content, /## 舊版討論/);
+        assert.ok(content.indexOf('<!-- BEGIN MEDIA LEGACY IMPORT -->') < content.indexOf('<!-- BEGIN MEDIA EVENT LOG -->'));
+    } finally {
+        await fs.rm(vaultRoot, { recursive: true, force: true });
+    }
+});
+
 test('an event is appended inside the managed log without rewriting the Owner free-notes section', async () => {
     const vaultRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'media-knowledge-vault-'));
     await fs.mkdir(path.join(vaultRoot, '.obsidian'));

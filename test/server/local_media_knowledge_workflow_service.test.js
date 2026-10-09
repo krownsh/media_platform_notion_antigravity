@@ -18,3 +18,32 @@ test('creates one owner-scoped Inbox case file and marks it synchronized only af
     assert.deepEqual(calls.map(([kind]) => kind), ['event', 'write', 'delivery']);
     assert.equal(calls[2][1].lastWrittenEventSequence, 1);
 });
+
+test('passes a legacy history payload to the initial local case-file writer without changing semantic status', async () => {
+    let receivedWrite;
+    let receivedLoad;
+    await createOrRetryLocalPostCaseFile({
+        userId: 'user-1', postId: 'post-legacy', vaultRoot: '/vault',
+        sourceRevisionId: 'source-legacy',
+        historicalImport: {
+            title: 'Legacy human title', legacyPath: 'wiki/threads/legacy.md', sha256: 'b'.repeat(64), content: 'Old history'
+        },
+        loadInputs: async input => {
+            receivedLoad = input;
+            return { post: { id: 'post-legacy', content: 'Source' }, sourceRevision: { id: 'source-legacy', source_payload: {} } };
+        },
+        createManifest: async () => ({ id: 'manifest-legacy', version: 1, sync_state: 'pending' }),
+        loadCaptureEvent: async () => null,
+        appendEvent: async () => ({ id: 'event-legacy', sequence: 1 }),
+        loadManifest: async () => ({ id: 'manifest-legacy', version: 2 }),
+        writeFile: async input => {
+            receivedWrite = input;
+            return { relativePath: 'Media Knowledge/Posts/Inbox/legacy.md', checksum: 'b'.repeat(64) };
+        },
+        recordDelivery: async () => ({ id: 'manifest-legacy', sync_state: 'synchronized' })
+    });
+    assert.deepEqual(receivedWrite.historicalImport, {
+        title: 'Legacy human title', legacyPath: 'wiki/threads/legacy.md', sha256: 'b'.repeat(64), content: 'Old history'
+    });
+    assert.equal(receivedLoad.sourceRevisionId, 'source-legacy');
+});

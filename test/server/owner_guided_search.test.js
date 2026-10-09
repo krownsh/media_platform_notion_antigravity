@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import express from 'express';
 
-import { buildOwnerSearchDocument, searchOwnerPostDocuments } from '../../server/services/ownerSearchService.js';
+import { buildOwnerSearchDocument, loadOwnerSearchInputs, searchOwnerPostDocuments } from '../../server/services/ownerSearchService.js';
 import { createSearchRouter } from '../../server/routes/searchRoutes.js';
 
 const post = {
@@ -39,6 +39,43 @@ test('owner-guided search RPC is tenant-scoped and candidates are opt-in', async
     assert.equal(args.p_include_candidates, true);
     assert.equal(args.p_limit, 100);
     assert.deepEqual(results, [{ post_id: post.id }]);
+});
+
+test('loads proposals through review packets instead of a nonexistent proposal source-revision column', async () => {
+    const queriedPackets = [];
+    const proposalPacketIds = [];
+    const rows = (value, rejectSourceRevision = false) => {
+        const chain = {
+            select: () => chain,
+            eq: (column, valueToMatch) => {
+                if (rejectSourceRevision && column === 'source_revision_id' && valueToMatch === 'source-1') throw new Error('proposal source_revision_id must not be queried');
+                return chain;
+            },
+            order: () => chain,
+            limit: () => chain,
+            in: (column, values) => { if (column === 'packet_id') proposalPacketIds.push(...values); return chain; },
+            maybeSingle: async () => ({ data: value, error: null }),
+            then: resolve => Promise.resolve({ data: value, error: null }).then(resolve)
+        };
+        return chain;
+    };
+    const supabaseClient = {
+        from(table) {
+            if (table === 'collection_posts') return rows(post);
+            if (table === 'collection_source_revisions') return rows([{ id: 'source-1', capture_quality: 'complete', source_payload: {} }]);
+            if (table === 'owner_review_packets') {
+                queriedPackets.push(table);
+                return rows([{ id: 'packet-1' }]);
+            }
+            if (table === 'owner_review_proposals') return rows([{ proposal_type: 'topic_assignment', status: 'pending', payload: { primary_topic: 'UI UX' } }], true);
+            return rows([]);
+        }
+    };
+
+    const result = await loadOwnerSearchInputs({ userId: post.user_id, postId: post.id, supabaseClient });
+    assert.deepEqual(queriedPackets, ['owner_review_packets']);
+    assert.deepEqual(proposalPacketIds, ['packet-1']);
+    assert.equal(result.proposals[0].proposal_type, 'topic_assignment');
 });
 
 test('search HTTP route exposes candidate inclusion only when explicitly requested', async () => {

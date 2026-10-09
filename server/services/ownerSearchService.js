@@ -110,13 +110,17 @@ export async function loadOwnerSearchInputs({ userId, postId, sourceRevisionId =
     const sourceRevision = revisions[0] || null;
     if (!sourceRevision) return { post, sourceRevision: null, learningNote: null, topicLinks: [], topicRevisions: [], projectReferences: [], proposals: [] };
     const revisionId = sourceRevision.id;
-    const [learningNotes, topicLinks, topicRevisions, projectReferences, proposals] = await Promise.all([
+    const [learningNotes, topicLinks, topicRevisions, projectReferences, reviewPackets] = await Promise.all([
         maybeRows(supabaseClient.from('owner_post_learning_notes').select('note_status, content').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_source_links').select('topic_id, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_revisions').select('topic_id, summary, claims, open_questions, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_project_references').select('topic_id, rationale, owner_topics (label), owner_project_catalog (title, description, reference)').eq('user_id', userId).eq('source_revision_id', revisionId).eq('status', 'active')),
-        maybeRows(supabaseClient.from('owner_review_proposals').select('proposal_type, payload, status').eq('user_id', userId).eq('source_revision_id', revisionId))
+        maybeRows(supabaseClient.from('owner_review_packets').select('id').eq('user_id', userId).eq('source_revision_id', revisionId))
     ]);
+    const packetIds = reviewPackets.map(packet => packet.id).filter(Boolean);
+    const proposals = packetIds.length
+        ? await maybeRows(supabaseClient.from('owner_review_proposals').select('proposal_type, payload, status').eq('user_id', userId).in('packet_id', packetIds))
+        : [];
     return { post, sourceRevision, learningNote: learningNotes[0] || null, topicLinks, topicRevisions, projectReferences, proposals };
 }
 

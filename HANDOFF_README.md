@@ -1,5 +1,10 @@
 # Everynote 交接：20 類 Taxonomy、Legacy 退休與 Owner-first 知識圖
 
+> **已被現行工作流取代。** 本文件保留為歷史交接證據，不得用作現行 collection
+> 行為規則。唯一正式引導是
+> `hermes/skills/owner-guided-media-workflow/SKILL.md`；若內容衝突，以該 skill
+> 與 `agents.md` 為準。
+
 > **狀態：等待下一位 Agent 開工。** 本文件是交接與執行邊界，不是 live DB、分類、刪除、Vault 或 PM2 操作的授權。
 
 ## 0. 入口與必讀文件
@@ -8,7 +13,7 @@
 專案：/Volumes/DevSSD/10_Projects/Personal/media_platform_notion_antigravity
 tasks：/Volumes/DevSSD/10_Projects/Personal/media_platform_notion_antigravity/tasks.md
 正式 taxonomy：docs/knowledge-taxonomy/source-taxonomy-v1.json
-capture skill：my-mediacrawl-skill
+capture skill：owner-guided-media-workflow
 ```
 
 先讀 `tasks.md` 與完整 `source-taxonomy-v1.json`，再檢查 `git status`。不得清除、覆蓋或混入既有未追蹤檔。繁中回覆；每項主張須有當次工具輸出。
@@ -92,7 +97,7 @@ Idea：可驗證、採用或反駁的原理、策略、假設
 
 ### Owner-first 原則
 
-my-mediacrawl-skill 的目的不是替 Owner 思考或變成教學：
+owner-guided-media-workflow 的目的不是替 Owner 思考或變成教學：
 
 - Agent 做 capture、原始證據、技術狀態、有限選項與風險。
 - Owner 決定意義、分類、知識地圖、要延伸哪個專案、是否新建地圖與下一步。

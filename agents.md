@@ -1,3 +1,18 @@
+# Agent 工作流唯一引導（現行）
+
+所有 collection 貼文擷取、候選審核、Topic／Project 關聯、Library 查找、POC
+討論與本機 post case file 工作，一律先載入並遵循：
+
+```text
+hermes/skills/owner-guided-media-workflow/SKILL.md
+```
+
+這是唯一正式工作流。`my-mediacrawl-skill` 只保留為相容入口，沒有獨立規格；
+任何舊 Hermes、Cron、舊 Vault、Knowledge Space、舊 taxonomy 或舊 handoff
+文件與此衝突時，均不得作為現行行為依據。Agent 必須讓 Owner 看見「目前階段、
+為什麼現在在這裡、唯一下一步」，並遵守 raw evidence → candidate → explicit
+Owner acceptance 的邊界。
+
 # 系統代理人 (System Agents) 與職責定義
 
 本文件定義了系統中各個邏輯模組的「代理人 (Agent)」角色。開發時請依照這些角色的職責邊界進行程式碼模組化設計。

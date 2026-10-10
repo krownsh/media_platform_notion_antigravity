@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The product is a searchable media library and guided review workflow. It captures a source, proposes organization and learning work, and promotes only decisions accepted by the Owner. It is not an autonomous second-brain, a mandatory Vault writer, or a repository-bound topic manager.
+The product is a searchable media library and guided review workflow. It captures a source, proposes organization and learning work, and promotes only decisions accepted by the Owner. It is not an autonomous second-brain, a legacy mandatory-Vault-completion workflow, or a repository-bound topic manager.
 
 ## Authoritative state
 
@@ -10,7 +10,7 @@ Supabase is the only authoritative store for source facts, review state, formal 
 
 ## Source intake contract
 
-Capture persists source facts only: original URL or upload identity, platform, extracted body, media, comments, capture metadata, and a source revision. It never writes a formal folder, post learning note, Topic update, project reference, POC, or Vault entry.
+Capture persists source facts only: original URL or upload identity, platform, extracted body, media, comments, capture metadata, and a source revision. It never writes a formal folder, post learning note, Topic update, project reference, or POC. After a source revision is persisted, the local collection server may atomically create a provisional Inbox post case file containing a readable source snapshot. That local delivery is source evidence rather than semantic acceptance; its pending/failed state is visible and retryable without rolling back capture or review.
 
 Persisted source quality is exactly one of:
 

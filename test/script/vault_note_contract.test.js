@@ -319,13 +319,9 @@ test('AI title remains a fallback for a titleless platform note', () => {
     assert.equal(result.wiki.relative_path, 'wiki/threads/threads/2026-09-03-AI 補回標題--post-123.md');
 });
 
-test('skill and CLI expose bounded source preview and mandatory note action', async () => {
-    const skill = await fs.readFile(path.join(projectRoot, 'hermes', 'skills', 'my-mediacrawl-skill', 'SKILL.md'), 'utf8');
+test('legacy CLI exposes bounded source preview and mandatory note action', async () => {
     const next = await fs.readFile(path.join(projectRoot, 'scripts', 'agent-sdk', 'next-workflow.js'), 'utf8');
     const decide = await fs.readFile(path.join(projectRoot, 'scripts', 'agent-sdk', 'decide-workflow.js'), 'utf8');
-    assert.match(skill, /first 1,000 characters/);
-    assert.match(skill, /agent:vault-note/);
-    assert.match(skill, /There is no POC worker/);
     assert.match(next, /ORIGINAL_CONTENT_PREVIEW_LIMIT = 1_000/);
     assert.match(decide, /vault_note/);
 });

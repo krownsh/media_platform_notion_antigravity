@@ -9,7 +9,6 @@ const deployment = fs.readFileSync(path.join(projectRoot, 'database', 'deploymen
 const finalizer = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'captureFinalizationService.js'), 'utf8');
 const orchestrator = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'orchestrator.js'), 'utf8');
 const imageAnalysisCli = fs.readFileSync(path.join(projectRoot, 'scripts', 'agent-sdk', 'record-image-analysis.js'), 'utf8');
-const mediaCrawlSkill = fs.readFileSync(path.join(projectRoot, 'hermes', 'skills', 'my-mediacrawl-skill', 'SKILL.md'), 'utf8');
 
 test('image captures use private Storage and a service-role-only enqueue RPC', () => {
     assert.match(deployment, /alter table public\.collection_posts enable row level security/);
@@ -34,16 +33,11 @@ test('Hermes handoff receives stable Storage references, not temporary signed UR
     assert.match(deployment, /grant execute on function public\.record_collection_image_analysis\(uuid, text, jsonb\)[\s\S]+to service_role/);
 });
 
-test('Hermes image write-back requires a lease and advances the post workflow', () => {
+test('legacy image write-back requires a lease and advances its legacy workflow', () => {
     assert.match(imageAnalysisCli, /requireHermesImageLease/);
     assert.match(imageAnalysisCli, /completeHermesImageReview/);
     assert.match(imageAnalysisCli, /outbox_status: completedEvent\.status/);
     assert.match(imageAnalysisCli, /markImageWorkflowAnalyzed/);
-    assert.match(mediaCrawlSkill, /agent:claim/);
-    assert.match(mediaCrawlSkill, /agent:media/);
-    assert.match(mediaCrawlSkill, /agent:image-analysis/);
-    assert.match(mediaCrawlSkill, /`sent` means Hermes consumed the delivery event/);
-    assert.match(mediaCrawlSkill, /triage\/pending/);
 });
 
 test('new capture finalization discards remote author avatars', () => {

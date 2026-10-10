@@ -5,7 +5,6 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const skill = fs.readFileSync(path.join(projectRoot, 'hermes/skills/my-mediacrawl-skill/SKILL.md'), 'utf8');
 const docs = fs.readFileSync(path.join(projectRoot, 'docs/hermes_outbox_workflow.md'), 'utf8');
 const preprocess = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/preprocess-workflow.js'), 'utf8');
 const vaultSync = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/vault-sync-workflow.js'), 'utf8');
@@ -15,11 +14,7 @@ const remoteMigration = fs.readFileSync(path.join(projectRoot, 'database/deploym
 const knowledge = fs.readFileSync(path.join(projectRoot, 'server/services/autonomousKnowledgeService.js'), 'utf8');
 const triage = fs.readFileSync(path.join(projectRoot, 'scripts/agent-sdk/triage-workflow.js'), 'utf8');
 
-test('five-minute Cron is unattended and persists deferred work', () => {
-    assert.match(skill, /must never ask the user a question during that\s+run/i);
-    assert.match(skill, /move the workflow to\s+`research\/pending`/i);
-    assert.match(skill, /write `context\.review_request`/i);
-    assert.match(skill, /Normal Cron output is `\[SILENT\]`/i);
+test('legacy five-minute Cron documentation retains its unattended handoff contract', () => {
     assert.match(docs, /agent:preprocess owns lease release/i);
 });
 

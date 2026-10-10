@@ -1,6 +1,6 @@
 # Local Media Knowledge Vault Design
 
-**Status:** Owner-approved design; implementation has not started.
+**Status:** Owner-approved design; initial provisional post case-file delivery is implemented. Later event mirroring, accepted rename/move, aggregate Topic/Project files, local-change scanning, and conflict resolution remain follow-up work.
 
 **Decision date:** 2026-10-08 (Asia/Taipei)
 

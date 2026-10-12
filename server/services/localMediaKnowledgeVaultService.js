@@ -169,6 +169,24 @@ function renderSourceSnapshot(post, sourcePayload) {
     return sections.join('\n\n');
 }
 
+function renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId = null, sourcePayload = null, captureQuality = 'complete', occurredAt = null }) {
+    const timestamp = new Date(text(occurredAt, new Date().toISOString()));
+    const date = Number.isNaN(timestamp.valueOf()) ? text(occurredAt).slice(0, 10) : timestamp.toISOString().slice(0, 10);
+    const time = Number.isNaN(timestamp.valueOf()) ? text(occurredAt).slice(11, 16) : timestamp.toISOString().slice(11, 16);
+    const sourceQualityLabel = captureQuality === 'partial' ? '部分擷取' : '完整擷取';
+    return [
+        `### ${date} ${time}｜擷取修訂｜已記錄`,
+        `- source_revision_id: ${text(sourceRevisionId)}`,
+        `- workflow_id: ${text(workflowId)}`,
+        `- 來源完整度：${sourceQualityLabel}`,
+        '',
+        '#### 新增來源快照',
+        `- source_url: ${singleLine(post?.original_url, '（來源網址未提供）')}`,
+        '',
+        renderSourceSnapshot(post, sourcePayload)
+    ].join('\n') + '\n';
+}
+
 export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, workflowId = null, sourcePayload = null, captureQuality = 'complete' }) {
     const root = path.resolve(text(vaultRoot));
     const marker = await fs.stat(path.join(root, '.obsidian')).catch(() => null);
@@ -255,6 +273,38 @@ export async function rehomePostCaseFileToInbox({ vaultRoot, relativePath, post,
         filePath: destinationPath,
         checksum: crypto.createHash('sha256').update(existingContent).digest('hex'),
         moved: true
+    };
+}
+
+export async function appendPostCaseFileCaptureRevision({
+    vaultRoot,
+    relativePath,
+    post,
+    sourceRevisionId,
+    workflowId = null,
+    sourcePayload = null,
+    captureQuality = 'complete',
+    occurredAt = null
+}) {
+    const root = path.resolve(text(vaultRoot));
+    const marker = await fs.stat(path.join(root, '.obsidian')).catch(() => null);
+    if (!marker?.isDirectory()) throw new Error('Configured local media collection is not an initialized Obsidian Vault');
+    if (!text(sourceRevisionId)) throw new Error('sourceRevisionId is required');
+    const target = await resolveExistingPostCaseFile(root, relativePath);
+    const current = await fs.readFile(target.filePath, 'utf8');
+    const postId = text(post?.id);
+    if (!postId || !current.includes(`post_id: ${postId}\n`)) {
+        throw new Error('Existing post case file belongs to a different post');
+    }
+    const start = managedMarkerIndex(current, EVENT_LOG_START, 'event-log start');
+    const end = managedMarkerIndex(current, EVENT_LOG_END, 'event-log end');
+    if (end <= start) throw new Error('Post case file event-log markers are out of order');
+    const revision = renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId, sourcePayload, captureQuality, occurredAt });
+    const next = `${current.slice(0, end).replace(/\n?$/, '\n')}\n${revision}${current.slice(end)}`;
+    await atomicWrite(target.filePath, next);
+    return {
+        relativePath: target.relativePath,
+        checksum: crypto.createHash('sha256').update(next).digest('hex')
     };
 }
 

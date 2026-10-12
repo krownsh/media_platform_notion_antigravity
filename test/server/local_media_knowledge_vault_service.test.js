@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+    appendPostCaseFileCaptureRevision,
     appendPostCaseFileEvent,
     deriveProvisionalPostTitle,
     rehomePostCaseFileToInbox,
@@ -206,6 +207,42 @@ test('rehoming a case file moves the same file to Inbox without losing owner not
         const content = await fs.readFile(path.join(vaultRoot, rehomed.relativePath), 'utf8');
         assert.match(content, /post_id: post-rehome-0000-4000-8000-000000000000/);
         assert.match(content, /Owner note remains after rehome\./);
+    } finally {
+        await fs.rm(vaultRoot, { recursive: true, force: true });
+    }
+});
+
+test('a repaired source revision is appended with its full evidence without replacing earlier source or owner notes', async () => {
+    const vaultRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'media-knowledge-vault-'));
+    await fs.mkdir(path.join(vaultRoot, '.obsidian'));
+    try {
+        const post = {
+            id: 'post-revision-0000-4000-8000-000000000000', title: 'Original source',
+            original_url: 'https://x.com/owner/status/1', content: 'Original tweet URL only.',
+            created_at: '2026-10-12T08:00:00.000Z'
+        };
+        const created = await writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId: 'revision-1' });
+        const notePath = path.join(vaultRoot, created.relativePath);
+        await fs.appendFile(notePath, 'Owner note remains after source repair.\n');
+
+        const result = await appendPostCaseFileCaptureRevision({
+            vaultRoot,
+            relativePath: created.relativePath,
+            post: { ...post, title: 'Recovered X Article', content: 'The complete repaired Article source body.' },
+            sourceRevisionId: 'revision-2',
+            captureQuality: 'complete',
+            sourcePayload: { post: { content: 'The complete repaired Article source body.' } },
+            occurredAt: '2026-10-12T09:00:00.000Z'
+        });
+
+        const content = await fs.readFile(notePath, 'utf8');
+        assert.equal(result.relativePath, created.relativePath);
+        assert.match(content, /Original tweet URL only\./);
+        assert.match(content, /### 2026-10-12 09:00｜擷取修訂｜已記錄/);
+        assert.match(content, /source_revision_id: revision-2/);
+        assert.match(content, /The complete repaired Article source body\./);
+        assert.match(content, /Owner note remains after source repair\./);
+        assert.ok(content.indexOf('### 2026-10-12 09:00') < content.indexOf('<!-- END MEDIA EVENT LOG -->'));
     } finally {
         await fs.rm(vaultRoot, { recursive: true, force: true });
     }

@@ -61,3 +61,41 @@ test('rehomes one existing file to Inbox, records the move, and then updates its
     assert.equal(calls[3][1].lastWrittenEventSequence, 2);
     assert.equal(calls[1][1].eventType, 'rename_move');
 });
+
+test('a newer immutable source revision is appended to the existing case file instead of being skipped', async () => {
+    const calls = [];
+    let loadCount = 0;
+    const result = await createOrRetryLocalPostCaseFile({
+        userId: 'user-1', postId: 'post-1', vaultRoot: '/vault',
+        loadInputs: async () => ({
+            post: { id: 'post-1', content: 'Recovered Article body.' },
+            sourceRevision: { id: 'source-2', capture_quality: 'complete', source_payload: { post: { content: 'Recovered Article body.' } } }
+        }),
+        createManifest: async () => ({
+            id: 'manifest-1', version: 3, source_revision_id: 'source-1',
+            sync_state: 'synchronized', relative_path: 'Media Knowledge/Posts/Inbox/post.md'
+        }),
+        appendEvent: async input => {
+            calls.push(['event', input]);
+            return { id: 'event-2', sequence: 2, occurred_at: '2026-10-12T09:00:00.000Z' };
+        },
+        appendCaptureRevision: async input => {
+            calls.push(['capture-revision', input]);
+            return { relativePath: 'Media Knowledge/Posts/Inbox/post.md', checksum: 'c'.repeat(64) };
+        },
+        loadManifest: async () => {
+            loadCount += 1;
+            return { id: 'manifest-1', version: 4 };
+        },
+        recordCaptureRevisionDelivery: async input => {
+            calls.push(['delivery', input]);
+            return { id: 'manifest-1', source_revision_id: 'source-2', sync_state: 'synchronized' };
+        }
+    });
+    assert.equal(result.outcome, 'source_revision_appended');
+    assert.deepEqual(calls.map(([kind]) => kind), ['event', 'capture-revision', 'delivery']);
+    assert.equal(calls[0][1].sourceRevisionId, 'source-2');
+    assert.equal(calls[1][1].sourceRevisionId, 'source-2');
+    assert.equal(calls[2][1].sourceRevisionId, 'source-2');
+    assert.equal(calls[2][1].expectedVersion, 4);
+});

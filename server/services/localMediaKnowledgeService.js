@@ -132,6 +132,34 @@ export async function recordLocalNoteDelivery({
     });
 }
 
+export async function recordLocalNoteCaptureRevisionDelivery({
+    userId,
+    manifestId,
+    expectedVersion,
+    sourceRevisionId,
+    relativePath,
+    checksum,
+    lastWrittenEventSequence = 0,
+    supabaseClient = defaultSupabase
+}) {
+    const sequence = Number(lastWrittenEventSequence);
+    if (!Number.isInteger(sequence) || sequence < 0) throw new Error('lastWrittenEventSequence must be a non-negative integer');
+    return updateManifestAtExpectedVersion({
+        userId,
+        manifestId,
+        expectedVersion,
+        supabaseClient,
+        payload: {
+            source_revision_id: requiredText(sourceRevisionId, 'sourceRevisionId'),
+            relative_path: safeRelativePath(relativePath),
+            last_content_sha256: sha256(checksum),
+            last_written_event_sequence: sequence,
+            sync_state: 'synchronized',
+            last_error: null
+        }
+    });
+}
+
 export async function recordLocalNoteFailure({
     userId,
     manifestId,

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
     appendLocalNoteEvent,
     createPostCaseFileManifest,
+    recordLocalNoteCaptureRevisionDelivery,
     recordLocalNoteDelivery,
     recordLocalNoteFailure
 } from '../../server/services/localMediaKnowledgeService.js';
@@ -178,4 +179,29 @@ test('a failed local delivery retains a bounded failure reason and can be retrie
         }),
         /relativePath must be a safe relative path/
     );
+});
+
+test('a repaired capture delivery advances the manifest source revision only after the local append succeeds', async () => {
+    let updatePayload;
+    const client = {
+        from() {
+            return {
+                update(value) { updatePayload = value; return this; },
+                eq() { return this; },
+                select() { return this; },
+                maybeSingle: async () => ({ data: { id: 'manifest-1', source_revision_id: 'revision-2', version: 5 }, error: null })
+            };
+        }
+    };
+    const manifest = await recordLocalNoteCaptureRevisionDelivery({
+        userId: 'user-1', manifestId: 'manifest-1', expectedVersion: 4,
+        sourceRevisionId: 'revision-2', relativePath: 'Media Knowledge/Posts/Inbox/post.md',
+        checksum: 'c'.repeat(64), lastWrittenEventSequence: 2, supabaseClient: client
+    });
+    assert.deepEqual(updatePayload, {
+        source_revision_id: 'revision-2', relative_path: 'Media Knowledge/Posts/Inbox/post.md',
+        last_content_sha256: 'c'.repeat(64), last_written_event_sequence: 2,
+        sync_state: 'synchronized', last_error: null, version: 5
+    });
+    assert.equal(manifest.source_revision_id, 'revision-2');
 });

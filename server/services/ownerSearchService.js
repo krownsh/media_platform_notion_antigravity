@@ -99,7 +99,7 @@ async function maybeRows(query) {
 
 export async function loadOwnerSearchInputs({ userId, postId, sourceRevisionId = null, supabaseClient = defaultSupabase }) {
     const { data: post, error: postError } = await supabaseClient
-        .from('collection_posts').select('id, user_id, platform, original_url, title, author_name, content')
+        .from('collection_posts').select('id, user_id, platform, original_url, title, author_name, content, created_at, posted_at')
         .eq('id', postId).eq('user_id', userId).maybeSingle();
     if (postError || !post) throw new Error(`Search post lookup failed: ${postError?.message || 'not found'}`);
     let revisionQuery = supabaseClient.from('collection_source_revisions')

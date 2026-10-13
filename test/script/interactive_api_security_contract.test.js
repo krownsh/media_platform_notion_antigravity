@@ -11,34 +11,15 @@ const twitterCrawlerSource = fs.readFileSync(path.join(projectRoot, 'server', 's
 const serverEnvTemplate = fs.readFileSync(path.join(projectRoot, 'server', '.env.example'), 'utf8');
 const twitterReference = fs.readFileSync(path.join(projectRoot, 'server', 'fixtures', 'crawler', 'twitter', 'example1', 'doc.md'), 'utf8');
 
-test('only capture endpoints accept the mapped n8n key; old automation routes are retired', () => {
+test('only capture endpoints accept the mapped n8n key', () => {
     assert.match(serverSource, /authorization\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
-    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth/);
     assert.match(serverSource, /app\.use\(['"]\/api\/captures['"], requireApiAuth, captureRouter\)/);
-    assert.match(serverSource, /legacyCollectionRouteRetired/);
 
-    for (const route of [
-        '/api/posts',
-        '/api/stats',
-        '/api/analyze-post',
-        '/api/rewrite',
-        '/api/remix',
-        '/api/generate-image',
-        '/api/image-workflow',
-        '/api/publish'
-    ]) {
+    for (const route of ['/api/posts', '/api/stats']) {
         assert.match(serverSource, new RegExp(`app\\.use\\(['"]${route.replaceAll('/', '\\/')}['"], requireSupabaseJwt\\)`));
     }
-    for (const route of ['/api/topics', '/api/projects', '/api/agent/jobs', '/api/poc-workbench', '/api/parallel-tracks']) {
-        assert.ok(serverSource.includes(`app.use('${route}', legacyCollectionRouteRetired);`));
-    }
-    assert.match(serverSource, /app\.post\(['"]\/api\/batch-classify['"], legacyCollectionRouteRetired\)/);
-});
-
-test('Gemini-dependent image workflow endpoint is explicitly retired and cannot receive a body userId', () => {
-    assert.match(serverSource, /imageWorkflowRetired/);
-    assert.match(serverSource, /status\(410\)/);
-    assert.doesNotMatch(serverSource, /const \{ postId, imageUrl, prompt, userId \} = req\.body/);
+    assert.match(serverSource, /app\.get\('\/api\/activity', requireSupabaseJwt/);
+    assert.doesNotMatch(serverSource, /legacyCollectionRouteRetired|imageWorkflowRetired|publicationRetired/);
 });
 
 test('X crawler obtains credentials from env without logging guest tokens', () => {

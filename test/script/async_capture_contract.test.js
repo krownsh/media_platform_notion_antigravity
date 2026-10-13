@@ -36,7 +36,6 @@ test('capture API acknowledges before crawler work and keeps semantics out of th
     assert.doesNotMatch(processingSource, /analyzeCapturedUrl|updateWorkflowAfterCapture/);
 });
 
-test('agent job control plane rejects the capture API key', () => {
-    assert.match(serverSource, /app\.use\(['"]\/api\/agent\/jobs['"], requireSupabaseJwt, agentJobRouter\)/);
-    assert.doesNotMatch(serverSource, /app\.use\(['"]\/api\/agent\/jobs['"], requireApiAuth/);
+test('no legacy agent job control plane remains', () => {
+    assert.doesNotMatch(serverSource, /\/api\/agent\/jobs|agentJobRouter/);
 });

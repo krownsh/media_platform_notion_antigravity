@@ -19,7 +19,7 @@ const limit = pLimit(3);
  * 1. Identify Platform.
  * 2. Use the platform-specific crawler when available.
  * 3. Otherwise use the generic Chromium crawler.
- * 4. Return normalized data without changing the /api/process contract.
+ * 4. Return normalized data to the capture worker.
  * 5. The API finalizes database state through one transactional RPC.
  */
 class Orchestrator {
@@ -184,7 +184,7 @@ class Orchestrator {
             }
 
             // All remaining platforms use the generic Chromium crawler.
-            // Keep the response contract unchanged because /api/process is also called by n8n.
+            // Keep the normalized crawler response stable for the capture worker.
             console.log(`[Orchestrator] Using generic crawler for ${platform}...`);
             const data = await crawlerService.crawlPost(url, platform);
 

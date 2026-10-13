@@ -195,36 +195,14 @@ app.get('/', (req, res) => {
 app.use('/api/captures', requireApiAuth, captureRouter);
 app.use('/api/posts', requireSupabaseJwt);
 app.use('/api/stats', requireSupabaseJwt);
-app.use('/api/analyze-post', requireSupabaseJwt);
-app.use('/api/rewrite', requireSupabaseJwt);
-app.use('/api/remix', requireSupabaseJwt);
-app.use('/api/models', requireSupabaseJwt);
-app.use('/api/generate-image', requireSupabaseJwt);
-app.use('/api/image-workflow', requireSupabaseJwt);
-app.use('/api/publish', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
 app.use('/api/review', requireSupabaseJwt, reviewRouter);
 app.use('/api/owner-knowledge', requireSupabaseJwt, ownerKnowledgeRouter);
 app.use('/api/owner-library', requireSupabaseJwt, ownerLibraryRouter);
 app.use('/api/local-records', requireSupabaseJwt, localMediaKnowledgeRouter);
 
-// These endpoints belonged to the former autonomous taxonomy/workflow stack.
-// They must not be a second path into collection data now that the Owner-guided
-// routes above are the only authoritative workflow. Keep an explicit response
-// during the cutover so an old client cannot silently write legacy records.
-const legacyCollectionRouteRetired = (req, res) => res.status(410).json({
-    error: 'This legacy collection route is retired. Use /api/captures, /api/review, /api/owner-knowledge, or /api/owner-library.',
-    code: 'LEGACY_COLLECTION_ROUTE_RETIRED'
-});
-app.use('/api/topics', legacyCollectionRouteRetired);
-app.use('/api/projects', legacyCollectionRouteRetired);
-app.use('/api/agent/jobs', legacyCollectionRouteRetired);
-app.use('/api/poc-workbench', legacyCollectionRouteRetired);
-app.use('/api/parallel-tracks', legacyCollectionRouteRetired);
-app.post('/api/batch-classify', legacyCollectionRouteRetired);
 
-
-app.get('/api/activity', async (req, res) => {
+app.get('/api/activity', requireSupabaseJwt, async (req, res) => {
     if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
     const parsedLimit = Number.parseInt(req.query.limit, 10);
     const limit = Number.isInteger(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 50) : 20;
@@ -241,65 +219,6 @@ app.get('/api/activity', async (req, res) => {
         console.error('[Activity] list failed:', error.message);
         return res.status(500).json({ error: 'Failed to list activity events' });
     }
-});
-
-// The former blocking automation entry point is intentionally disabled. New
-// captures are created through /api/captures, where their durable state is
-// visible to the Owner instead of being hidden behind a legacy poll loop.
-app.post('/api/process', requireApiAuth, legacyCollectionRouteRetired);
-
-const hermesAgentRequired = (res) => res.status(503).json({
-    error: 'Server AI is retired. Run the Hermes Codex agent for this task.',
-    code: 'HERMES_AGENT_REQUIRED'
-});
-
-// Analyze Post Endpoint
-app.post('/api/analyze-post', async (req, res) => {
-    const { fullJson } = req.body;
-
-    if (!fullJson) {
-        return res.status(400).json({ error: 'fullJson data is required' });
-    }
-
-    return hermesAgentRequired(res);
-});
-
-// Rewrite Content Endpoint
-app.post('/api/rewrite', async (req, res) => {
-    const { content, style } = req.body;
-
-    if (!content || !style) {
-        return res.status(400).json({ error: 'content and style are required' });
-    }
-
-    return hermesAgentRequired(res);
-});
-
-// Remix Content Endpoint (New)
-// Remix Content Endpoint (New)
-app.post('/api/remix', async (req, res) => {
-    const { sourceJson } = req.body;
-
-    if (!sourceJson) {
-        return res.status(400).json({ error: 'sourceJson is required' });
-    }
-
-    return hermesAgentRequired(res);
-});
-
-// There is no user-selectable server LLM provider. Hermes/Codex is an external
-// agent workflow, not an HTTP provider registry.
-app.get('/api/models', async (req, res) => {
-    res.status(410).json({
-        error: 'Model discovery is unavailable while no selectable provider registry is configured.'
-    });
-});
-
-// Image generation was backed by a retired provider.
-app.post('/api/generate-image', async (req, res) => {
-    res.status(410).json({
-        error: 'Image generation is unavailable because no image provider is configured.'
-    });
 });
 
 // Image Proxy Endpoint to bypass CORS
@@ -542,36 +461,6 @@ app.post('/api/posts/:postId/annotations', async (req, res) => {
     }
 });
 
-// ========== Retired Image Workflow API ==========
-// The former image analysis/generation flow depended on the retired provider. It is kept as
-// an authenticated 410 response so stale clients get an actionable answer and
-// cannot create workflow records or consume a provider accidentally.
-const imageWorkflowRetired = (req, res) => res.status(410).json({
-    error: 'Image workflow is retired because no image AI provider is configured.'
-});
-
-app.post('/api/image-workflow/step1', imageWorkflowRetired);
-app.post('/api/image-workflow/step2', imageWorkflowRetired);
-app.post('/api/image-workflow/step3', imageWorkflowRetired);
-
-// Publishing is outside the owner-guided collection workflow and its prior
-// service is no longer wired. Return a stable, authenticated retirement
-// response instead of failing after a user submits content.
-const publicationRetired = (req, res) => res.status(410).json({
-    error: 'Publishing is retired in this collection service.',
-    code: 'COLLECTION_PUBLISHING_RETIRED'
-});
-app.post('/api/publish/instagram', publicationRetired);
-app.post('/api/publish/threads', publicationRetired);
-app.post('/api/publish/twitter', publicationRetired);
-
-// Workflow history is retired together with its provider-backed workflow.
-app.get('/api/posts/:postId/image-workflows', async (req, res) => {
-    res.status(410).json({
-        error: 'Image workflow history is unavailable because the workflow is retired.'
-    });
-});
-
 // ========== Intelligence Aggregator Stats API ==========
 
 // GET /api/stats/overview - 快速總覽
@@ -658,7 +547,7 @@ app.use('/api', (req, res) => {
         method: req.method,
         path: req.originalUrl,
         hint: req.originalUrl === '/api/post'
-            ? 'Use POST /api/process to process a URL, or GET /api/posts to list posts.'
+            ? 'Use POST /api/captures to submit a source, or GET /api/posts to list posts.'
             : undefined
     });
 });

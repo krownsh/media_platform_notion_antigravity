@@ -10,9 +10,8 @@ test('Topics and Projects UI exposes independent knowledge and a separate non-ex
         readFile(new URL('../../src/components/Layout.jsx', import.meta.url), 'utf8')
     ]);
     assert.match(topics, /不需要綁定任何 repo/);
-    assert.match(topics, /待你採用的舊主題/);
-    assert.match(topics, /採用為正式 Topic/);
-    assert.match(topics, /不會自動搬移來源或產生知識摘要/);
+    assert.match(topics, /尚未有已接受的知識摘要/);
+    assert.match(topics, /可在與 Agent 討論貼文後接受 Topic 候選/);
     assert.match(projects, /不會修改 repo 或執行 POC/);
     assert.match(projects, /提出隔離 POC/);
     assert.match(app, /OwnerTopicsPage/);

@@ -27,20 +27,14 @@ test('data acquisition is crawler-only', () => {
     assert.match(orchestratorSource, /crawlerService\.crawlPost\(url, platform\)/);
 });
 
-test('/api/process keeps the n8n-facing route and response contract', () => {
-    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth/);
-    assert.match(serverSource, /const \{ url \} = req\.body/);
-    assert.doesNotMatch(serverSource, /const \{ url, userId \} = req\.body/);
-    assert.match(serverSource, /const userId = getAuthenticatedUserId\(req\)/);
-    assert.match(serverSource, /processUrlThroughCaptureQueue/);
+test('the capture worker is the only runtime caller of the crawler orchestrator', () => {
     assert.doesNotMatch(serverSource, /orchestrator\.processUrl\(url\)/);
-    assert.match(serverSource, /status === 'degraded' \? 202 : 200/);
+    assert.match(serverSource, /app\.use\('\/api\/captures', requireApiAuth, captureRouter\)/);
 });
 
 test('post finalization is tenant-aware and routed through the atomic database RPC', () => {
     assert.doesNotMatch(orchestratorSource, /upsertPost\(/);
     assert.doesNotMatch(orchestratorSource, /collection_posts/);
     assert.match(finalizationSource, /rpc\('finalize_collection_capture'/);
-    assert.match(serverSource, /processUrlThroughCaptureQueue/);
     assert.doesNotMatch(serverSource, /finalizeCapture\(userId/);
 });

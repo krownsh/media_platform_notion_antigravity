@@ -67,12 +67,8 @@ test('active capture runtime does not expose legacy outbox or workflow identifie
     assert.doesNotMatch(localVaultSource, /workflowId|workflow_id/);
 });
 
-test('retired publishing endpoints fail closed instead of invoking an unwired publisher', () => {
-    assert.match(serverSource, /COLLECTION_PUBLISHING_RETIRED/);
-    assert.match(serverSource, /app\.post\('\/api\/publish\/instagram', publicationRetired\)/);
-    assert.match(serverSource, /app\.post\('\/api\/publish\/threads', publicationRetired\)/);
-    assert.match(serverSource, /app\.post\('\/api\/publish\/twitter', publicationRetired\)/);
-    assert.doesNotMatch(serverSource, /socialMediaService/);
+test('active server surface contains no publishing runtime', () => {
+    assert.doesNotMatch(serverSource, /COLLECTION_PUBLISHING_RETIRED|socialMediaService|\/api\/publish/);
 });
 
 test('runtime-detach migration is collection-only and preserves the retained request evidence', () => {

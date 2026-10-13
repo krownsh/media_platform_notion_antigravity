@@ -4,23 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { deletePost, fetchPosts, movePostToCollection } from '../features/postsSlice';
 import { visibleCollections } from '../utils/collectionVisibility';
-import { matchesWorkflowFilter, WORKFLOW_FILTER_OPTIONS } from '../utils/workflowPresentation';
 import LibraryPostCard from '../components/LibraryPostCard';
-
-const CATEGORIES = [
-    { value: 'all', label: '全部類別' },
-    { value: 'ai', label: '人工智慧' },
-    { value: 'tool', label: '開發工具' },
-    { value: 'market', label: '市場動態' },
-    { value: 'security', label: '資安情報' },
-    { value: 'opinion', label: '觀點評論' },
-    { value: 'research', label: '深度研究' },
-    { value: 'launch', label: '產品發布' },
-    { value: 'productivity', label: '生產力' },
-    { value: 'design', label: '設計' },
-    { value: 'crypto', label: '加密資產' },
-    { value: 'other', label: '其他' }
-];
 
 function getPostId(post) { return post.dbId || post.id; }
 function getCollectionId(post) { return post.collectionId || post.collection_id || null; }
@@ -31,10 +15,11 @@ export default function AllPostsPage() {
     const { collectionId } = useParams();
     const { items, collections, loading, refreshing, initialized, error } = useSelector(state => state.posts);
     const [query, setQuery] = useState('');
-    const [category, setCategory] = useState('all');
-    const [workflow, setWorkflow] = useState('all');
+    const [platform, setPlatform] = useState('all');
     const folders = useMemo(() => visibleCollections(collections), [collections]);
     const activeCollection = folders.find(folder => folder.id === collectionId);
+    const platforms = useMemo(() => [...new Set(items.map(post => String(post.platform || 'unknown').toLowerCase()))]
+        .sort((left, right) => left.localeCompare(right)), [items]);
 
     useEffect(() => {
         if (!initialized) dispatch(fetchPosts());
@@ -44,13 +29,12 @@ export default function AllPostsPage() {
         const normalizedQuery = query.trim().toLowerCase();
         return [...items]
             .filter(post => !collectionId || getCollectionId(post) === collectionId)
-            .filter(post => category === 'all' || (post.analysis?.primary_category || 'other') === category)
-            .filter(post => workflow === 'all' || matchesWorkflowFilter(post.workflow, workflow))
-            .filter(post => !normalizedQuery || [post.content, post.author, post.title, post.analysis?.summary, post.analysis?.generated_title]
+            .filter(post => platform === 'all' || String(post.platform || 'unknown').toLowerCase() === platform)
+            .filter(post => !normalizedQuery || [post.content, post.author, post.title]
                 .filter(value => typeof value === 'string')
                 .some(value => value.toLowerCase().includes(normalizedQuery)))
             .sort((left, right) => new Date(right.createdAt || right.created_at || 0) - new Date(left.createdAt || left.created_at || 0));
-    }, [items, collectionId, category, workflow, query]);
+    }, [items, collectionId, platform, query]);
 
     const heading = collectionId ? activeCollection?.name || '找不到收藏夾' : '所有貼文';
 
@@ -71,7 +55,7 @@ export default function AllPostsPage() {
         </header>
 
         <section className="mt-7 flow-surface p-2 sm:p-3">
-            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
                 <label className="relative block">
                     <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]" />
                     <input value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => {
@@ -80,13 +64,11 @@ export default function AllPostsPage() {
                 </label>
                 <label className="relative">
                     <SlidersHorizontal size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#615d59]" />
-                    <select value={category} onChange={event => setCategory(event.target.value)} className="notion-input w-full min-w-36 pl-8" aria-label="依類別篩選">
-                        {CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    <select value={platform} onChange={event => setPlatform(event.target.value)} className="notion-input w-full min-w-36 pl-8" aria-label="依來源平台篩選">
+                        <option value="all">全部來源平台</option>
+                        {platforms.map(value => <option key={value} value={value}>{value}</option>)}
                     </select>
                 </label>
-                <select value={workflow} onChange={event => setWorkflow(event.target.value)} className="notion-input w-full min-w-36" aria-label="依流程狀態篩選">
-                    {WORKFLOW_FILTER_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                </select>
             </div>
         </section>
 

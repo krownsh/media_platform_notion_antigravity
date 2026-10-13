@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { Readable } from 'stream';
-import { randomUUID, timingSafeEqual } from 'crypto';
+import { timingSafeEqual } from 'crypto';
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 
@@ -12,25 +12,15 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 
 import express from 'express';
 import cors from 'cors';
-import { socialMediaService } from './services/socialMediaService.js';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
-import { batchClassify } from './services/batchProcessor.js';
-import { suggestTopicMatches } from './services/topicAgent.js';
-import { normalizeProjectTarget, normalizeTopicDomain, TOPIC_DOMAIN_OPTIONS } from './services/topicGovernanceService.js';
-import { agentJobRouter } from './routes/agentJobRoutes.js';
-import { pocWorkbenchRouter } from './routes/pocWorkbenchRoutes.js';
-import { parallelTrackRouter } from './routes/parallelTrackRoutes.js';
 import { captureRouter } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
-import { processUrlThroughCaptureQueue } from './services/legacyProcessService.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { reviewRouter } from './routes/reviewRoutes.js';
 import { ownerKnowledgeRouter } from './routes/ownerKnowledgeRoutes.js';
 import { ownerLibraryRouter } from './routes/ownerLibraryRoutes.js';
 import { localMediaKnowledgeRouter } from './routes/localMediaKnowledgeRoutes.js';
-import { normalizeParallelTracks } from './services/parallelTrackService.js';
-import { attachAcceptedTopicSources } from './services/topicEvidenceService.js';
 
 
 const app = express();
@@ -102,19 +92,14 @@ async function getSupabaseUserFromRequest(req) {
 }
 
 // Interactive application routes deliberately accept only a user JWT. The
-// mapped n8n key is scoped to /api/process and must not become a general API
-// credential for publishing, AI usage, or data reads.
+// mapped capture key is scoped to /api/captures and must not become a general
+// credential for browsing, knowledge decisions, or data reads.
 async function requireSupabaseJwt(req, res, next) {
     const user = await getSupabaseUserFromRequest(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
     req.auth = { type: 'supabase_jwt', userId: user.id };
     return next();
-}
-
-function getCorrelationId(req) {
-    const supplied = req.header('x-correlation-id');
-    return supplied && /^[a-zA-Z0-9._-]{1,128}$/.test(supplied) ? supplied : randomUUID();
 }
 
 function getAuthenticatedUserId(req) {
@@ -217,93 +202,28 @@ app.use('/api/models', requireSupabaseJwt);
 app.use('/api/generate-image', requireSupabaseJwt);
 app.use('/api/image-workflow', requireSupabaseJwt);
 app.use('/api/publish', requireSupabaseJwt);
-app.use('/api/batch-classify', requireSupabaseJwt);
-app.use('/api/topics', requireSupabaseJwt);
-app.use('/api/projects', requireSupabaseJwt);
 app.use('/api/search', requireSupabaseJwt, searchRouter);
 app.use('/api/review', requireSupabaseJwt, reviewRouter);
 app.use('/api/owner-knowledge', requireSupabaseJwt, ownerKnowledgeRouter);
 app.use('/api/owner-library', requireSupabaseJwt, ownerLibraryRouter);
 app.use('/api/local-records', requireSupabaseJwt, localMediaKnowledgeRouter);
 
-
-function normalizeTopicTextList(value) {
-    return Array.isArray(value)
-        ? value.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 30)
-        : [];
-}
-
-function isGovernanceSchemaError(error) {
-    return ['42P01', '42703', 'PGRST200', 'PGRST205'].includes(error?.code);
-}
-
-function topicWithProject(topic) {
-    const project = Array.isArray(topic?.collection_projects)
-        ? topic.collection_projects[0]
-        : topic?.collection_projects || null;
-    const { collection_projects: _project, ...rest } = topic || {};
-    return { ...rest, project };
-}
-
-
-
-app.get('/api/projects', async (req, res) => {
-    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
-    try {
-        const { data, error } = await supabase
-            .from('collection_projects')
-            .select('*')
-            .eq('user_id', getAuthenticatedUserId(req))
-            .order('updated_at', { ascending: false });
-        if (error) throw error;
-        return res.json({ projects: data || [] });
-    } catch (error) {
-        if (isGovernanceSchemaError(error)) {
-            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
-        }
-        console.error('[Projects] list failed:', error.message);
-        return res.status(500).json({ error: 'Failed to list projects' });
-    }
+// These endpoints belonged to the former autonomous taxonomy/workflow stack.
+// They must not be a second path into collection data now that the Owner-guided
+// routes above are the only authoritative workflow. Keep an explicit response
+// during the cutover so an old client cannot silently write legacy records.
+const legacyCollectionRouteRetired = (req, res) => res.status(410).json({
+    error: 'This legacy collection route is retired. Use /api/captures, /api/review, /api/owner-knowledge, or /api/owner-library.',
+    code: 'LEGACY_COLLECTION_ROUTE_RETIRED'
 });
+app.use('/api/topics', legacyCollectionRouteRetired);
+app.use('/api/projects', legacyCollectionRouteRetired);
+app.use('/api/agent/jobs', legacyCollectionRouteRetired);
+app.use('/api/poc-workbench', legacyCollectionRouteRetired);
+app.use('/api/parallel-tracks', legacyCollectionRouteRetired);
+app.post('/api/batch-classify', legacyCollectionRouteRetired);
 
-app.post('/api/projects', async (req, res) => {
-    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
-    const { title, slug, repository_target: repositoryTarget, description = null } = req.body || {};
-    if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
-        return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
-    }
-    if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(slug)) {
-        return res.status(400).json({ error: 'slug must be 2-80 letters, numbers, underscores, or hyphens' });
-    }
-    const target = normalizeProjectTarget(repositoryTarget);
-    if (!target) return res.status(400).json({ error: 'repository_target must be github:owner/repository' });
-    try {
-        const { data, error } = await supabase
-            .from('collection_projects')
-            .insert({
-                user_id: getAuthenticatedUserId(req),
-                title: title.trim(),
-                slug: slug.toLowerCase(),
-                repository_target: target,
-                description: typeof description === 'string' ? description.trim() || null : null,
-                status: 'active'
-            })
-            .select()
-            .single();
-        if (error) throw error;
-        return res.status(201).json({ project: data });
-    } catch (error) {
-        if (isGovernanceSchemaError(error)) {
-            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
-        }
-        if (error.code === '23505') return res.status(409).json({ error: '這個專案或 GitHub repository 已存在' });
-        console.error('[Projects] create failed:', error.message);
-        return res.status(500).json({ error: 'Failed to create project' });
-    }
-});
 
-// Topic workspaces are user-created working contexts. Agent proposals and
-// source-match acceptance are intentionally separate future actions.
 app.get('/api/activity', async (req, res) => {
     if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
     const parsedLimit = Number.parseInt(req.query.limit, 10);
@@ -311,7 +231,7 @@ app.get('/api/activity', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('collection_activity_events')
-            .select('id, post_id, workflow_id, outbox_event_id, event_type, event_result, summary, error_code, error_message, metadata, created_at')
+            .select('id, post_id, event_type, event_result, summary, error_code, error_message, metadata, created_at')
             .eq('user_id', getAuthenticatedUserId(req))
             .order('created_at', { ascending: false })
             .limit(limit);
@@ -323,269 +243,10 @@ app.get('/api/activity', async (req, res) => {
     }
 });
 
-app.get('/api/topics', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Database service is not configured' });
-    }
-
-    try {
-        let { data, error } = await supabase
-            .from('collection_topics')
-            .select('*, collection_projects (id, title, slug, repository_target, status)')
-            .eq('user_id', getAuthenticatedUserId(req))
-            .order('updated_at', { ascending: false });
-
-        // Keep the page readable until the explicit Stage O deployment happens.
-        if (error && isGovernanceSchemaError(error)) {
-            ({ data, error } = await supabase
-                .from('collection_topics')
-                .select('*')
-                .eq('user_id', getAuthenticatedUserId(req))
-                .order('updated_at', { ascending: false }));
-        }
-
-        if (error) throw error;
-        const topics = (data || []).map(topicWithProject);
-        const { data: acceptedMatches, error: acceptedMatchesError } = await supabase
-            .from('collection_topic_source_matches')
-            .select('topic_id, source_id, status, rationale, collection_posts (id, title)')
-            .eq('user_id', getAuthenticatedUserId(req))
-            .eq('status', 'accepted');
-        if (acceptedMatchesError) throw acceptedMatchesError;
-        return res.json({
-            topics: attachAcceptedTopicSources(topics, acceptedMatches || []),
-            domains: TOPIC_DOMAIN_OPTIONS
-        });
-    } catch (error) {
-        console.error('[Topics] list failed:', error.message);
-        return res.status(500).json({ error: 'Failed to list topics' });
-    }
-});
-
-app.post('/api/topics', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Database service is not configured' });
-    }
-
-    const { title, slug, project_id: projectId, domain_key: domainKey, description = null, purpose = null, desired_outcomes, keywords } = req.body || {};
-    if (typeof title !== 'string' || !title.trim() || title.trim().length > 160) {
-        return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
-    }
-    if (typeof slug !== 'string' || !/^[a-z0-9][a-z0-9_-]{1,79}$/i.test(slug)) {
-        return res.status(400).json({ error: 'slug must be 2-80 letters, numbers, underscores, or hyphens' });
-    }
-    if (typeof projectId !== 'string' || !projectId) return res.status(400).json({ error: 'project_id is required' });
-    const domain = normalizeTopicDomain(domainKey);
-    if (!domain) return res.status(400).json({ error: 'domain_key is not supported' });
-
-    try {
-        const { data: project, error: projectError } = await supabase
-            .from('collection_projects')
-            .select('id')
-            .eq('id', projectId)
-            .eq('user_id', getAuthenticatedUserId(req))
-            .eq('status', 'active')
-            .maybeSingle();
-        if (projectError) throw projectError;
-        if (!project) return res.status(404).json({ error: 'Active project was not found' });
-        const { data, error } = await supabase
-            .from('collection_topics')
-            .insert({
-                user_id: getAuthenticatedUserId(req),
-                project_id: projectId,
-                domain_key: domain,
-                title: title.trim(),
-                slug: slug.toLowerCase(),
-                description: typeof description === 'string' ? description.trim() || null : null,
-                purpose: typeof purpose === 'string' ? purpose.trim() || null : null,
-                desired_outcomes: normalizeTopicTextList(desired_outcomes),
-                keywords: normalizeTopicTextList(keywords),
-                origin: 'user',
-                status: 'active'
-            })
-            .select()
-            .single();
-
-        if (error) throw error;
-        return res.status(201).json({ topic: data });
-    } catch (error) {
-        if (isGovernanceSchemaError(error)) {
-            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
-        }
-        if (error.code === '23505') return res.status(409).json({ error: '此專案的這個領域已經有啟用中的主題' });
-        console.error('[Topics] create failed:', error.message);
-        return res.status(500).json({ error: 'Failed to create topic' });
-    }
-});
-
-app.patch('/api/topics/:topicId', async (req, res) => {
-    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
-    const { topicId } = req.params;
-    const body = req.body || {};
-    const update = {};
-    if (Object.hasOwn(body, 'title')) {
-        if (typeof body.title !== 'string' || !body.title.trim() || body.title.trim().length > 160) return res.status(400).json({ error: 'title must be a non-empty string up to 160 characters' });
-        update.title = body.title.trim();
-    }
-    for (const field of ['description', 'purpose']) {
-        if (Object.hasOwn(body, field)) {
-            if (body[field] !== null && typeof body[field] !== 'string') return res.status(400).json({ error: `${field} must be a string or null` });
-            update[field] = body[field]?.trim() || null;
-        }
-    }
-    for (const field of ['desired_outcomes', 'keywords']) {
-        if (Object.hasOwn(body, field)) update[field] = normalizeTopicTextList(body[field]);
-    }
-    if (Object.hasOwn(body, 'status')) {
-        const status = String(body.status || '').toLowerCase();
-        if (!['active', 'archived'].includes(status)) return res.status(400).json({ error: 'status must be active or archived' });
-        update.status = status;
-    }
-    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No editable topic fields were supplied' });
-    try {
-        const { data, error } = await supabase
-            .from('collection_topics')
-            .update(update)
-            .eq('id', topicId)
-            .eq('user_id', getAuthenticatedUserId(req))
-            .eq('origin', 'user')
-            .select()
-            .maybeSingle();
-        if (error) throw error;
-        if (!data) return res.status(404).json({ error: 'Editable topic was not found' });
-        return res.json({ topic: data });
-    } catch (error) {
-        if (isGovernanceSchemaError(error)) return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
-        console.error('[Topics] update failed:', error.message);
-        return res.status(500).json({ error: 'Failed to update topic' });
-    }
-});
-
-app.post('/api/topics/matches/dry-run', async (req, res) => {
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Database service is not configured' });
-    }
-
-    const { sourceId } = req.body || {};
-    if (typeof sourceId !== 'string' || !sourceId) {
-        return res.status(400).json({ error: 'sourceId is required' });
-    }
-
-    const userId = getAuthenticatedUserId(req);
-    try {
-        const [{ data: source, error: sourceError }, { data: topics, error: topicError }] = await Promise.all([
-            supabase
-                .from('collection_posts')
-                .select('id, content, original_url, source_domains')
-                .eq('id', sourceId)
-                .eq('user_id', userId)
-                .single(),
-            supabase
-                .from('collection_topics')
-                .select('id, title, description, keywords, status, origin, project_id, domain_key')
-                .eq('user_id', userId)
-                .eq('status', 'active')
-                .eq('origin', 'user')
-        ]);
-
-        if (sourceError) throw sourceError;
-        if (topicError) throw topicError;
-        return res.json({ source_id: source.id, matches: suggestTopicMatches(source, topics || []) });
-    } catch (error) {
-        console.error('[Topics] dry-run failed:', error.message);
-        return res.status(500).json({ error: 'Failed to match source to topics' });
-    }
-});
-
-app.post('/api/topics/:topicId/matches/:sourceId/decision', async (req, res) => {
-    if (!hasSupabaseServiceConfig) return res.status(503).json({ error: 'Database service is not configured' });
-    const { topicId, sourceId } = req.params;
-    const status = String(req.body?.status || '').toLowerCase();
-    if (!['accepted', 'rejected'].includes(status)) return res.status(400).json({ error: 'status must be accepted or rejected' });
-    const userId = getAuthenticatedUserId(req);
-    try {
-        const [{ data: topic, error: topicError }, { data: source, error: sourceError }, { data: existing, error: matchError }] = await Promise.all([
-            supabase.from('collection_topics').select('id, title, description, keywords, status, origin').eq('id', topicId).eq('user_id', userId).eq('origin', 'user').eq('status', 'active').maybeSingle(),
-            supabase.from('collection_posts').select('id, content, original_url, source_domains').eq('id', sourceId).eq('user_id', userId).maybeSingle(),
-            supabase.from('collection_topic_source_matches').select('*').eq('topic_id', topicId).eq('source_id', sourceId).eq('user_id', userId).maybeSingle()
-        ]);
-        if (topicError || sourceError || matchError) throw topicError || sourceError || matchError;
-        if (!topic || !source) return res.status(404).json({ error: 'Topic or source was not found' });
-        const candidate = suggestTopicMatches(source, [topic])[0];
-        if (!existing && !candidate) return res.status(400).json({ error: '這篇貼文沒有可接受的主題匹配' });
-        const payload = {
-            user_id: userId,
-            topic_id: topicId,
-            source_id: sourceId,
-            match_type: existing?.match_type || candidate?.match_type || 'related',
-            score: existing?.score || candidate?.score || 0,
-            rationale: existing?.rationale || candidate?.rationale || 'User reviewed topic match',
-            matched_terms: existing?.matched_terms || candidate?.matched_terms || [],
-            matched_by: existing?.matched_by || 'agent',
-            status,
-            decision_source: 'user'
-        };
-        const { data, error } = await supabase
-            .from('collection_topic_source_matches')
-            .upsert(payload, { onConflict: 'topic_id,source_id' })
-            .select()
-            .single();
-        if (error) throw error;
-        return res.json({ match: data });
-        } catch (error) {
-        if (isGovernanceSchemaError(error)) {
-            return res.status(409).json({ error: '主題治理資料庫尚未部署 Stage O，請先套用 database/deployments/stage_o_topic_project_governance.sql' });
-        }
-        console.error('[Topics] match decision failed:', error.message);
-        return res.status(500).json({ error: 'Failed to save match decision' });
-    }
-});
-
-// Process URL Endpoint
-app.post('/api/process', requireApiAuth, async (req, res) => {
-    const { url } = req.body;
-    const userId = getAuthenticatedUserId(req);
-    const correlationId = getCorrelationId(req);
-    res.set('x-correlation-id', correlationId);
-
-    if (!url) {
-        return res.status(400).json({ error: 'URL is required' });
-    }
-
-    if (!hasSupabaseServiceConfig) {
-        return res.status(503).json({ error: 'Database service is not configured' });
-    }
-
-    try {
-        const suppliedIdempotencyKey = req.header('x-idempotency-key');
-        const idempotencyKey = suppliedIdempotencyKey
-            && /^[a-zA-Z0-9._:-]{1,128}$/.test(suppliedIdempotencyKey)
-            ? suppliedIdempotencyKey
-            : correlationId;
-        const result = await processUrlThroughCaptureQueue({
-            userId,
-            url,
-            correlationId,
-            idempotencyKey,
-            timeoutMs: process.env.LEGACY_PROCESS_WAIT_MS,
-            requestMeta: {
-                auth_type: req.auth.type,
-                client: req.header('user-agent')?.slice(0, 512) || null,
-                compatibility_route: '/api/process'
-            }
-        });
-
-        return res.status(result.status === 'degraded' ? 202 : 200).json(result);
-    } catch (error) {
-        console.error('Error processing URL:', error);
-
-        return res.status(error.code === 'CAPTURE_WAIT_TIMEOUT' ? 504 : 500).json({
-            error: error.message,
-            code: error.code || 'CAPTURE_FAILED',
-            correlation_id: correlationId
-        });
-    }
-});
+// The former blocking automation entry point is intentionally disabled. New
+// captures are created through /api/captures, where their durable state is
+// visible to the Owner instead of being hidden behind a legacy poll loop.
+app.post('/api/process', requireApiAuth, legacyCollectionRouteRetired);
 
 const hermesAgentRequired = (res) => res.status(503).json({
     error: 'Server AI is retired. Run the Hermes Codex agent for this task.',
@@ -732,41 +393,16 @@ app.get('/api/posts', async (req, res) => {
     }
 
     try {
-        const postSelection = `
-            *,
-            collection_post_media (*),
-            collection_post_comments (*),
-            collection_post_analysis (*),
-            collection_post_workflows (*),
-            collection_user_annotations (*),
-            content_assets (
-                id, source_id, title, format, status, metadata, created_at, updated_at,
-                content_revisions (id, revision_number, body, author_type, created_at, updated_at),
-                content_evidence_links (id, evidence_type, target_id, citation_text)
-            )
-        `;
-        // Fetch posts. The workflow relation is deployed in Stage G; the
-        // fallback keeps existing environments readable until that deployment
-        // has been applied.
-        let { data: posts, error: postsError } = await supabase
+        const { data: posts, error: postsError } = await supabase
             .from('collection_posts')
-            .select(postSelection)
+            .select(`
+                *,
+                collection_post_media (*),
+                collection_post_comments (*),
+                collection_user_annotations (*)
+            `)
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
-
-        if (postsError && /(collection_post_workflows|content_assets)/i.test(postsError.message || '')) {
-            ({ data: posts, error: postsError } = await supabase
-                .from('collection_posts')
-                .select(`
-                    *,
-                    collection_post_media (*),
-                    collection_post_comments (*),
-                    collection_post_analysis (*),
-                    collection_user_annotations (*)
-                `)
-                .eq('user_id', userId)
-                .order('created_at', { ascending: false }));
-        }
 
         if (postsError) throw postsError;
 
@@ -781,14 +417,15 @@ app.get('/api/posts', async (req, res) => {
 
         if (collectionsError) throw collectionsError;
 
-        // Transform data to match frontend expectations
+        // Preserve the established card payload without reading any retired
+        // analysis/workflow/content tables. The null compatibility fields can
+        // be removed after the last old frontend deployment has aged out.
         const formattedPosts = postsWithResolvedMedia.map(post => {
-            const analysis = post.collection_post_analysis?.[0] || null;
             return {
             id: post.id,
             dbId: post.id,
             platform: post.platform,
-            title: post.title || analysis?.generated_title || null,
+            title: post.title || null,
             sourceTitle: post.title || null,
             author: post.author_name,
             authorHandle: post.author_id,
@@ -799,6 +436,7 @@ app.get('/api/posts', async (req, res) => {
             createdAt: post.created_at,
             fullJson: post.full_json,
             collectionId: post.collection_id,
+            sourceDomains: Array.isArray(post.source_domains) ? post.source_domains : [],
             images: post.collection_post_media?.filter(m => m.type === 'image' && m.url).map(m => m.url) || [],
             comments: post.collection_post_comments?.map(c => ({
                 user: c.author_name,
@@ -806,16 +444,12 @@ app.get('/api/posts', async (req, res) => {
                 postedAt: c.commented_at
             })) || [],
             annotations: post.collection_user_annotations || [],
-            analysis,
-            workflow: post.collection_post_workflows?.[0] || null,
-            parallelTracks: normalizeParallelTracks(post.collection_post_workflows?.[0]?.context),
-            reviewRequest: post.collection_post_workflows?.[0]?.context?.review_request || null,
-            vault: post.collection_post_workflows?.[0]?.context?.vault || null,
-            drafts: (post.content_assets || []).map(asset => ({
-                ...asset,
-                latestRevision: [...(asset.content_revisions || [])]
-                    .sort((a, b) => Number(b.revision_number || 0) - Number(a.revision_number || 0))[0] || null
-            }))
+            analysis: null,
+            workflow: null,
+            parallelTracks: [],
+            reviewRequest: null,
+            vault: null,
+            drafts: []
             };
         });
 
@@ -1046,26 +680,6 @@ app.get('/api/stats/tags', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
-
-// POST /api/batch-classify - 手動觸發批量分類
-app.post('/api/batch-classify', async (req, res) => {
-    const { ruleOnly = false, limit = 100 } = req.body;
-    const userId = getAuthenticatedUserId(req);
-    const boundedLimit = Math.min(Math.max(Number(limit) || 100, 1), 100);
-    try {
-        console.log('[BatchClassify] Triggered manually...');
-        const result = await batchClassify({ ruleOnly, limit: boundedLimit, userId });
-        res.json(result);
-    } catch (error) {
-        console.error('[BatchClassify] error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Agent Job Control Plane API
-app.use('/api/agent/jobs', requireSupabaseJwt, agentJobRouter);
-app.use('/api/poc-workbench', requireSupabaseJwt, pocWorkbenchRouter);
-app.use('/api/parallel-tracks', requireSupabaseJwt, parallelTrackRouter);
 
 // Unknown API route handler: keep API clients from mistaking Express HTML 404 fallback for app data.
 app.use('/api', (req, res) => {

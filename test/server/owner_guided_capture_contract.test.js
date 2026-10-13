@@ -11,7 +11,11 @@ const read = (...parts) => fs.readFileSync(path.join(projectRoot, ...parts), 'ut
 const processingSource = read('server', 'services', 'captureProcessingService.js');
 const finalizationSource = read('server', 'services', 'captureFinalizationService.js');
 const requestSource = read('server', 'services', 'captureRequestService.js');
+const serverSource = read('server', 'index.js');
+const packageManifest = read('package.json');
 const cutoverSql = read('database', 'deployments', 'stage_x_owner_guided_capture_cutover.sql');
+const runtimeDetachSql = read('database', 'deployments', 'stage_z_owner_guided_runtime_detach.sql');
+const integrityRepairSql = read('database', 'deployments', 'stage_z_owner_guided_integrity_repair.sql');
 
 test('new capture processing has no automatic semantic or legacy workflow dependency', () => {
     assert.doesNotMatch(processingSource, /captureAnalysisService/);
@@ -51,4 +55,46 @@ test('capture completion stores the source revision and accepts a null legacy ou
     assert.match(cutoverSql, /source_revision_id = p_source_revision_id/);
     assert.match(cutoverSql, /p_capture_quality not in \('complete', 'partial'\)/);
     assert.match(cutoverSql, /p_outbox_event_id is not null/);
+});
+
+test('active capture runtime does not expose legacy outbox or workflow identifiers', () => {
+    const localKnowledgeSource = read('server', 'services', 'localMediaKnowledgeService.js');
+    const localVaultSource = read('server', 'services', 'localMediaKnowledgeVaultService.js');
+
+    assert.doesNotMatch(processingSource, /outboxEventId/);
+    assert.doesNotMatch(requestSource, /outbox_event_id|p_outbox_event_id/);
+    assert.doesNotMatch(localKnowledgeSource, /workflowId|workflow_id/);
+    assert.doesNotMatch(localVaultSource, /workflowId|workflow_id/);
+});
+
+test('retired publishing endpoints fail closed instead of invoking an unwired publisher', () => {
+    assert.match(serverSource, /COLLECTION_PUBLISHING_RETIRED/);
+    assert.match(serverSource, /app\.post\('\/api\/publish\/instagram', publicationRetired\)/);
+    assert.match(serverSource, /app\.post\('\/api\/publish\/threads', publicationRetired\)/);
+    assert.match(serverSource, /app\.post\('\/api\/publish\/twitter', publicationRetired\)/);
+    assert.doesNotMatch(serverSource, /socialMediaService/);
+});
+
+test('runtime-detach migration is collection-only and preserves the retained request evidence', () => {
+    assert.match(runtimeDetachSql, /create or replace function public\.complete_owner_guided_capture_request/);
+    assert.match(runtimeDetachSql, /source_revision_id = p_source_revision_id/);
+    assert.doesNotMatch(runtimeDetachSql, /outbox_event_id\s*=/);
+    assert.doesNotMatch(runtimeDetachSql, /\b(stock|stocks)_/i);
+    assert.doesNotMatch(runtimeDetachSql, /\bdrop\s+(table|schema)/i);
+    assert.doesNotMatch(runtimeDetachSql, /\bcascade\b/i);
+});
+
+test('the runnable package surface exposes only the current capture services', () => {
+    assert.doesNotMatch(packageManifest, /"agent:|"outbox:|"inbox:backfill|"owner-guided:retrofit|"search:index/);
+    assert.match(packageManifest, /"start": "node server\/index\.js"/);
+    assert.match(packageManifest, /"worker:capture": "node server\/scripts\/workers\/run_capture_worker\.js"/);
+});
+
+test('prepared integrity repair is exact, idempotent, and collection-only', () => {
+    const statements = integrityRepairSql.replace(/^--.*$/gm, '');
+    assert.match(integrityRepairSql, /OWNER_GUIDED_REPAIR_EXPECTED_ONE_COMPLETE_SOURCE_WITHOUT_PACKET/);
+    assert.match(integrityRepairSql, /perform public\.ensure_owner_review_packet/);
+    assert.doesNotMatch(statements, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    assert.doesNotMatch(statements, /\b(stock|stocks)_/i);
+    assert.doesNotMatch(statements, /\bdelete\b|\bdrop\b|\bcascade\b/i);
 });

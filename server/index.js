@@ -554,47 +554,16 @@ app.post('/api/image-workflow/step1', imageWorkflowRetired);
 app.post('/api/image-workflow/step2', imageWorkflowRetired);
 app.post('/api/image-workflow/step3', imageWorkflowRetired);
 
-// Step 4: Publish to Social Media
-app.post('/api/publish/instagram', async (req, res) => {
-    const { imageUrl, caption } = req.body;
-    if (!imageUrl || !caption) return res.status(400).json({ error: 'Image URL and caption are required' });
-
-    try {
-        const accessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-        const accountId = process.env.INSTAGRAM_ACCOUNT_ID;
-        const result = await socialMediaService.publishToInstagram(imageUrl, caption, accessToken, accountId);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// Publishing is outside the owner-guided collection workflow and its prior
+// service is no longer wired. Return a stable, authenticated retirement
+// response instead of failing after a user submits content.
+const publicationRetired = (req, res) => res.status(410).json({
+    error: 'Publishing is retired in this collection service.',
+    code: 'COLLECTION_PUBLISHING_RETIRED'
 });
-
-app.post('/api/publish/threads', async (req, res) => {
-    const { imageUrl, text } = req.body;
-    if (!text) return res.status(400).json({ error: 'Text is required' });
-
-    try {
-        const accessToken = process.env.THREADS_ACCESS_TOKEN;
-        const userId = process.env.THREADS_USER_ID;
-        const result = await socialMediaService.publishToThreads(imageUrl, text, accessToken, userId);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-app.post('/api/publish/twitter', async (req, res) => {
-    const { text } = req.body;
-    if (!text) return res.status(400).json({ error: 'Text is required' });
-
-    try {
-        const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-        const result = await socialMediaService.publishToTwitter(text, accessToken);
-        res.json(result);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
+app.post('/api/publish/instagram', publicationRetired);
+app.post('/api/publish/threads', publicationRetired);
+app.post('/api/publish/twitter', publicationRetired);
 
 // Workflow history is retired together with its provider-backed workflow.
 app.get('/api/posts/:postId/image-workflows', async (req, res) => {

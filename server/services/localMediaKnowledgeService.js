@@ -10,7 +10,6 @@ export async function createPostCaseFileManifest({
     userId,
     postId,
     sourceRevisionId,
-    workflowId = null,
     supabaseClient = defaultSupabase
 }) {
     const payload = {
@@ -18,7 +17,6 @@ export async function createPostCaseFileManifest({
         note_kind: 'post_case_file',
         post_id: requiredText(postId, 'postId'),
         source_revision_id: requiredText(sourceRevisionId, 'sourceRevisionId'),
-        workflow_id: workflowId ? requiredText(workflowId, 'workflowId') : null,
         title_status: 'provisional',
         primary_folder: 'Inbox',
         relative_path: null,

@@ -84,7 +84,6 @@ test('an initial post case file is written under Inbox with the full source snap
                 created_at: '2026-10-09T03:20:00.000Z'
             },
             sourceRevisionId: 'revision-1',
-            workflowId: 'workflow-1',
             sourcePayload: {
                 comments: [{ author_name: 'Reader', content: 'A useful response.' }],
                 media: [{ type: 'image', url: 'https://example.test/image.jpg', alt_text: 'A reference image.' }]
@@ -95,6 +94,7 @@ test('an initial post case file is written under Inbox with the full source snap
         const content = await fs.readFile(path.join(vaultRoot, result.relativePath), 'utf8');
         assert.match(content, /post_id: post-12345678-0000-4000-8000-000000000000/);
         assert.match(content, /source_revision_id: revision-1/);
+        assert.doesNotMatch(content, /workflow_id:/);
         assert.match(content, /<!-- BEGIN MEDIA SOURCE SNAPSHOT -->/);
         assert.match(content, /Complete captured source text\./);
         assert.doesNotMatch(content, /完整擷取結構|\`\`\`json/);

@@ -81,8 +81,7 @@ export async function processCaptureRequest(
             status: 'finalized',
             captureQuality: 'complete',
             postId: finalization.post_id,
-            sourceRevisionId: finalization.source_revision_id,
-            outboxEventId: finalization.outbox_event_id ?? null
+            sourceRevisionId: finalization.source_revision_id
         };
     }
 
@@ -106,8 +105,7 @@ export async function processCaptureRequest(
             status: 'finalized',
             captureQuality: 'partial',
             postId: finalization.post_id,
-            sourceRevisionId: finalization.source_revision_id,
-            outboxEventId: finalization.outbox_event_id ?? null
+            sourceRevisionId: finalization.source_revision_id
         };
     }
 
@@ -124,7 +122,6 @@ export async function processCaptureRequest(
         status: 'finalized',
         captureQuality,
         postId: finalization.post_id,
-        sourceRevisionId: finalization.source_revision_id,
-        outboxEventId: finalization.outbox_event_id ?? null
+        sourceRevisionId: finalization.source_revision_id
     };
 }

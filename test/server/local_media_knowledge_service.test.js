@@ -28,7 +28,6 @@ test('a new post case-file manifest is owner-scoped and starts pending in Inbox'
         userId: 'user-1',
         postId: 'post-1',
         sourceRevisionId: 'revision-1',
-        workflowId: 'workflow-1',
         supabaseClient: client
     });
 
@@ -39,7 +38,6 @@ test('a new post case-file manifest is owner-scoped and starts pending in Inbox'
         note_kind: 'post_case_file',
         post_id: 'post-1',
         source_revision_id: 'revision-1',
-        workflow_id: 'workflow-1',
         title_status: 'provisional',
         primary_folder: 'Inbox',
         relative_path: null,

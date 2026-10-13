@@ -169,7 +169,7 @@ function renderSourceSnapshot(post, sourcePayload) {
     return sections.join('\n\n');
 }
 
-function renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId = null, sourcePayload = null, captureQuality = 'complete', occurredAt = null }) {
+function renderCaptureRevisionEvent({ post, sourceRevisionId, sourcePayload = null, captureQuality = 'complete', occurredAt = null }) {
     const timestamp = new Date(text(occurredAt, new Date().toISOString()));
     const date = Number.isNaN(timestamp.valueOf()) ? text(occurredAt).slice(0, 10) : timestamp.toISOString().slice(0, 10);
     const time = Number.isNaN(timestamp.valueOf()) ? text(occurredAt).slice(11, 16) : timestamp.toISOString().slice(11, 16);
@@ -177,7 +177,6 @@ function renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId = null,
     return [
         `### ${date} ${time}｜擷取修訂｜已記錄`,
         `- source_revision_id: ${text(sourceRevisionId)}`,
-        `- workflow_id: ${text(workflowId)}`,
         `- 來源完整度：${sourceQualityLabel}`,
         '',
         '#### 新增來源快照',
@@ -187,7 +186,7 @@ function renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId = null,
     ].join('\n') + '\n';
 }
 
-export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, workflowId = null, sourcePayload = null, captureQuality = 'complete' }) {
+export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevisionId, sourcePayload = null, captureQuality = 'complete' }) {
     const root = path.resolve(text(vaultRoot));
     const marker = await fs.stat(path.join(root, '.obsidian')).catch(() => null);
     if (!marker?.isDirectory()) throw new Error('Configured local media collection is not an initialized Obsidian Vault');
@@ -201,7 +200,7 @@ export async function writeInitialPostCaseFile({ vaultRoot, post, sourceRevision
     const filename = `${date}｜暫定：${title}｜${segment(postId.slice(0, 8), 'unknown')}.md`;
     const filePath = path.resolve(root, ROOT, 'Posts', 'Inbox', filename); assertInside(root, filePath);
     const relativePath = path.relative(root, filePath).split(path.sep).join('/');
-    const content = `---\nschema_version: 1\nnote_kind: media-post-case-file\npost_id: ${postId}\nsource_revision_id: ${text(sourceRevisionId)}\nworkflow_id: ${text(workflowId)}\nsource_url: ${text(post?.original_url)}\nsource_platform: ${text(post?.platform, 'generic')}\ncaptured_at: ${text(post?.created_at)}\ntitle_status: provisional\nprimary_folder: Inbox\nlocal_record_state: inbox_ready\nsource_quality: ${captureQuality}\n---\n\n# 暫定：${title}\n\n<!-- BEGIN MEDIA CURRENT STATE -->\n## 目前狀態\n- 為何保留：原始來源已保存，尚待討論\n- 來源完整度：${sourceQualityLabel}\n- 下一步：${nextAction}\n<!-- END MEDIA CURRENT STATE -->\n\n<!-- BEGIN MEDIA SOURCE SNAPSHOT -->\n## 來源快照\n${renderSourceSnapshot(post, sourcePayload)}\n<!-- END MEDIA SOURCE SNAPSHOT -->\n\n${EVENT_LOG_START}\n## 工作歷程\n### ${date} ${displayTime}｜擷取｜已記錄\n- source_revision_id: ${text(sourceRevisionId)}\n- workflow_id: ${text(workflowId)}\n- 來源完整度：${sourceQualityLabel}\n${EVENT_LOG_END}\n\n## 你的自由筆記\n`;
+    const content = `---\nschema_version: 1\nnote_kind: media-post-case-file\npost_id: ${postId}\nsource_revision_id: ${text(sourceRevisionId)}\nsource_url: ${text(post?.original_url)}\nsource_platform: ${text(post?.platform, 'generic')}\ncaptured_at: ${text(post?.created_at)}\ntitle_status: provisional\nprimary_folder: Inbox\nlocal_record_state: inbox_ready\nsource_quality: ${captureQuality}\n---\n\n# 暫定：${title}\n\n<!-- BEGIN MEDIA CURRENT STATE -->\n## 目前狀態\n- 為何保留：原始來源已保存，尚待討論\n- 來源完整度：${sourceQualityLabel}\n- 下一步：${nextAction}\n<!-- END MEDIA CURRENT STATE -->\n\n<!-- BEGIN MEDIA SOURCE SNAPSHOT -->\n## 來源快照\n${renderSourceSnapshot(post, sourcePayload)}\n<!-- END MEDIA SOURCE SNAPSHOT -->\n\n${EVENT_LOG_START}\n## 工作歷程\n### ${date} ${displayTime}｜擷取｜已記錄\n- source_revision_id: ${text(sourceRevisionId)}\n- 來源完整度：${sourceQualityLabel}\n${EVENT_LOG_END}\n\n## 你的自由筆記\n`;
     try {
         await atomicWrite(filePath, content, { replace: false });
     } catch (error) {
@@ -281,7 +280,6 @@ export async function appendPostCaseFileCaptureRevision({
     relativePath,
     post,
     sourceRevisionId,
-    workflowId = null,
     sourcePayload = null,
     captureQuality = 'complete',
     occurredAt = null
@@ -299,7 +297,7 @@ export async function appendPostCaseFileCaptureRevision({
     const start = managedMarkerIndex(current, EVENT_LOG_START, 'event-log start');
     const end = managedMarkerIndex(current, EVENT_LOG_END, 'event-log end');
     if (end <= start) throw new Error('Post case file event-log markers are out of order');
-    const revision = renderCaptureRevisionEvent({ post, sourceRevisionId, workflowId, sourcePayload, captureQuality, occurredAt });
+    const revision = renderCaptureRevisionEvent({ post, sourceRevisionId, sourcePayload, captureQuality, occurredAt });
     const next = `${current.slice(0, end).replace(/\n?$/, '\n')}\n${revision}${current.slice(end)}`;
     await atomicWrite(target.filePath, next);
     return {

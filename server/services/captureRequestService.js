@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient.js';
 
-const CAPTURE_SELECT = 'id, input_type, url, original_filename, media_content_type, media_size_bytes, status, attempt_count, max_attempts, capture_quality, post_id, source_revision_id, outbox_event_id, error_code, error_message, correlation_id, created_at, updated_at, started_at, finalized_at, failed_at';
+const CAPTURE_SELECT = 'id, input_type, url, original_filename, media_content_type, media_size_bytes, status, attempt_count, max_attempts, capture_quality, post_id, source_revision_id, error_code, error_message, correlation_id, created_at, updated_at, started_at, finalized_at, failed_at';
 
 function normalizeHistoryLimit(value) {
     const parsed = Number(value);
@@ -110,14 +110,13 @@ export async function claimCaptureRequest(workerId, leaseSeconds = 900, supabase
 
 export async function completeCaptureRequest(input, supabaseClient = supabase) {
     const { data, error } = await supabaseClient
-        .rpc('complete_collection_capture_request', {
+        .rpc('complete_owner_guided_capture_request', {
             p_request_id: input.requestId,
             p_worker_id: input.workerId,
             p_status: input.status,
             p_capture_quality: input.captureQuality,
             p_post_id: input.postId,
-            p_source_revision_id: input.sourceRevisionId,
-            p_outbox_event_id: input.outboxEventId
+            p_source_revision_id: input.sourceRevisionId
         })
         .single();
 

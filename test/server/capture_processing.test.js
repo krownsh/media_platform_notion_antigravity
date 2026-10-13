@@ -22,7 +22,7 @@ test('async capture persists normalized source facts without analysis or workflo
         },
         finalizer: async (...args) => {
             finalizedInput = args;
-            return { post_id: 'post-1', source_revision_id: 'revision-1', outbox_event_id: null };
+            return { post_id: 'post-1', source_revision_id: 'revision-1' };
         }
     });
 
@@ -30,8 +30,7 @@ test('async capture persists normalized source facts without analysis or workflo
         status: 'finalized',
         captureQuality: 'complete',
         postId: 'post-1',
-        sourceRevisionId: 'revision-1',
-        outboxEventId: null
+        sourceRevisionId: 'revision-1'
     });
     assert.equal(finalizedInput[0], request.user_id);
     assert.equal(finalizedInput[1], request.correlation_id);
@@ -45,7 +44,7 @@ test('generic extraction failure becomes a partial link source record', async ()
         acquisition: { processUrl: async () => { throw new Error('unreadable page'); } },
         finalizer: async (_userId, _correlationId, source, data) => {
             fallback = { source, data };
-            return { post_id: 'post-2', source_revision_id: 'revision-2', outbox_event_id: null };
+            return { post_id: 'post-2', source_revision_id: 'revision-2' };
         }
     });
 
@@ -53,8 +52,7 @@ test('generic extraction failure becomes a partial link source record', async ()
         status: 'finalized',
         captureQuality: 'partial',
         postId: 'post-2',
-        sourceRevisionId: 'revision-2',
-        outboxEventId: null
+        sourceRevisionId: 'revision-2'
     });
     assert.equal(fallback.source, 'fallback');
     assert.equal(fallback.data.original_url, request.url);
@@ -86,7 +84,7 @@ test('image capture finalizes persisted media without crawler or AI work', async
         acquisition: { processUrl: async () => { acquisitionCalls += 1; } },
         finalizer: async (...args) => {
             finalizedInput = args;
-            return { post_id: 'post-image', source_revision_id: 'revision-image', outbox_event_id: null };
+            return { post_id: 'post-image', source_revision_id: 'revision-image' };
         }
     });
 
@@ -96,7 +94,7 @@ test('image capture finalizes persisted media without crawler or AI work', async
     assert.equal(finalizedInput[3].platform, 'image');
     assert.equal(finalizedInput[3].images[0].storage_bucket, 'collection_capture_uploads');
     assert.deepEqual(finalizedInput[4], { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' });
-    assert.equal(result.outboxEventId, null);
+    assert.equal(Object.hasOwn(result, 'outboxEventId'), false);
     assert.equal(result.sourceRevisionId, 'revision-image');
 });
 
@@ -144,8 +142,7 @@ test('worker completes a leased request through the durable status service', asy
             status: 'finalized',
             captureQuality: 'complete',
             postId: 'post-3',
-            sourceRevisionId: 'revision-3',
-            outboxEventId: null
+            sourceRevisionId: 'revision-3'
         }),
         complete: async (input) => {
             calls.push(input);
@@ -161,8 +158,7 @@ test('worker completes a leased request through the durable status service', asy
         status: 'finalized',
         captureQuality: 'complete',
         postId: 'post-3',
-        sourceRevisionId: 'revision-3',
-        outboxEventId: null
+        sourceRevisionId: 'revision-3'
     });
     assert.equal(Object.hasOwn(result, 'hermesDispatch'), false);
 });

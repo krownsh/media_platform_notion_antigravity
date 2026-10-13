@@ -10,7 +10,7 @@ import {
 
 const USER_ID = '11111111-1111-4111-8111-111111111111';
 
-test('next action is deterministic, explains a partial source, and never depends on a legacy workflow', () => {
+test('next action is deterministic, requires candidate work and discussion before a proposal decision, and never depends on a legacy workflow', () => {
     assert.deepEqual(deriveNextAction({
         id: 'packet-1',
         status: 'open',
@@ -26,12 +26,14 @@ test('next action is deterministic, explains a partial source, and never depends
         id: 'packet-2',
         status: 'open',
         source_revision: { capture_quality: 'complete' },
-        proposals: [{ id: 'proposal-1', status: 'proposed', proposal_type: 'folder' }]
+        candidate_generation_job: { status: 'completed' },
+        checkpoints: [{ checkpoint_key: 'content_discussion', status: 'completed' }],
+        proposals: [{ id: 'proposal-1', status: 'proposed', proposal_type: 'folder_assignment' }]
     }), {
         kind: 'review_proposal',
         packet_id: 'packet-2',
         proposal_id: 'proposal-1',
-        proposal_type: 'folder',
+        proposal_type: 'folder_assignment',
         reason: 'owner_decision_required'
     });
 

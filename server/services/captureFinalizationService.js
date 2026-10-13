@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient.js';
 import { refreshOwnerPostSearchDocument } from './ownerSearchService.js';
-import { prepareInitialReviewProposals } from './reviewProposalService.js';
+import { ensureCandidateGenerationJob } from './ownerCandidateGenerationService.js';
+import { ensureReviewPacket } from './reviewPacketService.js';
 import { createOrRetryLocalPostCaseFile } from './localMediaKnowledgeWorkflowService.js';
 
 function normalizeCommentTimestamp(value) {
@@ -25,7 +26,16 @@ export async function finalizeCapture(
         configured = isSupabaseConfigured,
         pipelineVersion = 'capture-v5-owner-guided',
         captureQuality = 'complete',
-        reviewPreparer = prepareInitialReviewProposals,
+        reviewPreparer = async ({ userId: reviewUserId, sourceRevisionId, captureQuality: reviewQuality, supabaseClient: reviewClient }) => {
+            const packet = await ensureReviewPacket({ userId: reviewUserId, sourceRevisionId, supabaseClient: reviewClient });
+            return ensureCandidateGenerationJob({
+                userId: reviewUserId,
+                sourceRevisionId,
+                reviewPacketId: packet.id,
+                captureQuality: reviewQuality,
+                supabaseClient: reviewClient
+            });
+        },
         searchIndexer = refreshOwnerPostSearchDocument,
         localNoteWriter = createOrRetryLocalPostCaseFile
     } = {}
@@ -93,6 +103,7 @@ export async function finalizeCapture(
         await reviewPreparer({
             userId,
             sourceRevisionId: finalized.source_revision_id,
+            captureQuality,
             supabaseClient
         });
     } catch (packetError) {

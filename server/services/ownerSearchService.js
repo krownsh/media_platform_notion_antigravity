@@ -25,7 +25,7 @@ function relation(row, name) {
     return Array.isArray(value) ? value[0] : value;
 }
 
-export function buildOwnerSearchDocument({ post, sourceRevision, learningNote, topicLinks = [], topicRevisions = [], projectReferences = [], proposals = [] }) {
+export function buildOwnerSearchDocument({ post, sourceRevision, learningNote, topicLinks = [], topicRevisions = [], projectReferences = [], proposals = [], retrievalTerms = [] }) {
     const rawParts = [
         post?.title, post?.author_name, post?.platform, post?.original_url, post?.content,
         sourceRevision?.source_payload?.post?.content,
@@ -77,6 +77,15 @@ export function buildOwnerSearchDocument({ post, sourceRevision, learningNote, t
         }
     }
 
+    const retrievalParts = [];
+    const retrievalReasons = [];
+    for (const term of retrievalTerms) {
+        if (term?.visibility !== 'active') continue;
+        retrievalParts.push(term.term);
+        const kind = text(term.term_kind, 80);
+        if (kind) retrievalReasons.push(`retrieval_${kind}`);
+    }
+
     return {
         post_id: post?.id,
         user_id: post?.user_id,
@@ -86,8 +95,10 @@ export function buildOwnerSearchDocument({ post, sourceRevision, learningNote, t
         raw_text: unique(rawParts).join('\n').slice(0, MAX_TEXT),
         formal_text: unique(formalParts).join('\n').slice(0, MAX_TEXT),
         candidate_text: unique(candidateParts).join('\n').slice(0, MAX_TEXT),
+        retrieval_text: unique(retrievalParts).join('\n').slice(0, MAX_TEXT),
         formal_reasons: unique(formalReasons),
-        candidate_reasons: unique(candidateReasons)
+        candidate_reasons: unique(candidateReasons),
+        retrieval_reasons: unique(retrievalReasons)
     };
 }
 
@@ -108,20 +119,21 @@ export async function loadOwnerSearchInputs({ userId, postId, sourceRevisionId =
     if (sourceRevisionId) revisionQuery = revisionQuery.eq('id', sourceRevisionId);
     const revisions = await maybeRows(revisionQuery.limit(1));
     const sourceRevision = revisions[0] || null;
-    if (!sourceRevision) return { post, sourceRevision: null, learningNote: null, topicLinks: [], topicRevisions: [], projectReferences: [], proposals: [] };
+    if (!sourceRevision) return { post, sourceRevision: null, learningNote: null, topicLinks: [], topicRevisions: [], projectReferences: [], proposals: [], retrievalTerms: [] };
     const revisionId = sourceRevision.id;
-    const [learningNotes, topicLinks, topicRevisions, projectReferences, reviewPackets] = await Promise.all([
+    const [learningNotes, topicLinks, topicRevisions, projectReferences, reviewPackets, retrievalTerms] = await Promise.all([
         maybeRows(supabaseClient.from('owner_post_learning_notes').select('note_status, content').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_source_links').select('topic_id, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_revisions').select('topic_id, summary, claims, open_questions, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
         maybeRows(supabaseClient.from('owner_topic_project_references').select('topic_id, rationale, owner_topics (label), owner_project_catalog (title, description, reference)').eq('user_id', userId).eq('source_revision_id', revisionId).eq('status', 'active')),
-        maybeRows(supabaseClient.from('owner_review_packets').select('id').eq('user_id', userId).eq('source_revision_id', revisionId))
+        maybeRows(supabaseClient.from('owner_review_packets').select('id').eq('user_id', userId).eq('source_revision_id', revisionId)),
+        maybeRows(supabaseClient.from('owner_post_retrieval_terms').select('term, term_kind, visibility').eq('user_id', userId).eq('post_id', postId).eq('visibility', 'active'))
     ]);
     const packetIds = reviewPackets.map(packet => packet.id).filter(Boolean);
     const proposals = packetIds.length
         ? await maybeRows(supabaseClient.from('owner_review_proposals').select('proposal_type, payload, status').eq('user_id', userId).in('packet_id', packetIds))
         : [];
-    return { post, sourceRevision, learningNote: learningNotes[0] || null, topicLinks, topicRevisions, projectReferences, proposals };
+    return { post, sourceRevision, learningNote: learningNotes[0] || null, topicLinks, topicRevisions, projectReferences, proposals, retrievalTerms };
 }
 
 export async function refreshOwnerPostSearchDocument({ userId, postId, sourceRevisionId = null, supabaseClient = defaultSupabase }) {
@@ -132,7 +144,8 @@ export async function refreshOwnerPostSearchDocument({ userId, postId, sourceRev
         p_user_id: document.user_id, p_post_id: document.post_id, p_source_revision_id: document.source_revision_id,
         p_source_quality: document.source_quality, p_title: document.title, p_raw_text: document.raw_text,
         p_formal_text: document.formal_text, p_candidate_text: document.candidate_text,
-        p_formal_reasons: document.formal_reasons, p_candidate_reasons: document.candidate_reasons
+        p_retrieval_text: document.retrieval_text, p_formal_reasons: document.formal_reasons,
+        p_candidate_reasons: document.candidate_reasons, p_retrieval_reasons: document.retrieval_reasons
     });
     if (error) throw new Error(`Owner-guided search document upsert failed: ${error.message}`);
     return data;

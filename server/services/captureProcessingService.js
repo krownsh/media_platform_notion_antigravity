@@ -56,6 +56,13 @@ export function buildImageCapture(request) {
     };
 }
 
+export function captureQualityForData(data) {
+    const evidence = Array.isArray(data?.full_json) ? data.full_json[0]?.evidence_bundle : data?.full_json?.evidence_bundle;
+    return evidence?.status === 'nested_longform_partial' || evidence?.status === 'nested_longform_failed'
+        ? 'partial'
+        : 'complete';
+}
+
 export async function processCaptureRequest(
     request,
     { acquisition = orchestrator, finalizer = finalizeCapture } = {}
@@ -104,17 +111,18 @@ export async function processCaptureRequest(
         };
     }
 
+    const captureQuality = captureQualityForData(result.data);
     const finalization = await finalizer(
         request.user_id,
         request.correlation_id,
         result.source,
         result.data,
-        { pipelineVersion: 'capture-v5-owner-guided', captureQuality: 'complete' }
+        { pipelineVersion: 'capture-v5-owner-guided', captureQuality }
     );
 
     return {
         status: 'finalized',
-        captureQuality: 'complete',
+        captureQuality,
         postId: finalization.post_id,
         sourceRevisionId: finalization.source_revision_id,
         outboxEventId: finalization.outbox_event_id ?? null

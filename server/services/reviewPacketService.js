@@ -1,4 +1,5 @@
 import { supabase as defaultSupabase } from '../supabaseClient.js';
+import { candidateGenerationNextAction, listCandidateGenerationJobs } from './ownerCandidateGenerationService.js';
 
 export const PROPOSAL_STATUSES = new Set(['pending', 'proposed', 'accepted', 'rejected', 'superseded']);
 export const PACKET_STATUSES = new Set(['open', 'deferred', 'completed']);
@@ -51,6 +52,8 @@ export function deriveNextAction(packet) {
     if (quality === 'partial') {
         return { kind: 'repair_source', packet_id: packetId, reason: 'source_is_partial' };
     }
+    const candidateAction = candidateGenerationNextAction({ packet, job: packet?.candidate_generation_job });
+    if (candidateAction) return candidateAction;
     const proposals = Array.isArray(packet?.proposals) ? packet.proposals : [];
     const reviewable = proposals.find(proposal => proposal?.status === 'proposed' || proposal?.status === 'pending');
     if (reviewable) {
@@ -98,7 +101,9 @@ export async function listReviewPackets({ userId, limit = 20, supabaseClient = d
         .order('updated_at', { ascending: false })
         .limit(boundedLimit);
     if (error) rpcFailure('Review packet list', error);
-    return (data || []).map(mapPacket);
+    const jobs = await listCandidateGenerationJobs({ userId, packetIds: (data || []).map(packet => packet.id), supabaseClient });
+    const jobsByPacket = new Map(jobs.map(job => [job.review_packet_id, job]));
+    return (data || []).map(packet => mapPacket({ ...packet, candidate_generation_job: jobsByPacket.get(packet.id) || null }));
 }
 
 export async function loadReviewPacket({ userId, packetId, supabaseClient = defaultSupabase }) {
@@ -116,7 +121,8 @@ export async function loadReviewPacket({ userId, packetId, supabaseClient = defa
         .eq('user_id', userId)
         .maybeSingle();
     if (error) rpcFailure('Review packet lookup', error);
-    return mapPacket(data);
+    const jobs = data ? await listCandidateGenerationJobs({ userId, packetIds: [data.id], supabaseClient }) : [];
+    return mapPacket(data ? { ...data, candidate_generation_job: jobs[0] || null } : data);
 }
 
 export async function ensureReviewPacket({ userId, sourceRevisionId, supabaseClient = defaultSupabase }) {

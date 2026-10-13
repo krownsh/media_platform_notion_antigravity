@@ -62,6 +62,7 @@ test('finalization submits only raw source facts and a partial quality when requ
     assert.deepEqual(client.reviewPreparation, {
         userId: 'user-1',
         sourceRevisionId: 'revision-1',
+        captureQuality: 'partial',
         supabaseClient: client
     });
     assert.deepEqual(client.searchIndexInput, {
@@ -95,6 +96,7 @@ test('a complete capture automatically starts the owner-visible candidate projec
     assert.deepEqual(preparations, [{
         userId: 'user-complete',
         sourceRevisionId: 'revision-complete',
+        captureQuality: 'complete',
         supabaseClient: client
     }]);
 });

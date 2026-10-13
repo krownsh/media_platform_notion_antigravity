@@ -33,7 +33,8 @@ function proposalLabel(type) {
         post_learning_note: '貼文筆記討論',
         topic_assignment: 'Topic 討論',
         topic_knowledge_delta: 'Topic 知識討論',
-        project_reference: '專案參考討論'
+        project_reference: '專案參考討論',
+        content_review_brief: '內容審核摘要'
     })[type] || '待討論項目';
 }
 
@@ -42,6 +43,9 @@ function workflowPresentation(packet) {
     if (packet.status === 'deferred') return { label: '暫緩中', description: '這篇已暫停；需要時可在 Agent 對話中恢復討論。' };
     if (packet.status === 'completed') return { label: '目前討論已結束', description: '這篇的目前候選已有結果；仍可在 Agent 對話中繼續延伸。' };
     if (packet.source_revision?.capture_quality === 'partial') return { label: '來源待補確認', description: '擷取內容不完整；先在 Agent 對話中確認是否以現有內容繼續。' };
+    if (packet.next_action?.kind === 'candidate_generation_pending') return { label: '等待候選草稿', description: '來源與 Inbox 已保存；排程 Agent 尚在準備討論摘要、候選與檢索線索，沒有任何內容已被接受。' };
+    if (packet.next_action?.kind === 'candidate_generation_paused') return { label: '候選準備暫停', description: '排程遇到服務限流，會在冷卻時間後再處理；來源與 Inbox 都不受影響。' };
+    if (packet.next_action?.kind === 'candidate_generation_failed') return { label: '候選準備待重試', description: '來源已保存；這次候選準備失敗，需由排程在之後安全重試。' };
     return { label: '等待與 Agent 討論', description: '前端只呈現來源與狀態；筆記、Topic、專案與研究結論由你和 Agent 在對話中完成。' };
 }
 

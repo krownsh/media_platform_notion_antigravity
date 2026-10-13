@@ -1,4 +1,9 @@
 
+import { createHash } from 'node:crypto';
+
+const X_ARTICLE_URL = /https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/i\/article\/(\d+)/i;
+const X_ARTICLE_ID = /^\d{10,}$/;
+
 /**
  * Scrapes a Twitter (X) post using the internal API.
  * @param {string} url 
@@ -89,15 +94,24 @@ export async function scrapeTwitterPost(url) {
             });
         }
 
-        // Construct Full JSON for AI
+        const nestedLongformSources = extractNestedLongformSources(result);
+        const parentText = content;
+        content = composeEvidenceBundleText(parentText, nestedLongformSources);
+        const evidenceBundle = buildEvidenceBundle(nestedLongformSources);
+
+        // Keep the existing array envelope so downstream readers that expect
+        // full_json[0] remain compatible.
         const fullJsonData = [
             {
+                parent_text: parentText,
                 main_text: content,
                 author: author,
                 postedAt: postedAt,
                 images: images,
-                extracted_links: [...new Set(extractedLinks)],
-                replies: []
+                extracted_links: [...new Set([...extractedLinks, ...nestedLongformSources.map(source => source.canonical_url)])],
+                replies: [],
+                nested_longform_sources: nestedLongformSources,
+                evidence_bundle: evidenceBundle
             }
         ];
 
@@ -121,6 +135,7 @@ export async function scrapeTwitterPost(url) {
             postedAt: postedAt,
             posted_at: postedAt,
 
+            title: nestedLongformSources.find(source => source.title)?.title || null,
             content: content,
 
             images: images,
@@ -213,7 +228,7 @@ async function fetchTweetData(tweetId, guestToken) {
 
     const fieldToggles = {
         "withArticleRichContentState": true,
-        "withArticlePlainText": false
+        "withArticlePlainText": true
     };
 
     const queryId = 'kLXoXTloWpv9d2FSXRg-Tg';
@@ -247,4 +262,193 @@ function getTwitterPublicBearerToken() {
         throw new Error('TWITTER_PUBLIC_BEARER_TOKEN is not configured');
     }
     return token;
+}
+
+function nonEmptyString(value) {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function articleIdFrom(value) {
+    const text = nonEmptyString(value);
+    return text && X_ARTICLE_ID.test(text) ? text : null;
+}
+
+function canonicalArticleUrl(article) {
+    const strings = [];
+    const visit = (value, depth = 0) => {
+        if (depth > 4 || value == null) return;
+        if (typeof value === 'string') {
+            strings.push(value);
+            return;
+        }
+        if (typeof value !== 'object') return;
+        for (const child of Object.values(value)) visit(child, depth + 1);
+    };
+    visit(article);
+
+    for (const value of strings) {
+        const match = value.match(X_ARTICLE_URL);
+        if (match) return `https://x.com/i/article/${match[1]}`;
+    }
+
+    const id = [article.rest_id, article.article_id, article.articleId, article.id]
+        .map(articleIdFrom)
+        .find(Boolean);
+    return id ? `https://x.com/i/article/${id}` : null;
+}
+
+function articleBody(article) {
+    const candidates = [
+        article.plain_text,
+        article.plainText,
+        article.text,
+        article.body,
+        article.content,
+        article.rich_text?.plain_text,
+        article.rich_text?.text,
+        article.richText?.plainText,
+        article.richText?.text
+    ];
+    return candidates.map(nonEmptyString).find(Boolean) || null;
+}
+
+function articleTitle(article) {
+    return [article.title, article.headline, article.article_title, article.articleTitle]
+        .map(nonEmptyString)
+        .find(Boolean) || null;
+}
+
+/**
+ * Finds X Article-shaped objects nested in a TweetResult payload without
+ * treating arbitrary external URLs as child sources. The bounded traversal
+ * also makes the crawler safe against unexpectedly deep GraphQL payloads.
+ */
+export function extractNestedLongformSources(tweetResult) {
+    const candidates = [];
+    const visited = new WeakSet();
+    const visit = (value, key = '', depth = 0) => {
+        if (depth > 12 || value == null || typeof value !== 'object') return;
+        if (visited.has(value)) return;
+        visited.add(value);
+
+        const articleLike = /article/i.test(key)
+            || Object.hasOwn(value, 'plain_text')
+            || Object.hasOwn(value, 'article_id')
+            || Object.hasOwn(value, 'articleId');
+        if (articleLike) {
+            const canonicalUrl = canonicalArticleUrl(value);
+            const title = articleTitle(value);
+            const body = articleBody(value);
+            if (canonicalUrl || title || body) candidates.push({ canonicalUrl, title, body });
+        }
+
+        for (const [childKey, child] of Object.entries(value)) visit(child, childKey, depth + 1);
+    };
+    visit(tweetResult);
+
+    const unique = new Map();
+    for (const candidate of candidates) {
+        if (!candidate.canonicalUrl) continue;
+        const existing = unique.get(candidate.canonicalUrl);
+        if (!existing || (!existing.body && candidate.body)) unique.set(candidate.canonicalUrl, candidate);
+    }
+
+    return [...unique.values()].map(({ canonicalUrl, title, body }) => ({
+        type: 'x_article',
+        requested_url: canonicalUrl,
+        canonical_url: canonicalUrl,
+        capture_status: body ? 'captured' : 'partial',
+        extraction_method: 'x_tweet_result_article_payload',
+        title,
+        content: body,
+        missing_fields: body ? [] : ['content'],
+        immutable_capture_revision: createHash('sha256')
+            .update(JSON.stringify({ canonicalUrl, title, body }))
+            .digest('hex')
+    }));
+}
+
+export function buildEvidenceBundle(nestedLongformSources) {
+    if (!nestedLongformSources.length) return { status: 'no_nested_longform_found', sources: [] };
+    const isComplete = nestedLongformSources.every(source => source.capture_status === 'captured');
+    return {
+        status: isComplete ? 'nested_longform_captured' : 'nested_longform_partial',
+        sources: nestedLongformSources.map(source => ({
+            canonical_url: source.canonical_url,
+            capture_status: source.capture_status,
+            missing_fields: source.missing_fields
+        }))
+    };
+}
+
+export function composeEvidenceBundleText(parentText, nestedLongformSources) {
+    const capturedArticles = nestedLongformSources.filter(source => source.capture_status === 'captured' && source.content);
+    if (!capturedArticles.length) return parentText;
+    return [
+        parentText,
+        ...capturedArticles.map(source => `\n\n[Linked X Article: ${source.title || source.canonical_url}]\n${source.content}`)
+    ].filter(Boolean).join('');
+}
+
+export function captureQualityForTwitterData(data) {
+    const evidence = Array.isArray(data?.full_json) ? data.full_json[0]?.evidence_bundle : data?.full_json?.evidence_bundle;
+    return evidence?.status === 'nested_longform_partial' || evidence?.status === 'nested_longform_failed'
+        ? 'partial'
+        : 'complete';
+}
+
+function twitterEvidenceEnvelope(data) {
+    if (Array.isArray(data?.full_json) && data.full_json[0]) return data.full_json[0];
+    return data?.full_json || null;
+}
+
+function refreshNestedEvidence(data) {
+    const envelope = twitterEvidenceEnvelope(data);
+    if (!envelope) return data;
+    const sources = envelope.nested_longform_sources || [];
+    const hasFailure = sources.some(source => source.capture_status === 'failed');
+    envelope.evidence_bundle = {
+        ...buildEvidenceBundle(sources),
+        status: hasFailure ? 'nested_longform_failed' : buildEvidenceBundle(sources).status
+    };
+    data.content = composeEvidenceBundleText(envelope.parent_text || envelope.main_text, sources);
+    envelope.main_text = data.content;
+    return data;
+}
+
+/**
+ * Enriches a discovered Article with a second, canonical page capture. This
+ * stays inside the parent evidence bundle and leaves unrelated outbound links
+ * untouched.
+ */
+export function applyNestedTwitterArticleCapture(data, canonicalUrl, articleCapture) {
+    const envelope = twitterEvidenceEnvelope(data);
+    const source = envelope?.nested_longform_sources?.find(item => item.canonical_url === canonicalUrl);
+    const content = nonEmptyString(articleCapture?.content);
+    if (!source || !content || content.length < 20) return data;
+
+    source.capture_status = 'captured';
+    source.content = content;
+    source.title = nonEmptyString(articleCapture.title) || source.title;
+    source.final_url = nonEmptyString(articleCapture.original_url) || canonicalUrl;
+    source.extraction_method = 'x_article_canonical_page';
+    source.missing_fields = [];
+    source.immutable_capture_revision = createHash('sha256')
+        .update(JSON.stringify({ canonicalUrl, title: source.title, body: source.content }))
+        .digest('hex');
+    if (Array.isArray(articleCapture.images)) {
+        data.images = [...new Set([...(data.images || []), ...articleCapture.images])];
+    }
+    if (!data.title && source.title) data.title = source.title;
+    return refreshNestedEvidence(data);
+}
+
+export function recordNestedTwitterArticleFailure(data, canonicalUrl, error) {
+    const envelope = twitterEvidenceEnvelope(data);
+    const source = envelope?.nested_longform_sources?.find(item => item.canonical_url === canonicalUrl);
+    if (!source) return data;
+    source.capture_status = 'failed';
+    source.missing_fields = ['content'];
+    source.capture_error = String(error?.message || error || 'Canonical X Article capture failed').slice(0, 1000);
+    return refreshNestedEvidence(data);
 }

@@ -1,6 +1,10 @@
 import { crawlerService } from './crawlerService/browser.js';
 import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
-import { scrapeTwitterPost } from './crawlerService/twitterCrawler.js';
+import {
+    applyNestedTwitterArticleCapture,
+    recordNestedTwitterArticleFailure,
+    scrapeTwitterPost
+} from './crawlerService/twitterCrawler.js';
 import { supabase } from '../supabaseClient.js';
 import pLimit from 'p-limit';
 
@@ -148,6 +152,23 @@ class Orchestrator {
                 console.log('[Orchestrator] Using specialized Twitter Crawler...');
                 try {
                     let data = await scrapeTwitterPost(url);
+
+                    // A TweetResult can expose only an Article card/title. When
+                    // that happens, capture the canonical Article page as a
+                    // bounded second step instead of treating the teaser as a
+                    // complete source. This is intentionally not a general
+                    // outbound-link crawl.
+                    const envelope = Array.isArray(data.full_json) ? data.full_json[0] : data.full_json;
+                    const pendingArticles = (envelope?.nested_longform_sources || [])
+                        .filter(source => source.type === 'x_article' && source.capture_status !== 'captured');
+                    for (const article of pendingArticles) {
+                        const articleCapture = await crawlerService.crawlPost(article.canonical_url, 'twitter_article');
+                        if (articleCapture.success) {
+                            data = applyNestedTwitterArticleCapture(data, article.canonical_url, articleCapture);
+                        } else {
+                            data = recordNestedTwitterArticleFailure(data, article.canonical_url, articleCapture.error);
+                        }
+                    }
 
                     if (data.images && data.images.length > 0) {
                         data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));

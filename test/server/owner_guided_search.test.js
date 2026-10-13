@@ -25,6 +25,7 @@ test('owner-guided document separates raw evidence, accepted knowledge, and pend
     assert.match(document.formal_text, /先測試口型同步/);
     assert.match(document.formal_text, /產品改版/);
     assert.match(document.candidate_text, /候選 Topic/);
+    assert.equal(document.retrieval_text, '');
     assert.deepEqual(document.formal_reasons, ['post_learning_note', 'topic_assignment', 'topic_knowledge', 'project_reference']);
     assert.deepEqual(document.candidate_reasons, ['candidate_topic_knowledge']);
 });
@@ -68,6 +69,7 @@ test('loads proposals through review packets instead of a nonexistent proposal s
                 return rows([{ id: 'packet-1' }]);
             }
             if (table === 'owner_review_proposals') return rows([{ proposal_type: 'topic_assignment', status: 'pending', payload: { primary_topic: 'UI UX' } }], true);
+            if (table === 'owner_post_retrieval_terms') return rows([{ term: '會說話的照片', term_kind: 'memory_cue', visibility: 'active' }]);
             return rows([]);
         }
     };
@@ -76,6 +78,17 @@ test('loads proposals through review packets instead of a nonexistent proposal s
     assert.deepEqual(queriedPackets, ['owner_review_packets']);
     assert.deepEqual(proposalPacketIds, ['packet-1']);
     assert.equal(result.proposals[0].proposal_type, 'topic_assignment');
+    assert.equal(result.retrievalTerms[0].term, '會說話的照片');
+});
+
+test('automatic retrieval terms are searchable but never become accepted knowledge', () => {
+    const document = buildOwnerSearchDocument({
+        post, sourceRevision: { id: 'source-1', capture_quality: 'complete', source_payload: {} },
+        retrievalTerms: [{ term: '記得那個照片開口說話', term_kind: 'memory_cue', visibility: 'active' }]
+    });
+    assert.match(document.retrieval_text, /記得那個照片開口說話/);
+    assert.deepEqual(document.retrieval_reasons, ['retrieval_memory_cue']);
+    assert.equal(document.formal_text, '');
 });
 
 test('search HTTP route exposes candidate inclusion only when explicitly requested', async () => {

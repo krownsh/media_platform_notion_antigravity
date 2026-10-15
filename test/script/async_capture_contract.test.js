@@ -10,6 +10,7 @@ const deployment = fs.readFileSync(path.join(projectRoot, 'database', 'deploymen
 const serverSource = fs.readFileSync(path.join(projectRoot, 'server', 'index.js'), 'utf8');
 const routeSource = fs.readFileSync(path.join(projectRoot, 'server', 'routes', 'captureRoutes.js'), 'utf8');
 const processingSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'captureProcessingService.js'), 'utf8');
+const processResponseSource = fs.readFileSync(path.join(projectRoot, 'server', 'services', 'processResponseService.js'), 'utf8');
 
 test('capture intake is durable, idempotent, and service-role-only', () => {
     assert.match(deployment, /create table if not exists public\.collection_capture_requests/);
@@ -29,10 +30,14 @@ test('worker claim is atomic and supports expired-lease recovery', () => {
     assert.match(deployment, /status in \('accepted', 'extracting', 'finalized', 'degraded', 'failed'\)/);
 });
 
-test('capture API acknowledges before crawler work and keeps semantics out of the intake path', () => {
-    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth, createUrlCaptureHandler\(\)\)/);
+test('browser intake acknowledges immediately while the established automation endpoint waits only on the same durable queue', () => {
+    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth, createProcessUrlHandler\(\)\)/);
+    assert.match(routeSource, /router\.post\(['"]\/['"], createUrlCaptureHandler\(\{ enqueue \}\)\)/);
     assert.match(routeSource, /return res\.status\(202\)\.json/);
-    assert.doesNotMatch(routeSource, /orchestrator|aiService|processUrl/);
+    assert.match(processResponseSource, /enqueueCaptureRequest/);
+    assert.match(processResponseSource, /getCaptureRequest/);
+    assert.doesNotMatch(processResponseSource, /orchestrator|aiService|analyzeCapturedUrl|updateWorkflowAfterCapture/);
+    assert.doesNotMatch(routeSource, /orchestrator|aiService/);
     assert.doesNotMatch(processingSource, /analyzeCapturedUrl|updateWorkflowAfterCapture/);
 });
 

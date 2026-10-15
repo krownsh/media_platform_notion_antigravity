@@ -29,7 +29,7 @@ test('data acquisition is crawler-only', () => {
 
 test('the capture worker is the only runtime caller of the crawler orchestrator', () => {
     assert.doesNotMatch(serverSource, /orchestrator\.processUrl\(url\)/);
-    assert.match(serverSource, /app\.post\('\/api\/process', requireApiAuth, createUrlCaptureHandler\(\)\)/);
+    assert.match(serverSource, /app\.post\('\/api\/process', requireApiAuth, createProcessUrlHandler\(\)\)/);
 });
 
 test('post finalization is tenant-aware and routed through the atomic database RPC', () => {

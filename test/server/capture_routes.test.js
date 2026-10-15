@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
-import { createCaptureRouter, createUrlCaptureHandler } from '../../server/routes/captureRoutes.js';
+import { createCaptureRouter, createProcessUrlHandler } from '../../server/routes/captureRoutes.js';
 
 async function withServer(dependencies, run) {
     const app = express();
@@ -33,7 +33,7 @@ async function withProcessServer(dependencies, run) {
         req.auth = { type: 'api_key', userId: '22222222-2222-4222-8222-222222222222' };
         next();
     });
-    app.post('/api/process', createUrlCaptureHandler(dependencies));
+    app.post('/api/process', createProcessUrlHandler(dependencies));
 
     const server = app.listen(0, '127.0.0.1');
     await new Promise((resolve, reject) => {
@@ -49,15 +49,21 @@ async function withProcessServer(dependencies, run) {
     }
 }
 
-test('POST /api/process enters the current durable request queue', async () => {
+test('POST /api/process returns the established terminal result over the current queue', async () => {
     let input;
     await withProcessServer({
-        enqueue: async (value) => {
+        processUrl: async (value) => {
             input = value;
             return {
-                id: '11111111-1111-4111-8111-111111111111',
-                status: 'accepted',
-                correlation_id: value.correlationId
+                source: 'capture-worker',
+                status: 'finalized',
+                capture_id: '11111111-1111-4111-8111-111111111111',
+                correlation_id: value.correlationId,
+                data: {
+                    dbId: 'post-1',
+                    originalUrl: value.url,
+                    original_url: value.url
+                }
             };
         }
     }, async (baseUrl) => {
@@ -72,9 +78,9 @@ test('POST /api/process enters the current durable request queue', async () => {
         });
         const body = await response.json();
 
-        assert.equal(response.status, 202);
+        assert.equal(response.status, 200);
         assert.equal(body.capture_id, '11111111-1111-4111-8111-111111111111');
-        assert.equal(body.status, 'accepted');
+        assert.equal(body.data.originalUrl, 'https://example.com/post');
         assert.equal(input.requestMeta.intake_route, '/api/process');
         assert.equal(input.idempotencyKey, 'process-route-idempotency');
     });

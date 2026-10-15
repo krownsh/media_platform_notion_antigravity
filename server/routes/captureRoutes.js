@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import express from 'express';
 import { enqueueCaptureRequest, getCaptureRequest, listCaptureRequests } from '../services/captureRequestService.js';
 import { decodeUploadFilename, MAX_IMAGE_BYTES, uploadAndEnqueueImageCapture } from '../services/imageCaptureService.js';
+import { processUrlAndWaitForCapture } from '../services/processResponseService.js';
 
 function normalizeHeaderToken(value, fallback) {
     return typeof value === 'string' && /^[a-zA-Z0-9._:-]{1,128}$/.test(value)
@@ -20,39 +21,68 @@ function respondAccepted(res, capture) {
     });
 }
 
-// POST /api/process is the established public URL intake contract. It uses
-// the same durable request intake as the browser route; it does not restore
-// the former blocking workflow, outbox, or AI pipeline.
+function buildUrlCaptureInput(req, intakeRoute) {
+    const correlationId = normalizeHeaderToken(req.header('x-correlation-id'), randomUUID());
+    const idempotencyKey = normalizeHeaderToken(req.header('x-idempotency-key'), randomUUID());
+    const requestedPriority = Number(req.body?.priority ?? 50);
+    const priority = Number.isInteger(requestedPriority) && requestedPriority >= 0 && requestedPriority <= 100
+        ? requestedPriority
+        : 50;
+
+    return {
+        userId: req.auth?.userId,
+        url: req.body?.url,
+        correlationId,
+        idempotencyKey,
+        priority,
+        requestMeta: {
+            auth_type: req.auth?.type,
+            client: req.header('user-agent')?.slice(0, 512) || null,
+            intake_route: intakeRoute
+        }
+    };
+}
+
+// The browser UI submits to /api/captures and receives the durable request
+// identity immediately, so it can render capture progress without blocking.
 export function createUrlCaptureHandler({ enqueue = enqueueCaptureRequest } = {}) {
     return async (req, res) => {
-        const userId = req.auth?.userId;
-        if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
-
-        const correlationId = normalizeHeaderToken(req.header('x-correlation-id'), randomUUID());
-        const idempotencyKey = normalizeHeaderToken(req.header('x-idempotency-key'), randomUUID());
-        const requestedPriority = Number(req.body?.priority ?? 50);
-        const priority = Number.isInteger(requestedPriority) && requestedPriority >= 0 && requestedPriority <= 100
-            ? requestedPriority
-            : 50;
+        if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized user scope' });
 
         try {
-            const capture = await enqueue({
-                userId,
-                url: req.body?.url,
-                correlationId,
-                idempotencyKey,
-                priority,
-                requestMeta: {
-                    auth_type: req.auth.type,
-                    client: req.header('user-agent')?.slice(0, 512) || null,
-                    intake_route: req.baseUrl || req.path
-                }
-            });
+            const input = buildUrlCaptureInput(req, '/api/captures');
+            const capture = await enqueue(input);
 
             return respondAccepted(res, capture);
         } catch (error) {
             const validationError = /^url must /.test(error.message);
             return res.status(validationError ? 400 : 500).json({ error: error.message });
+        }
+    };
+}
+
+// /api/process is the established automation endpoint. Its client requires a
+// terminal result, but it still uses the exact same current capture queue.
+export function createProcessUrlHandler({ processUrl = processUrlAndWaitForCapture } = {}) {
+    return async (req, res) => {
+        if (!req.auth?.userId) return res.status(401).json({ error: 'Unauthorized user scope' });
+
+        const input = buildUrlCaptureInput(req, '/api/process');
+        res.set('x-correlation-id', input.correlationId);
+
+        try {
+            const result = await processUrl({
+                ...input,
+                timeoutMs: process.env.PROCESS_RESPONSE_WAIT_MS
+            });
+            return res.status(result.status === 'degraded' ? 202 : 200).json(result);
+        } catch (error) {
+            const validationError = /^url must /.test(error.message);
+            return res.status(validationError ? 400 : error.code === 'CAPTURE_WAIT_TIMEOUT' ? 504 : 500).json({
+                error: error.message,
+                code: error.code || 'PROCESS_CAPTURE_FAILED',
+                correlation_id: input.correlationId
+            });
         }
     };
 }

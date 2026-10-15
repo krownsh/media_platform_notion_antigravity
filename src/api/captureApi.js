@@ -13,7 +13,7 @@ async function readApiResponse(response, fallbackMessage) {
 }
 
 export async function submitUrlCapture(url) {
-    const response = await authenticatedFetch(`${API_BASE_URL}/api/process`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/captures`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

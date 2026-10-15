@@ -13,7 +13,7 @@ const twitterReference = fs.readFileSync(path.join(projectRoot, 'server', 'fixtu
 
 test('only capture endpoints accept the mapped n8n key', () => {
     assert.match(serverSource, /authorization\.match\(\/\^Bearer\\s\+\(\.\+\)\$\/i\)/);
-    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth, createUrlCaptureHandler\(\)\)/);
+    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth, createProcessUrlHandler\(\)\)/);
 
     for (const route of ['/api/posts', '/api/stats']) {
         assert.match(serverSource, new RegExp(`app\\.use\\(['"]${route.replaceAll('/', '\\/')}['"], requireSupabaseJwt\\)`));

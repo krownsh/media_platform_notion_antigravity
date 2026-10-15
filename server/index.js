@@ -14,7 +14,7 @@ import express from 'express';
 import cors from 'cors';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
-import { captureRouter, createUrlCaptureHandler } from './routes/captureRoutes.js';
+import { captureRouter, createProcessUrlHandler } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { reviewRouter } from './routes/reviewRoutes.js';
@@ -190,10 +190,10 @@ app.get('/', (req, res) => {
     res.send('Social Media Platform Backend is running');
 });
 
-// POST /api/process is the established URL intake endpoint. It and the
-// browser's existing /api/captures route call the exact same durable queue;
-// there is no second workflow behind either path.
-app.post('/api/process', requireApiAuth, createUrlCaptureHandler());
+// The established automation endpoint retains its completed-result contract
+// over the current durable capture queue. The browser uses /api/captures for
+// non-blocking progress UI; neither route starts a second workflow.
+app.post('/api/process', requireApiAuth, createProcessUrlHandler());
 app.use('/api/captures', requireApiAuth, captureRouter);
 app.use('/api/posts', requireSupabaseJwt);
 app.use('/api/stats', requireSupabaseJwt);

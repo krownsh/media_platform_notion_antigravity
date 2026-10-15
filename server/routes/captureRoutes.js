@@ -9,37 +9,22 @@ function normalizeHeaderToken(value, fallback) {
         : fallback;
 }
 
-export function createCaptureRouter({
-    enqueue = enqueueCaptureRequest,
-    enqueueImage = uploadAndEnqueueImageCapture,
-    lookup = getCaptureRequest,
-    list = listCaptureRequests
-} = {}) {
-    const router = express.Router();
-
-    const respondAccepted = (res, capture) => {
-        res.set('x-correlation-id', capture.correlation_id);
-        return res.status(202).json({
-            capture_id: capture.id,
-            input_type: capture.input_type || 'url',
-            status: capture.status,
-            correlation_id: capture.correlation_id,
-            status_url: `/api/captures/${capture.id}`
-        });
-    };
-
-    router.get('/', async (req, res) => {
-        const userId = req.auth?.userId;
-        if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
-        try {
-            const captures = await list(userId, { limit: req.query.limit });
-            return res.json({ captures });
-        } catch (error) {
-            return res.status(500).json({ error: error.message });
-        }
+function respondAccepted(res, capture) {
+    res.set('x-correlation-id', capture.correlation_id);
+    return res.status(202).json({
+        capture_id: capture.id,
+        input_type: capture.input_type || 'url',
+        status: capture.status,
+        correlation_id: capture.correlation_id,
+        status_url: `/api/captures/${capture.id}`
     });
+}
 
-    router.post('/', async (req, res) => {
+// POST /api/process is the established public URL intake contract. It uses
+// the same durable request intake as the browser route; it does not restore
+// the former blocking workflow, outbox, or AI pipeline.
+export function createUrlCaptureHandler({ enqueue = enqueueCaptureRequest } = {}) {
+    return async (req, res) => {
         const userId = req.auth?.userId;
         if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
 
@@ -59,7 +44,8 @@ export function createCaptureRouter({
                 priority,
                 requestMeta: {
                     auth_type: req.auth.type,
-                    client: req.header('user-agent')?.slice(0, 512) || null
+                    client: req.header('user-agent')?.slice(0, 512) || null,
+                    intake_route: req.baseUrl || req.path
                 }
             });
 
@@ -68,7 +54,29 @@ export function createCaptureRouter({
             const validationError = /^url must /.test(error.message);
             return res.status(validationError ? 400 : 500).json({ error: error.message });
         }
+    };
+}
+
+export function createCaptureRouter({
+    enqueue = enqueueCaptureRequest,
+    enqueueImage = uploadAndEnqueueImageCapture,
+    lookup = getCaptureRequest,
+    list = listCaptureRequests
+} = {}) {
+    const router = express.Router();
+
+    router.get('/', async (req, res) => {
+        const userId = req.auth?.userId;
+        if (!userId) return res.status(401).json({ error: 'Unauthorized user scope' });
+        try {
+            const captures = await list(userId, { limit: req.query.limit });
+            return res.json({ captures });
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
     });
+
+    router.post('/', createUrlCaptureHandler({ enqueue }));
 
     router.post('/images', express.raw({ type: 'image/*', limit: MAX_IMAGE_BYTES }), async (req, res) => {
         const userId = req.auth?.userId;

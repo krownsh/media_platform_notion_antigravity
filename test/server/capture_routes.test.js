@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
-import { createCaptureRouter } from '../../server/routes/captureRoutes.js';
+import { createCaptureRouter, createUrlCaptureHandler } from '../../server/routes/captureRoutes.js';
 
 async function withServer(dependencies, run) {
     const app = express();
@@ -25,6 +25,60 @@ async function withServer(dependencies, run) {
         await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     }
 }
+
+async function withProcessServer(dependencies, run) {
+    const app = express();
+    app.use(express.json());
+    app.use((req, _res, next) => {
+        req.auth = { type: 'api_key', userId: '22222222-2222-4222-8222-222222222222' };
+        next();
+    });
+    app.post('/api/process', createUrlCaptureHandler(dependencies));
+
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise((resolve, reject) => {
+        server.once('listening', resolve);
+        server.once('error', reject);
+    });
+
+    try {
+        const { port } = server.address();
+        await run(`http://127.0.0.1:${port}`);
+    } finally {
+        await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
+}
+
+test('POST /api/process enters the current durable request queue', async () => {
+    let input;
+    await withProcessServer({
+        enqueue: async (value) => {
+            input = value;
+            return {
+                id: '11111111-1111-4111-8111-111111111111',
+                status: 'accepted',
+                correlation_id: value.correlationId
+            };
+        }
+    }, async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/api/process`, {
+            method: 'POST',
+            headers: {
+                'content-type': 'application/json',
+                'x-correlation-id': 'process-route-correlation',
+                'x-idempotency-key': 'process-route-idempotency'
+            },
+            body: JSON.stringify({ url: 'https://example.com/post', priority: 90 })
+        });
+        const body = await response.json();
+
+        assert.equal(response.status, 202);
+        assert.equal(body.capture_id, '11111111-1111-4111-8111-111111111111');
+        assert.equal(body.status, 'accepted');
+        assert.equal(input.requestMeta.intake_route, '/api/process');
+        assert.equal(input.idempotencyKey, 'process-route-idempotency');
+    });
+});
 
 test('POST /api/captures returns 202 with durable request identity', async () => {
     let input;

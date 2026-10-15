@@ -32,7 +32,7 @@ npm start
 npm run worker:capture
 ```
 
-`POST /api/captures` persists an accepted request and returns HTTP 202. The
+`POST /api/process` persists an accepted URL request and returns HTTP 202. The
 worker extracts and finalizes the source; Hermes consumes the resulting outbox
 event asynchronously, so AI latency never blocks intake.
 

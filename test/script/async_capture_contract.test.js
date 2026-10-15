@@ -30,7 +30,7 @@ test('worker claim is atomic and supports expired-lease recovery', () => {
 });
 
 test('capture API acknowledges before crawler work and keeps semantics out of the intake path', () => {
-    assert.match(serverSource, /app\.use\(['"]\/api\/captures['"], requireApiAuth, captureRouter\)/);
+    assert.match(serverSource, /app\.post\(['"]\/api\/process['"], requireApiAuth, createUrlCaptureHandler\(\)\)/);
     assert.match(routeSource, /return res\.status\(202\)\.json/);
     assert.doesNotMatch(routeSource, /orchestrator|aiService|processUrl/);
     assert.doesNotMatch(processingSource, /analyzeCapturedUrl|updateWorkflowAfterCapture/);

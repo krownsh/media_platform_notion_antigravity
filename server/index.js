@@ -14,7 +14,7 @@ import express from 'express';
 import cors from 'cors';
 import { supabase, isSupabaseConfigured as hasSupabaseServiceConfig } from './supabaseClient.js';
 import * as statsService from './services/statsService.js';
-import { captureRouter } from './routes/captureRoutes.js';
+import { captureRouter, createUrlCaptureHandler } from './routes/captureRoutes.js';
 import { resolveStoredMediaUrls } from './services/mediaUrlService.js';
 import { searchRouter } from './routes/searchRoutes.js';
 import { reviewRouter } from './routes/reviewRoutes.js';
@@ -92,7 +92,7 @@ async function getSupabaseUserFromRequest(req) {
 }
 
 // Interactive application routes deliberately accept only a user JWT. The
-// mapped capture key is scoped to /api/captures and must not become a general
+// mapped capture key is scoped to source intake and must not become a general
 // credential for browsing, knowledge decisions, or data reads.
 async function requireSupabaseJwt(req, res, next) {
     const user = await getSupabaseUserFromRequest(req);
@@ -190,8 +190,10 @@ app.get('/', (req, res) => {
     res.send('Social Media Platform Backend is running');
 });
 
-// Capture endpoints may use a mapped n8n key. Every interactive route requires
-// a real Supabase user JWT.
+// POST /api/process is the established URL intake endpoint. It and the
+// browser's existing /api/captures route call the exact same durable queue;
+// there is no second workflow behind either path.
+app.post('/api/process', requireApiAuth, createUrlCaptureHandler());
 app.use('/api/captures', requireApiAuth, captureRouter);
 app.use('/api/posts', requireSupabaseJwt);
 app.use('/api/stats', requireSupabaseJwt);
@@ -547,7 +549,7 @@ app.use('/api', (req, res) => {
         method: req.method,
         path: req.originalUrl,
         hint: req.originalUrl === '/api/post'
-            ? 'Use POST /api/captures to submit a source, or GET /api/posts to list posts.'
+            ? 'Use POST /api/process to submit a source, or GET /api/posts to list posts.'
             : undefined
     });
 });

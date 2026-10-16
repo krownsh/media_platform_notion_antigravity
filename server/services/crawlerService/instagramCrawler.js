@@ -73,7 +73,7 @@ function isPostMedia(image) {
         || (Number(image?.width) >= 320 && Number(image?.height) >= 320);
 }
 
-export function buildInstagramCapture({ originalUrl, bodyText, metaDescription, ogImage, images = [], postedAt = null }) {
+export function buildInstagramCapture({ originalUrl, canonicalUrl = originalUrl, bodyText, metaDescription, ogImage, images = [], postedAt = null }) {
     const postImages = uniqueMedia(images.filter(isPostMedia).map(image => ({
             url: image.url,
             alt_text: text(image.alt) || 'Instagram 媒體',
@@ -116,6 +116,7 @@ export function buildInstagramCapture({ originalUrl, bodyText, metaDescription, 
                 ]
             },
             instagram_public_evidence: {
+                canonical_url: canonicalUrl,
                 meta_description: text(metaDescription) || null,
                 login_wall_present: accessLimited,
                 captured_media_count: usableImages.length,
@@ -168,6 +169,7 @@ async function collectCarouselMedia(page) {
 }
 
 export async function scrapeInstagramPost(url) {
+    const requestedUrl = url;
     const canonicalUrl = normalizeInstagramUrl(url);
     const browser = await puppeteer.launch(await browserOptions());
     const page = await browser.newPage();
@@ -176,7 +178,10 @@ export async function scrapeInstagramPost(url) {
         await page.setViewport({ width: 430, height: 932, isMobile: true, hasTouch: true });
         await page.goto(canonicalUrl, { waitUntil: 'networkidle2', timeout: 60000 });
         const evidence = await collectCarouselMedia(page);
-        const capture = buildInstagramCapture({ originalUrl: canonicalUrl, ...evidence });
+        // The durable post identity remains the exact URL submitted by the
+        // Owner. Canonicalization is provenance only: replacing it here would
+        // create a duplicate beside a legacy request that retained its query.
+        const capture = buildInstagramCapture({ originalUrl: requestedUrl, canonicalUrl, ...evidence });
         if (capture.full_json.evidence_bundle.capture_quality === 'partial') {
             const error = new Error('Instagram public page did not expose usable post text or media; login wall was not stored as post content');
             error.code = 'INSTAGRAM_SOURCE_ACCESS_LIMITED';

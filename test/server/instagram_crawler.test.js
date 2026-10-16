@@ -14,6 +14,18 @@ test('Instagram URLs are canonicalized before public capture', () => {
     );
 });
 
+test('canonical URL is provenance and never replaces the submitted post identity', () => {
+    const capture = buildInstagramCapture({
+        originalUrl: 'https://www.instagram.com/p/ABC123/?img_index=7',
+        canonicalUrl: 'https://www.instagram.com/p/ABC123/',
+        bodyText: '帳號A\n公開正文\n查看全部12則留言',
+        metaDescription: '1,234 likes - 帳號A 於 October 16, 2026',
+        images: [{ url: 'https://cdninstagram.com/a.jpg', alt: 'Photo by 帳號A on October 16, 2026.', width: 1080, height: 1350 }]
+    });
+    assert.equal(capture.original_url, 'https://www.instagram.com/p/ABC123/?img_index=7');
+    assert.equal(capture.full_json.instagram_public_evidence.canonical_url, 'https://www.instagram.com/p/ABC123/');
+});
+
 test('a login wall is never treated as post content', () => {
     const body = '登入\n註冊 Instagram 帳號\n繼續操作即表示你同意 Instagram 的《使用條款》和《隱私政策》。';
     assert.equal(isInstagramLoginWall(body), true);

@@ -58,7 +58,8 @@ export function buildImageCapture(request) {
 
 export function captureQualityForData(data) {
     const evidence = Array.isArray(data?.full_json) ? data.full_json[0]?.evidence_bundle : data?.full_json?.evidence_bundle;
-    return evidence?.status === 'nested_longform_partial' || evidence?.status === 'nested_longform_failed'
+    return evidence?.capture_quality === 'partial'
+        || evidence?.status === 'nested_longform_partial' || evidence?.status === 'nested_longform_failed'
         ? 'partial'
         : 'complete';
 }

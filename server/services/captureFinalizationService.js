@@ -78,6 +78,9 @@ export async function finalizeCapture(
                 return {
                     url: media.url,
                     order: media.order ?? index,
+                    alt_text: media.alt_text || null,
+                    width: media.width ?? null,
+                    height: media.height ?? null,
                     storage_bucket: media.storage_bucket || null,
                     storage_path: media.storage_path || null,
                     content_type: media.content_type || null,

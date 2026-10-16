@@ -1,5 +1,6 @@
 import { crawlerService } from './crawlerService/browser.js';
 import { scrapeThreadsPost } from './crawlerService/threadsCrawler.js';
+import { scrapeInstagramPost } from './crawlerService/instagramCrawler.js';
 import {
     applyNestedTwitterArticleCapture,
     recordNestedTwitterArticleFailure,
@@ -86,7 +87,11 @@ class Orchestrator {
         
         // Handle post images array
         if (data.images && data.images.length > 0) {
-            data.images = await Promise.all(data.images.map(imgUrl => this.uploadImageToBucket(imgUrl)));
+            data.images = await Promise.all(data.images.map(async media => {
+                const originalUrl = typeof media === 'string' ? media : media?.url;
+                const storedUrl = await this.uploadImageToBucket(originalUrl);
+                return typeof media === 'string' ? storedUrl : { ...media, url: storedUrl };
+            }));
             // Sync with full_json
             if (data.full_json && typeof data.full_json === 'object') {
                 if (Array.isArray(data.full_json) && data.full_json[0]) {
@@ -144,6 +149,17 @@ class Orchestrator {
                     return { source: 'crawler', data };
                 } catch (error) {
                     throw new Error(`Threads Crawler failed: ${error.message}`);
+                }
+            }
+
+            if (platform === 'instagram') {
+                console.log('[Orchestrator] Using specialized Instagram Crawler...');
+                try {
+                    const data = await scrapeInstagramPost(url);
+                    await this.processGenericImages(data);
+                    return { source: 'crawler', data };
+                } catch (error) {
+                    throw new Error(`Instagram Crawler failed: ${error.message}`);
                 }
             }
 

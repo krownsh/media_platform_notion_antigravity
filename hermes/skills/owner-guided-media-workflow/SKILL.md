@@ -215,6 +215,9 @@ Media Knowledge/Posts/Inbox/YYYY-MM-DD｜暫定：<source-title>｜<post-id-8>.m
 
 # after the Owner accepts the primary folder and semantic title
 Media Knowledge/Posts/<accepted-primary-folder>/YYYY-MM-DD｜<accepted-semantic-title>｜<post-id-8>.md
+
+# publishable content draft ready for Owner review and publication
+Media Knowledge/Drafts/YYYY-MM-DD｜<accepted-semantic-title>｜<platform>｜<post-id-8>.md
 ```
 
 The capture date supplies `YYYY-MM-DD`; a source title may be used only for
@@ -225,6 +228,8 @@ has one independent, continuously appendable note at
 and `Topic 討論歷程` sections and links every entry back using the stable post
 id and relative post path. Project aggregate notes, when local delivery is
 enabled, live at `Media Knowledge/Projects/<accepted-project-title>.md`.
+Content rewrite drafts approved by the Owner for distribution live at
+`Media Knowledge/Drafts/`; each links back to its source post case file.
 
 ## 3. Keep the three knowledge layers separate
 
@@ -336,6 +341,14 @@ Before deployment, show target, branch/revision, dirty-worktree impact,
 migrations, backup/readback proof, services to restart, smoke test, and
 forward recovery. Do not push, migrate, restart, overwrite, or delete without
 direct Owner approval.
+
+### Content rewrites and publishable drafts
+
+When the Owner explicitly requests rewriting a post (e.g. for Threads, X, or newsletters), follow the **Dual-Storage Contract**:
+1. **Source preservation (Post Case File):** Keep the full rewrite context, rationale, and draft in the post case file under `## 你的自由筆記` to guarantee full provenance.
+2. **Publishable Draft (`Media Knowledge/Drafts/`):** Persist a clean, standalone Markdown draft free of system logs and AI clichés (using `humanizer-zh` where applicable) directly in `Media Knowledge/Drafts/`.
+3. **Draft frontmatter:** Each draft must include `schema_version: 1`, `note_kind: media-publishable-draft`, `source_post_id`, `source_case_file` (wikilink to the post case file), `target_platform`, `publish_status: draft_ready` (or `published`), and `created_at`.
+4. **Draft lifecycle:** A draft is never created automatically without explicit Owner intent. Published drafts may update `publish_status: published` or archive to `Media Knowledge/Drafts/Published/`.
 
 ## 6. Library retrieval
 

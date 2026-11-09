@@ -1,5 +1,5 @@
 import express from 'express';
-import { loadOwnerSearchInputs } from '../services/ownerSearchService.js';
+import { loadOwnerLibraryPostDetail } from '../services/ownerSearchService.js';
 import { createOwnerLibraryFolder, setOwnerLibraryFolder } from '../services/ownerLibraryOrganizationService.js';
 
 function first(value) {
@@ -14,7 +14,7 @@ function statusFor(error) {
 }
 
 export function createOwnerLibraryRouter({
-    loadPost = loadOwnerSearchInputs,
+    loadPost = loadOwnerLibraryPostDetail,
     createFolder = createOwnerLibraryFolder,
     setFolder = setOwnerLibraryFolder
 } = {}) {

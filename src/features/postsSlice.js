@@ -5,7 +5,12 @@ const initialState = {
     collections: [], // List of collections (folders)
     loading: false,
     refreshing: false, // Background refresh must never replace a populated page with a skeleton.
+    loadingMore: false,
     initialized: false, // Track if initial fetch has completed
+    activeListKey: null,
+    hasMore: false,
+    nextOffset: 0,
+    total: 0,
     analyzing: false, // Specific loading state for AI analysis/creation
     error: null,
     currentPost: null, // Currently viewed/processing post
@@ -36,22 +41,34 @@ const postsSlice = createSlice({
             state.error = action.payload;
             // Status update for tasks will be handled by updateTaskStatus or removeTask
         },
-        // Fetch all posts and collections
-        fetchPosts(state) {
-            state.loading = !state.initialized;
-            state.refreshing = state.initialized;
+        // Fetch one lightweight page of posts and the folder metadata.
+        fetchPosts(state, action) {
+            const append = Boolean(action.payload?.append);
+            state.loadingMore = append;
+            state.loading = !append && !state.initialized;
+            state.refreshing = !append && state.initialized;
             state.error = null;
         },
         fetchPostsSuccess(state, action) {
+            const { posts = [], collections = [], page = {}, append = false, listKey = 'all' } = action.payload;
             state.loading = false;
             state.refreshing = false;
+            state.loadingMore = false;
             state.initialized = true;
-            state.items = action.payload.posts;
-            state.collections = action.payload.collections;
+            const sameList = state.activeListKey === listKey;
+            state.activeListKey = listKey;
+            state.items = append && sameList
+                ? [...state.items, ...posts.filter((post) => !state.items.some((item) => item.id === post.id || item.dbId === post.dbId))]
+                : posts;
+            state.collections = collections;
+            state.hasMore = Boolean(page.hasMore);
+            state.nextOffset = Number.isInteger(page.nextOffset) ? page.nextOffset : state.items.length;
+            state.total = Number.isInteger(page.total) ? page.total : state.items.length;
         },
         fetchPostsFailure(state, action) {
             state.loading = false;
             state.refreshing = false;
+            state.loadingMore = false;
             state.initialized = true; // Mark as initialized even on error so we don't loop
             state.error = action.payload;
         },

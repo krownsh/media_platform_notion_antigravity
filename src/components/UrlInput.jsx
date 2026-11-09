@@ -1,169 +1,114 @@
 import React, { useRef, useState } from 'react';
-import { Link2, ArrowRight, Loader2, ImagePlus, Upload } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
-import { addPostByUrl, addTask, monitorCapture, updateTaskStatus } from '../features/postsSlice';
+import { ArrowRight, ImagePlus, Link2, Loader2, Upload } from 'lucide-react';
 import { motion as Motion } from 'framer-motion';
-import { addNotification } from '../features/uiSlice';
+import { useDispatch, useSelector } from 'react-redux';
 import { submitImageCapture } from '../api/captureApi';
+import { addPostByUrl, addTask, monitorCapture, updateTaskStatus } from '../features/postsSlice';
+import { addNotification } from '../features/uiSlice';
+
+const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const maxFileSize = 15 * 1024 * 1024;
 
 const UrlInput = () => {
     const [url, setUrl] = useState('');
     const [mode, setMode] = useState('url');
     const [imageSubmitting, setImageSubmitting] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef(null);
     const dispatch = useDispatch();
     const { tasks } = useSelector((state) => state.posts);
     const isQueueFull = tasks.filter((task) => task.status !== 'failed').length >= 10;
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (url.trim()) {
-            if (isQueueFull) {
-                dispatch(addNotification({ message: '佇列任務過多，請稍後再試', type: 'error' }));
-                return;
-            }
+    const notify = (message, type = 'error') => dispatch(addNotification({ message, type }));
 
-            // Check for duplicate URLs in active tasks
-            if (tasks.some(t => t.url === url.trim())) {
-                dispatch(addNotification({ message: '此網址正在處理中', type: 'info' }));
-                return;
-            }
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        const value = url.trim();
+        if (!value) return;
+        if (isQueueFull) return notify('佇列任務過多，請稍後再試');
+        if (tasks.some((task) => task.url === value)) return notify('此網址正在處理中', 'info');
 
-            const taskId = crypto.randomUUID();
-            dispatch(addTask({ taskId, inputType: 'url', url: url.trim(), label: url.trim() }));
-            dispatch(addPostByUrl({ url: url.trim(), taskId }));
-            setUrl('');
-        }
+        const taskId = crypto.randomUUID();
+        dispatch(addTask({ taskId, inputType: 'url', url: value, label: value }));
+        dispatch(addPostByUrl({ url: value, taskId }));
+        setUrl('');
     };
 
-    const handleImageSelected = async (event) => {
-        const file = event.target.files?.[0];
-        event.target.value = '';
+    const submitFile = async (file) => {
         if (!file) return;
-        if (isQueueFull) {
-            dispatch(addNotification({ message: '佇列任務過多，請稍後再試', type: 'error' }));
-            return;
-        }
-
-        const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-        if (!allowedTypes.has(file.type)) {
-            dispatch(addNotification({ message: '僅支援 JPEG、PNG、WebP 或 GIF 圖片', type: 'error' }));
-            return;
-        }
-        if (file.size > 15 * 1024 * 1024) {
-            dispatch(addNotification({ message: '圖片大小不可超過 15 MB', type: 'error' }));
-            return;
-        }
+        if (isQueueFull) return notify('佇列任務過多，請稍後再試');
+        if (!allowedTypes.has(file.type)) return notify('僅支援 JPEG、PNG、WebP 或 GIF 圖片');
+        if (file.size > maxFileSize) return notify('圖片大小不可超過 15 MB');
 
         const taskId = crypto.randomUUID();
         dispatch(addTask({ taskId, inputType: 'image', label: file.name }));
         dispatch(updateTaskStatus({ taskId, status: 'uploading' }));
         setImageSubmitting(true);
-
         try {
             const capture = await submitImageCapture(file);
             dispatch(updateTaskStatus({ taskId, status: 'accepted', captureId: capture.capture_id }));
             dispatch(monitorCapture({ captureId: capture.capture_id, taskId }));
         } catch (error) {
             dispatch(updateTaskStatus({ taskId, status: 'failed' }));
-            dispatch(addNotification({ message: `圖片上傳失敗：${error.message}`, type: 'error' }));
+            notify(`圖片上傳失敗：${error.message}`);
         } finally {
             setImageSubmitting(false);
         }
     };
 
-    return (
-        <Motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-4xl mb-8"
-        >
-            <div className="flow-surface overflow-hidden shadow-soft-card">
-                <div className="flex flex-col items-stretch gap-3 border-b notion-whisper-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                    <div>
-                        <p className="text-sm font-semibold text-[rgba(0,0,0,0.95)]">新增來源</p>
-                        <p className="mt-0.5 text-xs text-[#615d59]">連結與圖片會安全地進入你的私人工作區。</p>
-                    </div>
-                    <div className="inline-flex self-start rounded-lg bg-black/[0.04] p-1">
-                    <button
-                        type="button"
-                        onClick={() => setMode('url')}
-                        aria-pressed={mode === 'url'}
-                        className={`flex min-h-9 items-center gap-2 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold transition-[transform,background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${mode === 'url' ? 'bg-white text-[rgba(0,0,0,0.95)] shadow-[0_1px_2px_rgba(23,31,26,0.08)]' : 'text-[#615d59] hover:text-[rgba(0,0,0,0.95)]'}`}
-                    >
-                        <Link2 size={16} /> 貼上連結
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setMode('image')}
-                        aria-pressed={mode === 'image'}
-                        className={`flex min-h-9 items-center gap-2 rounded-md px-3 py-2 text-xs sm:text-sm font-semibold transition-[transform,background-color,color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${mode === 'image' ? 'bg-white text-[rgba(0,0,0,0.95)] shadow-[0_1px_2px_rgba(23,31,26,0.08)]' : 'text-[#615d59] hover:text-[rgba(0,0,0,0.95)]'}`}
-                    >
-                        <ImagePlus size={16} /> 上傳圖片
-                    </button>
-                    </div>
-                </div>
+    const handleImageSelected = (event) => {
+        const [file] = event.target.files || [];
+        event.target.value = '';
+        submitFile(file);
+    };
 
-                <div className="p-3 sm:p-4">
+    const handleDrop = (event) => {
+        event.preventDefault();
+        setIsDragging(false);
+        submitFile(event.dataTransfer.files?.[0]);
+    };
+
+    return (
+        <Motion.section initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="capture-editorial-card" aria-labelledby="capture-title">
+            <header className="capture-editorial-head">
+                <div>
+                    <p className="capture-editorial-kicker">01 / CAPTURE SOURCE</p>
+                    <h2 id="capture-title">把一份來源放進收件匣</h2>
+                </div>
+                <p className="capture-editorial-limit">{isQueueFull ? '佇列已滿（10 / 10）' : `可再加入 ${Math.max(0, 10 - tasks.filter((task) => task.status !== 'failed').length)} 份來源`}</p>
+            </header>
+
+            <div className="capture-editorial-tabs" role="tablist" aria-label="選擇來源型態">
+                <button type="button" role="tab" aria-selected={mode === 'url'} className={mode === 'url' ? 'is-active' : ''} onClick={() => setMode('url')}><Link2 size={16} />貼上連結</button>
+                <button type="button" role="tab" aria-selected={mode === 'image'} className={mode === 'image' ? 'is-active' : ''} onClick={() => setMode('image')}><ImagePlus size={16} />上傳圖片</button>
+            </div>
+
+            <div className="capture-editorial-body">
                 {mode === 'url' ? (
-                    <form onSubmit={handleSubmit} className="relative flex flex-col sm:flex-row items-stretch sm:items-center rounded-[0.75rem] border notion-whisper-border bg-[var(--surface)] p-2 gap-2 transition-[border-color,box-shadow] duration-200 focus-within:border-[var(--accent)] focus-within:shadow-[0_0_0_4px_var(--accent-soft)]">
-                        <div className="flex-1 flex items-center min-w-0">
-                            <div className="hidden sm:block pl-3 text-[var(--accent)]"><Link2 size={20} /></div>
-                            <input
-                                type="text"
-                                value={url}
-                                onChange={(e) => setUrl(e.target.value)}
-                                placeholder={isQueueFull ? '佇列已滿...' : '貼上網址...'}
-                                className="flex-1 min-w-0 bg-transparent border-none outline-none text-[rgba(0,0,0,0.95)] placeholder-muted-foreground px-3 sm:px-4 py-3 text-[16px] sm:text-base"
-                                disabled={isQueueFull}
-                            />
+                    <form className="capture-editorial-url-form" onSubmit={handleSubmit}>
+                        <label htmlFor="source-url" className="capture-editorial-input-label">來源網址</label>
+                        <div className="capture-editorial-url-row">
+                            <Link2 size={20} aria-hidden="true" />
+                            <input id="source-url" type="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder={isQueueFull ? '佇列已滿，請稍後再試' : '貼上公開貼文或網頁的連結'} disabled={isQueueFull} />
+                            <button type="submit" disabled={isQueueFull || !url.trim()}>開始擷取 <ArrowRight size={17} /></button>
                         </div>
-                        <button
-                            type="submit"
-                            disabled={isQueueFull || !url.trim()}
-                            className="notion-btn-primary w-full sm:w-auto px-6 py-3 sm:py-3 font-bold disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            <span>加入佇列</span>
-                            <ArrowRight size={18} className="hidden sm:block" />
-                        </button>
+                        <p className="capture-editorial-help">Instagram、Facebook、X、YouTube 與一般公開網頁都會先保存為原始證據；尚未經你接受前，不會成為正式知識。</p>
                     </form>
                 ) : (
-                    <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center rounded-[0.75rem] border notion-whisper-border bg-[var(--surface)] p-2 gap-2">
-                        <div className="flex-1 flex items-center gap-3 px-3 sm:px-4 py-3 text-[#615d59]">
-                            <ImagePlus size={22} className="flex-shrink-0 text-[var(--accent)]" />
-                            <div className="min-w-0">
-                                <p className="font-semibold text-[rgba(0,0,0,0.95)]">選擇要整理的圖片</p>
-                                <p className="text-xs mt-0.5">JPEG、PNG、WebP、GIF，最多 15 MB</p>
-                            </div>
-                        </div>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/gif"
-                            className="hidden"
-                            onChange={handleImageSelected}
-                        />
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            disabled={isQueueFull || imageSubmitting}
-                            className="notion-btn-primary w-full sm:w-auto px-6 py-3 font-bold disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {imageSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-                            <span>{imageSubmitting ? '上傳中' : '選擇圖片'}</span>
+                    <div className="capture-editorial-image-panel">
+                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleImageSelected} />
+                        <button type="button" className={`capture-editorial-dropzone ${isDragging ? 'is-dragging' : ''}`} disabled={isQueueFull || imageSubmitting} onClick={() => fileInputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setIsDragging(false)} onDrop={handleDrop}>
+                            <span className="capture-editorial-drop-icon">{imageSubmitting ? <Loader2 size={26} className="animate-spin" /> : <Upload size={26} />}</span>
+                            <strong>{imageSubmitting ? '圖片正在上傳' : '拖曳圖片到這裡，或點擊選擇'}</strong>
+                            <span>JPEG、PNG、WebP、GIF · 最大 15 MB</span>
                         </button>
+                        <p className="capture-editorial-help">圖片會先進入私人收件匣並建立原始來源；稍後你再決定它是否值得留下筆記、Topic 或專案關聯。</p>
                     </div>
                 )}
-                </div>
-
-                <div className="border-t notion-whisper-border px-4 py-3 sm:px-5 text-xs leading-5 text-[#615d59]">
-                    {mode === 'image'
-                        ? '圖片會先存入私人空間並建立原始來源，之後由你決定要整理什麼。'
-                        : '支援公開社群連結與一般網頁來源。處理完成後可從收件匣繼續整理。'}
-                </div>
             </div>
-        </Motion.div>
+
+            <footer className="capture-editorial-footer"><span>原始來源</span><i aria-hidden="true" /><span>候選審核</span><i aria-hidden="true" /><span className="is-muted">你的明確接受</span></footer>
+        </Motion.section>
     );
 };
 

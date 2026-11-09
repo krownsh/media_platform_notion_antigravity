@@ -6,12 +6,14 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import OwnerTopicsPage from './pages/OwnerTopicsPage';
+import OwnerTopicDetailPage from './pages/OwnerTopicDetailPage';
 import ProjectsPage from './pages/ProjectsPage';
 import SearchPage from './pages/SearchPage';
 import OwnerPostPage from './pages/OwnerPostPage';
 import LibraryPage from './pages/LibraryPage';
 import AllPostsPage from './pages/AllPostsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import AppErrorBoundary from './components/AppErrorBoundary';
 
 import { setUser, setLoading } from './features/authSlice';
 import { fetchCaptureHistory, fetchPosts } from './features/postsSlice';
@@ -30,6 +32,39 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children;
+};
+
+const AppRoutes = () => {
+  return (
+      <Routes>
+        <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+        <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+        <Route path="/library/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
+        <Route path="/view-all" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
+        <Route path="/collection/:collectionId" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
+        <Route path="/post/:postId" element={<ProtectedRoute><OwnerPostPage /></ProtectedRoute>} />
+        <Route path="/image-workflow/:postId" element={<Navigate to="/" replace />} />
+        <Route path="/insight" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="/topics" element={<ProtectedRoute><OwnerTopicsPage /></ProtectedRoute>} />
+        <Route path="/topics/:topicId" element={<ProtectedRoute><OwnerTopicDetailPage /></ProtectedRoute>} />
+        <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
+      </Routes>
+  );
+};
+
+const AppShell = () => {
+  const location = useLocation();
+
+  return (
+    <AppErrorBoundary resetKey={location.pathname}>
+      <Layout>
+        <AppRoutes />
+      </Layout>
+    </AppErrorBoundary>
+  );
 };
 
 function App() {
@@ -69,40 +104,7 @@ function App() {
 
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={
-            <ProtectedRoute>
-              <HomePage />
-            </ProtectedRoute>
-          } />
-          <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
-          <Route path="/library/:collectionId" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
-          <Route path="/view-all" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
-          <Route path="/collection/:collectionId" element={<ProtectedRoute><AllPostsPage /></ProtectedRoute>} />
-
-          <Route path="/post/:postId" element={
-            <ProtectedRoute>
-              <OwnerPostPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/image-workflow/:postId" element={<Navigate to="/" replace />} />
-          <Route path="/insight" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
-          <Route path="/topics" element={
-            <ProtectedRoute>
-              <OwnerTopicsPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/projects" element={<ProtectedRoute><ProjectsPage /></ProtectedRoute>} />
-          <Route path="/search" element={
-            <ProtectedRoute>
-              <SearchPage />
-            </ProtectedRoute>
-          } />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-        </Routes>
-      </Layout>
+      <AppShell />
     </Router>
   );
 }

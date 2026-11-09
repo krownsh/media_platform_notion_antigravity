@@ -43,3 +43,5 @@ server/archive/legacy-config/temp_env.txt
 
 # agent
 .agent
+.agents/
+.playwright-mcp/

@@ -1,46 +1,34 @@
 import React from 'react';
-import UrlInput from '../components/UrlInput';
+import { ArrowUpRight, BookOpenText, FolderGit2, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import CaptureReviewQueue from '../components/CaptureReviewQueue';
 import ReviewFocusPanel from '../components/ReviewFocusPanel';
-import { Link } from 'react-router-dom';
-import { BookOpenText, FolderGit2, Search } from 'lucide-react';
+import UrlInput from '../components/UrlInput';
+import './HomePage.css';
 
-const HomePage = () => {
-    return (
-        <div className="flow-page px-1 sm:px-2">
-            <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.38fr)] lg:items-end pt-5 sm:pt-8 md:pt-12 mb-8 sm:mb-10">
-                <div className="max-w-3xl">
-                    <p className="flow-kicker mb-3">收件匣</p>
-                    <h1 className="text-[2rem] sm:text-4xl md:text-[2.8rem] font-bold tracking-[-0.055em] leading-[1.08] text-[rgba(0,0,0,0.95)]">
-                        把來源帶進可行動的知識流
-                    </h1>
-                    <p className="mt-4 max-w-2xl text-sm sm:text-base leading-7 text-[#615d59]">
-                        貼上連結或上傳圖片。系統先保存原始證據，再把需要你決定的候選清楚呈現；未接受前，不會寫進正式知識。
-                    </p>
-                </div>
-                <aside className="flow-panel px-4 py-4 sm:px-5 sm:py-5">
-                    <p className="text-sm font-semibold text-[rgba(0,0,0,0.95)]">先收下，再決定下一步</p>
-                    <p className="mt-2 text-xs sm:text-sm leading-6 text-[#615d59]">
-                        新增後可繼續工作。回到這裡時，直接看「目前階段」與「下一步」；不需要記住流程。
-                    </p>
-                </aside>
-            </section>
+const nextSteps = [
+    { to: '/search', icon: Search, index: '01', title: '找回一篇貼文', description: '用記得的詞、作者或情境，從原始與已接受知識中找回來源。' },
+    { to: '/topics', icon: BookOpenText, index: '02', title: '整理 Topic', description: '查看獨立累積、帶來源引用的主題知識與討論歷程。' },
+    { to: '/projects', icon: FolderGit2, index: '03', title: '查看專案脈絡', description: '把 Topic 與可參考專案連起來；POC 仍需要你的獨立確認。' },
+];
 
-            <UrlInput />
+const HomePage = () => (
+    <div className="home-editorial-page">
+        <header className="home-editorial-head">
+            <div><p>OWNER COLLECTION / INBOX</p><h1>收件匣</h1></div>
+            <div className="home-editorial-head-note"><strong>先保存原始證據</strong><span>再決定哪些理解值得留下。</span></div>
+        </header>
+        <p className="home-editorial-intro">把公開連結或圖片放進收件匣。來源會先完整保存，候選與正式知識則永遠等你明確決定後才往下走。</p>
 
-            <CaptureReviewQueue />
+        <UrlInput />
+        <CaptureReviewQueue />
+        <ReviewFocusPanel />
 
-            <section className="mt-8 sm:mt-10">
-                <ReviewFocusPanel />
-            </section>
-
-            <section className="mt-10 sm:mt-14"><p className="flow-kicker mb-2">接下來你可以做什麼</p><div className="grid gap-3 sm:grid-cols-3">
-                <Link to="/search" className="flow-surface p-5 hover:border-[var(--accent)]"><Search size={18} className="text-[var(--accent)]" /><h2 className="mt-3 font-semibold">找回一篇貼文</h2><p className="mt-2 text-sm leading-6 text-[#615d59]">用印象中的詞、作者或情境，從原始與已接受知識中找。</p></Link>
-                <Link to="/topics" className="flow-surface p-5 hover:border-[var(--accent)]"><BookOpenText size={18} className="text-[var(--accent)]" /><h2 className="mt-3 font-semibold">整理 Topic</h2><p className="mt-2 text-sm leading-6 text-[#615d59]">查看獨立累積、帶來源引用的主題知識。</p></Link>
-                <Link to="/projects" className="flow-surface p-5 hover:border-[var(--accent)]"><FolderGit2 size={18} className="text-[var(--accent)]" /><h2 className="mt-3 font-semibold">查看可參考的專案</h2><p className="mt-2 text-sm leading-6 text-[#615d59]">把 Topic 與既有專案連起來；POC 仍需要獨立確認。</p></Link>
-            </div></section>
-        </div>
-    );
-};
+        <section className="home-editorial-next" aria-labelledby="next-steps-title">
+            <div className="home-editorial-next-head"><div><p>04 / CONTINUE EXPLORING</p><h2 id="next-steps-title">接下來，你可以往哪裡走？</h2></div><span>不確定時，從一條線索開始就好。</span></div>
+            <div className="home-editorial-next-grid">{nextSteps.map(({ to, icon: Icon, index, title, description }) => <Link key={to} to={to} className="home-editorial-next-card"><span>{index}</span>{React.createElement(Icon, { size: 20 })}<h3>{title}</h3><p>{description}</p><b>前往 <ArrowUpRight size={15} /></b></Link>)}</div>
+        </section>
+    </div>
+);
 
 export default HomePage;

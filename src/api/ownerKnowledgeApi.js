@@ -8,7 +8,7 @@ async function request(path, options) {
     return body;
 }
 
-export const listOwnerTopics = () => request('/topics');
+export const listOwnerTopics = (topicId = '') => request(topicId ? `/topics/${topicId}` : '/topics');
 export const createOwnerTopic = label => request('/topics', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ label }) });
 export const listProjectCatalog = () => request('/projects');
 export const createProjectCatalogEntry = input => request('/projects', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input) });

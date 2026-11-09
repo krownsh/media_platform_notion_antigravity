@@ -1,61 +1,33 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ExternalLink, Facebook, FileText, FolderInput, Globe, Image as ImageIcon, Instagram, MoreHorizontal, Trash2, Twitter, Youtube } from 'lucide-react';
-import { motion as Motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ExternalLink, FolderInput, Globe, Image as ImageIcon, MoreHorizontal, Trash2 } from 'lucide-react';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import AuthorInitialAvatar from './AuthorInitialAvatar';
+import './LibraryPostCard.css';
+import './LibraryPostCardActions.css';
 
-function platformPresentation(platform) {
-    const normalized = String(platform || '').toLowerCase();
-    if (normalized === 'instagram') return { icon: <Instagram size={14} className="text-pink-500" />, label: 'Instagram' };
-    if (normalized === 'twitter' || normalized === 'x') return { icon: <Twitter size={14} className="text-blue-400" />, label: 'Twitter' };
-    if (normalized === 'facebook') return { icon: <Facebook size={14} className="text-blue-600" />, label: 'Facebook' };
-    if (normalized === 'youtube') return { icon: <Youtube size={14} className="text-red-600" />, label: 'YouTube' };
-    if (normalized === 'notion') return { icon: <FileText size={14} />, label: 'Notion' };
-    if (normalized === 'image') return { icon: <ImageIcon size={14} className="text-violet-600" />, label: 'Image' };
-    return { icon: <Globe size={14} className="text-[#615d59]" />, label: normalized || 'Web Link' };
-}
+const postId = (post) => post.dbId || post.id;
+const collectionId = (post) => post.collectionId || post.collection_id || null;
+const postDate = (post) => { const value = post.createdAt || post.created_at || post.capturedAt; const date = value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric' }) : '剛剛'; };
 
-function postId(post) { return post.dbId || post.id; }
-function collectionId(post) { return post.collectionId || post.collection_id || null; }
-function postDate(post) {
-    const value = post.createdAt || post.created_at || post.capturedAt;
-    const date = value ? new Date(value) : null;
-    return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('zh-TW', { year: 'numeric', month: 'short', day: 'numeric' }) : '剛剛';
-}
-
-// This keeps the visual hierarchy of the old collection card while retaining the
-// current owner-guided data model: it never makes a knowledge decision itself.
 export default function LibraryPostCard({ post, collections, onOpen, onMove, onDelete }) {
     const [showMenu, setShowMenu] = useState(false);
     const [showMoveMenu, setShowMoveMenu] = useState(false);
-    const platform = platformPresentation(post.platform);
-    const postCollectionId = collectionId(post);
-    const folder = collections.find(item => item.id === postCollectionId);
+    const currentCollectionId = collectionId(post);
+    const folder = collections.find((item) => item.id === currentCollectionId);
     const images = useMemo(() => post.images?.filter(Boolean) || (post.screenshot ? [post.screenshot] : []), [post.images, post.screenshot]);
     const content = post.content || post.title || '這篇來源尚未保留可顯示文字。';
     const author = post.author || post.author_name || 'Unknown';
     const authorHandle = post.authorHandle || post.author_handle || 'unknown';
-    const sourceDomains = Array.isArray(post.sourceDomains) ? post.sourceDomains.slice(0, 3) : [];
+    const platform = String(post.platform || 'web').toUpperCase();
+    const sourceDomains = Array.isArray(post.sourceDomains) ? post.sourceDomains.slice(0, 2) : [];
+    const move = (event, targetCollectionId) => { event.stopPropagation(); onMove(postId(post), targetCollectionId || null); setShowMenu(false); setShowMoveMenu(false); };
+    const remove = (event) => { event.stopPropagation(); onDelete?.(postId(post)); setShowMenu(false); setShowMoveMenu(false); };
 
-    const move = (event, targetCollectionId) => {
-        event.stopPropagation();
-        onMove(postId(post), targetCollectionId || null);
-        setShowMenu(false); setShowMoveMenu(false);
-    };
-
-    const remove = event => {
-        event.stopPropagation();
-        onDelete?.(postId(post));
-        setShowMenu(false); setShowMoveMenu(false);
-    };
-
-    return <Motion.article layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.25, 0.8, 0.3, 1] }} onClick={onOpen} onMouseLeave={() => { setShowMenu(false); setShowMoveMenu(false); }} className="notion-card group relative mx-auto flex min-h-[430px] w-full max-w-[440px] cursor-pointer flex-col overflow-hidden hover:-translate-y-0.5">
-        <div className="flex w-full flex-shrink-0 items-center justify-between border-b notion-whisper-border bg-surface-raised px-3 py-2.5 sm:px-4">
-            <div className="flex min-w-0 items-center gap-2"><span className="shrink-0">{platform.icon}</span><span className="truncate text-[10px] font-bold uppercase leading-none tracking-[0.08em] text-[#615d59]">{platform.label}</span><span className="h-3.5 w-px shrink-0 bg-black/10" /><span className="truncate text-[10px] font-medium leading-none text-[#615d59]/80">{folder?.name || '未分類'}</span></div>
-            <div className="flex shrink-0 items-center gap-2"><span className="rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-1 text-[10px] font-semibold leading-none text-emerald-800">已保存</span><button type="button" className="flow-icon-button min-h-8 min-w-8" aria-label="開啟貼文選項" aria-expanded={showMenu} onClick={event => { event.stopPropagation(); setShowMenu(value => !value); }}><MoreHorizontal size={16} /></button></div>
-        </div>
-        <div className="flex flex-shrink-0 items-center gap-2.5 border-b notion-whisper-border bg-surface-raised px-3 py-2.5 sm:px-4"><AuthorInitialAvatar name={author} size="md" /><div className="min-w-0"><p className="truncate text-sm font-semibold leading-tight">{author}</p><p className="mt-0.5 truncate text-[12px] text-[#615d59]/80">@{authorHandle}</p></div></div>
-        {images.length > 0 && <div className="relative flex aspect-[16/7.5] w-full flex-shrink-0 items-center justify-center overflow-hidden border-b notion-whisper-border bg-[var(--surface-muted)]"><img src={images[0]} className="h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.02]" alt="貼文媒體預覽" />{images.length > 1 && <span className="absolute right-2 top-2 rounded-md bg-black/45 px-1.5 py-1 text-[9px] tabular-nums text-white">1 / {images.length}</span>}</div>}
-        <div className="flex flex-1 flex-col overflow-hidden bg-surface-raised"><div className="flex-1 overflow-hidden px-3 py-3 sm:px-4 sm:py-4"><p className="line-clamp-6 whitespace-pre-wrap text-sm font-medium leading-6 text-[rgba(0,0,0,0.95)]/80">{content.replace(/\n\s*\n/g, '\n').trim()}</p></div><footer className="mt-auto flex flex-shrink-0 flex-col gap-2 border-t notion-whisper-border bg-surface px-3 py-2.5 sm:px-4"><div className="flex min-h-5 flex-wrap items-center gap-1">{sourceDomains.map(domain => <span key={domain} className="notion-badge text-[10px] leading-none">{domain}</span>)}</div><div className="flex items-center justify-between gap-3"><span className="truncate text-[10px] font-bold uppercase leading-none tracking-[0.05em] text-[var(--accent)]">已保存來源</span><label className="flex min-w-0 items-center gap-1 text-[10px] text-[#615d59]"><span className="shrink-0">資料夾</span><select value={postCollectionId || ''} onClick={event => event.stopPropagation()} onChange={event => move(event, event.target.value)} className="max-w-28 rounded border border-[var(--border)] bg-surface-raised px-1.5 py-1 text-[10px] text-[#615d59]" aria-label={`直接選擇「${author}」貼文的資料夾分類`}><option value="">Inbox</option>{collections.map(collection => <option key={collection.id} value={collection.id}>{collection.name}</option>)}</select></label><span className="shrink-0 text-[10px] font-medium leading-none tabular-nums text-[#615d59]">{postDate(post)}</span></div></footer></div>
-        <AnimatePresence>{showMenu && <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={event => event.stopPropagation()} className="absolute inset-0 z-20 flex flex-col bg-surface-raised/95 p-3 backdrop-blur-sm sm:p-4"><div className="mb-4 flex items-center justify-between"><span className="font-bold">{showMoveMenu ? '選擇資料夾' : '貼文選項'}</span><button type="button" className="flow-icon-button min-h-8 min-w-8" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} aria-label="關閉貼文選項">×</button></div>{showMoveMenu ? <div className="flex min-h-0 flex-1 flex-col"><button type="button" onClick={() => setShowMoveMenu(false)} className="mb-2 flex items-center gap-2 self-start rounded-md px-2 py-1.5 text-xs font-semibold text-[#615d59] hover:bg-black/5"><ChevronLeft size={15} />返回貼文選項</button><div className="min-h-0 overflow-y-auto border-t notion-whisper-border pt-3"><button type="button" onClick={event => move(event, null)} className="mb-1 w-full rounded-md px-3 py-2 text-left text-sm text-[#615d59] hover:bg-black/5">Inbox</button>{collections.map(collection => <button key={collection.id} type="button" onClick={event => move(event, collection.id)} className={`mb-1 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-black/5 ${collection.id === postCollectionId ? 'bg-[var(--accent-soft)] font-semibold text-[var(--accent)]' : 'text-[#615d59]'}`}>{collection.name}</button>)}</div></div> : <div className="flex flex-col gap-2">{(post.originalUrl || post.original_url) && <a href={post.originalUrl || post.original_url} target="_blank" rel="noreferrer" className="notion-btn-secondary flex items-center justify-center gap-2 py-2 text-sm" onClick={event => event.stopPropagation()}><ExternalLink size={15} />開啟原始貼文</a>}<button type="button" onClick={() => setShowMoveMenu(true)} className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium hover:bg-black/5"><FolderInput size={16} />移至資料夾</button><button type="button" onClick={remove} className="flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-medium text-destructive hover:bg-destructive/10"><Trash2 size={16} />刪除此貼文</button></div>}</Motion.div>}</AnimatePresence>
+    return <Motion.article layout initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .35, ease: [0.16, 1, .3, 1] }} onClick={onOpen} className="library-source-card">
+        <header><span className="library-source-platform">{platform}</span><span className="library-source-folder">{folder?.name || 'INBOX'}</span>{(post.originalUrl || post.original_url) && <a href={post.originalUrl || post.original_url} target="_blank" rel="noreferrer" className="library-source-external" onClick={(event) => event.stopPropagation()} aria-label="開啟原始貼文" title="開啟原始貼文"><ExternalLink size={15} /></a>}<button type="button" aria-label="開啟貼文選項" aria-expanded={showMenu} onClick={(event) => { event.stopPropagation(); setShowMenu((value) => !value); }}><MoreHorizontal size={18} /></button></header>
+        <div className={`library-source-visual ${images.length ? 'has-image' : ''}`}>{images.length ? <img src={images[0]} alt="貼文媒體預覽" /> : <><Globe size={28} /><span>{platform}</span></>}{images.length > 1 && <b>1 / {images.length}</b>}</div>
+        <div className="library-source-body"><div className="library-source-author"><AuthorInitialAvatar name={author} size="sm" /><div><strong>{author}</strong><span>@{authorHandle}</span></div></div><h3>{post.title || post.analysis?.generated_title || content}</h3><p>{content.replace(/\n\s*\n/g, '\n').trim()}</p></div>
+        <footer><div>{sourceDomains.map((domain) => <span key={domain}>{domain}</span>)}</div><div><select value={currentCollectionId || ''} onClick={(event) => event.stopPropagation()} onChange={(event) => move(event, event.target.value)} aria-label={`直接選擇「${author}」貼文的資料夾分類`}><option value="">Inbox</option>{collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}</select><time>{postDate(post)}</time></div></footer>
+        <AnimatePresence>{showMenu && <Motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={(event) => event.stopPropagation()} className="library-source-menu"><div><strong>{showMoveMenu ? '選擇資料夾' : '貼文選項'}</strong><button type="button" onClick={() => { setShowMenu(false); setShowMoveMenu(false); }} aria-label="關閉貼文選項">×</button></div>{showMoveMenu ? <section><button type="button" onClick={() => setShowMoveMenu(false)}><ChevronLeft size={15} />返回選項</button><button type="button" onClick={(event) => move(event, null)}>Inbox</button>{collections.map((collection) => <button key={collection.id} type="button" onClick={(event) => move(event, collection.id)}>{collection.name}</button>)}</section> : <section><button type="button" onClick={() => setShowMoveMenu(true)}><FolderInput size={16} />移至資料夾</button><button type="button" className="is-delete" onClick={remove}><Trash2 size={16} />刪除此貼文</button></section>}</Motion.div>}</AnimatePresence>
     </Motion.article>;
 }

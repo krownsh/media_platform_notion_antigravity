@@ -1,379 +1,102 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
-import { Search, ChevronDown, ChevronRight, ChevronLeft, Home, LogOut, LogIn, User as UserIcon, Menu, X, Target, FolderGit2, FolderOpen, Folder, LayoutGrid, Library, BarChart3, Plus } from 'lucide-react';
-import { motion as Motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+    Activity, BarChart3, ChevronLeft, ChevronRight, Folder,
+    FolderGit2, Home, LayoutGrid, Library, LogIn, LogOut, Menu,
+    Search, Target, User as UserIcon, X,
+} from 'lucide-react';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../api/supabaseClient';
+import { toggleTaskCenter } from '../features/uiSlice';
+import { visibleCollections } from '../utils/collectionVisibility';
 import SidebarSearch from './SidebarSearch';
 import NotificationContainer from './Notification';
 import TaskCenter from './TaskCenter';
-import { toggleTaskCenter } from '../features/uiSlice';
-import { useDispatch } from 'react-redux';
-import { Activity } from 'lucide-react';
-import { createCollection } from '../features/postsSlice';
-import { visibleCollections } from '../utils/collectionVisibility';
+import './LayoutCollections.css';
 
-const SidebarItem = ({ icon: _Icon, label, active, onClick, hasSubmenu = false, expanded = false, collapsed }) => (
-    <Motion.button
-        type="button"
-        layout
-        onClick={onClick}
-        aria-current={active ? 'page' : undefined}
-        className={`relative flex w-full items-center gap-2 px-3 py-2 text-left rounded-md cursor-pointer group ${active
-            ? 'bg-[var(--accent-soft)] text-[var(--accent)] font-semibold shadow-[inset_0_0_0_1px_rgba(45,111,115,0.08)]'
-            : 'text-[#615d59] hover:bg-black/5 hover:text-[rgba(0,0,0,0.95)]'
-            } ${collapsed ? 'justify-center px-1' : ''}`}
-        title={collapsed ? label : ''}
-    >
-        <_Icon size={16} strokeWidth={1.8} className={`transition-colors ${active ? 'text-[var(--accent)]' : 'group-hover:text-[rgba(0,0,0,0.95)]'}`} />
-        {!collapsed && (
-            <span className="flex-1 whitespace-nowrap overflow-hidden text-sm">{label}</span>
-        )}
-        {!collapsed && hasSubmenu && (expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-    </Motion.button>
+const navigation = [
+    { icon: Home, label: '收件匣', path: '/' },
+    { icon: Search, label: '記憶搜尋', path: '/search' },
+    { icon: LayoutGrid, label: '所有貼文', path: '/view-all', matches: (path) => path === '/view-all' || path.startsWith('/collection/') },
+    { icon: BarChart3, label: '分析數據', path: '/insight' },
+    { icon: Target, label: 'Topics', path: '/topics' },
+    { icon: FolderGit2, label: 'Projects', path: '/projects' },
+];
+
+const EditorialNavItem = ({ icon: Icon, label, active, collapsed, onClick, trailing }) => (
+    <button type="button" className={`editorial-nav-item ${active ? 'is-active' : ''} ${collapsed ? 'is-collapsed' : ''}`} aria-current={active ? 'page' : undefined} title={collapsed ? label : undefined} onClick={onClick}>
+        {React.createElement(Icon, { size: 17, strokeWidth: 1.8 })}
+        {!collapsed && <span>{label}</span>}
+        {!collapsed && trailing}
+    </button>
 );
 
 const Layout = ({ children }) => {
     const { collections, tasks } = useSelector((state) => state.posts);
     const dispatch = useDispatch();
-    const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
-    const [user, setUser] = useState(null);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [user, setUser] = useState(null);
+    const mainRef = React.useRef(null);
     const activeCollections = visibleCollections(collections);
-
-    const createFolder = () => {
-        const name = window.prompt('請輸入新資料夾名稱：');
-        if (name?.trim()) dispatch(createCollection({ name: name.trim() }));
-    };
+    const isAuthPage = ['/login', '/signup'].includes(location.pathname);
 
     React.useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-        });
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
-
+        supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
         return () => subscription.unsubscribe();
     }, []);
 
-    const mainRef = React.useRef(null);
-    const scrollPositions = React.useRef(new Map());
-
-    // Save scroll position before location changes
     React.useLayoutEffect(() => {
         const mainElement = mainRef.current;
-        const positions = scrollPositions.current;
-        const pathname = location.pathname;
-
-        // We can't easily hook into "before route change" in pure React Router v6 without unstable_useBlocker
-        // So we save on unmount/change via cleanup, but we need the *previous* location.
-        // Actually, simpler: Save on every scroll (debounced if needed, but simple assignment is cheap)
-        // or just save the current pos for the current path whenever the path changes (cleanup function).
-
-        return () => {
-            if (mainElement) {
-                positions.set(pathname, mainElement.scrollTop);
-            }
-        };
+        if (!mainElement) return undefined;
+        mainElement.scrollTop = 0;
+        return undefined;
     }, [location.pathname]);
 
-    // Restore scroll position on location change
-    React.useLayoutEffect(() => {
-        if (mainRef.current) {
-            const savedPosition = scrollPositions.current.get(location.pathname);
-            if (savedPosition !== undefined) {
-                mainRef.current.scrollTop = savedPosition;
-            } else {
-                mainRef.current.scrollTop = 0;
-            }
-        }
-    }, [location.pathname]);
+    const closeMobileMenu = () => setIsMobileMenuOpen(false);
+    const go = (path) => { navigate(path); closeMobileMenu(); };
+    const handleLogout = async () => { await supabase.auth.signOut(); go('/login'); };
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        navigate('/login');
-    };
+    if (isAuthPage) return <>{children}</>;
 
-    const isAuthPage = ['/login', '/signup'].includes(location.pathname);
-
-    if (isAuthPage) {
-        return <>{children}</>;
-    }
+    const renderNavigation = (collapsed = false, mobile = false) => (
+        <>
+            <nav className="editorial-navigation" aria-label="主要導覽">
+                {navigation.map(({ icon, label, path, matches }) => (
+                    <EditorialNavItem key={path} icon={icon} label={label} collapsed={collapsed} active={matches ? matches(location.pathname) : location.pathname === path} onClick={() => mobile ? go(path) : navigate(path)} />
+                ))}
+                <EditorialNavItem icon={Library} label="收藏夾管理" collapsed={collapsed} active={location.pathname === '/library'} onClick={() => mobile ? go('/library') : navigate('/library')} />
+            </nav>
+            {!collapsed && <section className="editorial-collections"><div className="editorial-collections-head"><p className="editorial-section-label">收藏夾清單</p><span>{activeCollections.length}</span></div><div className="editorial-collection-list">{activeCollections.map((collection) => <button key={collection.id} type="button" className={`editorial-folder-link ${location.pathname === `/collection/${collection.id}` ? 'is-active' : ''}`} onClick={() => mobile ? go(`/collection/${collection.id}`) : navigate(`/collection/${collection.id}`)}><Folder size={14} /><span>{collection.name}</span></button>)}{!activeCollections.length && <p className="editorial-empty-folder">尚無收藏夾</p>}</div></section>}
+        </>
+    );
 
     return (
-        <div className="flex flex-col md:flex-row h-[100dvh] overflow-hidden text-[rgba(0,0,0,0.95)] bg-background overflow-x-hidden">
-            {/* Mobile Header (Sticky at top) */}
-            <header className="md:hidden flex items-center justify-between px-4 sm:px-6 py-3 bg-surface-raised border-b notion-whisper-border z-[60] sticky top-0 shadow-[0_1px_0_rgba(23,31,26,0.03)]">
-                <div className="cursor-pointer" onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}>
-                    <h1 className="text-lg font-bold tracking-[-0.03em] text-[rgba(0,0,0,0.95)]">社群筆記</h1>
-                </div>
-                <button
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    className="flow-icon-button"
-                    aria-label={isMobileMenuOpen ? '關閉選單' : '開啟選單'}
-                    aria-expanded={isMobileMenuOpen}
-                >
-                    {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                </button>
+        <div className="editorial-app-shell">
+            <header className="editorial-mobile-header">
+                <button type="button" className="editorial-wordmark" onClick={() => go('/')} aria-label="回到收件匣">M<span>.</span>COLLECT</button>
+                <button type="button" className="editorial-mobile-menu-button" onClick={() => setIsMobileMenuOpen((value) => !value)} aria-label={isMobileMenuOpen ? '關閉選單' : '開啟選單'} aria-expanded={isMobileMenuOpen}>{isMobileMenuOpen ? <X size={21} /> : <Menu size={21} />}</button>
             </header>
-
-            {/* Mobile Menu Overlay */}
             <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <Motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.2 }}
-                        className="md:hidden fixed inset-x-3 top-[60px] bg-surface-raised z-50 border notion-whisper-border rounded-b-[1rem] shadow-deep overflow-y-auto max-h-[calc(100dvh-72px)] pb-[env(safe-area-inset-bottom)]"
-                    >
-                        <div className="p-4 space-y-4">
-                            <SidebarSearch
-                                collapsed={false}
-                                onExpand={() => { }}
-                                onSearchSelect={() => setIsMobileMenuOpen(false)}
-                            />
-
-                            <nav className="space-y-1">
-                                <SidebarItem
-                                    icon={Home}
-                                    label="收件匣"
-                                    active={location.pathname === '/'}
-                                    onClick={() => { navigate('/'); setIsMobileMenuOpen(false); }}
-                                />
-                                <SidebarItem
-                                    icon={Search}
-                                    label="記憶搜尋"
-                                    active={location.pathname === '/search'}
-                                    onClick={() => { navigate('/search'); setIsMobileMenuOpen(false); }}
-                                />
-                                <SidebarItem icon={LayoutGrid} label="所有貼文" active={location.pathname === '/view-all' || location.pathname.startsWith('/collection/')} onClick={() => { navigate('/view-all'); setIsMobileMenuOpen(false); }} />
-                                <SidebarItem icon={BarChart3} label="分析數據" active={location.pathname === '/insight'} onClick={() => { navigate('/insight'); setIsMobileMenuOpen(false); }} />
-                                <SidebarItem
-                                    icon={Target}
-                                    label="Topics"
-                                    active={location.pathname === '/topics'}
-                                    onClick={() => { navigate('/topics'); setIsMobileMenuOpen(false); }}
-                                />
-                                <SidebarItem icon={FolderGit2} label="Projects" active={location.pathname === '/projects'} onClick={() => { navigate('/projects'); setIsMobileMenuOpen(false); }} />
-                                <SidebarItem icon={Library} label="收藏夾" active={location.pathname === '/library' || location.pathname.startsWith('/collection/')} onClick={() => setIsCollectionsExpanded(value => !value)} hasSubmenu expanded={isCollectionsExpanded} />
-                                {isCollectionsExpanded && <div className="ml-5 border-l border-black/10 pl-2">
-                                    {activeCollections.map(collection => <button key={collection.id} type="button" onClick={() => { navigate(`/collection/${collection.id}`); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${location.pathname === `/collection/${collection.id}` ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[#615d59] hover:bg-black/5'}`}><Folder size={14} /><span className="truncate">{collection.name}</span></button>)}
-                                    {!activeCollections.length && <p className="px-3 py-2 text-xs text-[#615d59]">尚無收藏夾</p>}
-                                    <button type="button" onClick={createFolder} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--accent)] hover:bg-[var(--accent-soft)]"><Plus size={14} />新增資料夾</button>
-                                    <button type="button" onClick={() => { navigate('/library'); setIsMobileMenuOpen(false); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[#615d59] hover:bg-black/5"><FolderOpen size={14} />資料夾管理</button>
-                                </div>}
-
-                            </nav>
-
-                            <div className="pt-4 border-t border-black/5">
-                                {user ? (
-                                    <div className="flex items-center justify-between p-2">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#615d59] border border-black/10">
-                                                <UserIcon size={16} />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate">
-                                                    {user.email?.split('@')[0]}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                                            className="p-2 text-[#615d59] hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                        >
-                                            <LogOut size={18} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => { navigate('/login'); setIsMobileMenuOpen(false); }}
-                                        className="w-full flex items-center justify-center gap-2 bg-[rgba(0,0,0,0.95)] text-white py-2.5 rounded-md font-medium"
-                                    >
-                                        <LogIn size={18} />
-                                        <span>登入</span>
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </Motion.div>
-                )}
+                {isMobileMenuOpen && <><Motion.button type="button" aria-label="關閉選單" className="editorial-mobile-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeMobileMenu} /><Motion.aside className="editorial-mobile-drawer" initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }}><SidebarSearch collapsed={false} onExpand={() => {}} onSearchSelect={closeMobileMenu} />{renderNavigation(false, true)}<div className="editorial-mobile-account">{user ? user.email : '尚未登入'}</div></Motion.aside></>}
             </AnimatePresence>
-
-            {/* Backdrop for Mobile Menu */}
-            <AnimatePresence>
-                {isMobileMenuOpen && (
-                    <Motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="md:hidden fixed inset-0 bg-black/20 z-40 backdrop-blur-[2px]"
-                    />
-                )}
-            </AnimatePresence>
-
-            {/* Sidebar (Tablet & Desktop) */}
-            <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-[17.5rem]'} hidden md:flex flex-shrink-0 bg-surface notion-whisper-border flex-col border-r border-[rgba(0,0,0,0.1)]/40 z-50 relative transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]`}>
-                <div className={`px-5 pt-6 pb-4 flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
-                    {!isSidebarCollapsed && (
-                        <div className="cursor-pointer overflow-hidden" onClick={() => navigate('/')}>
-                            <h1 className="text-xl font-bold tracking-[-0.04em] text-[rgba(0,0,0,0.95)] whitespace-nowrap">社群筆記</h1>
-                            <p className="text-[10px] text-[#615d59] mt-1 tracking-[0.12em] uppercase opacity-80 whitespace-nowrap">Knowledge current</p>
-                        </div>
-                    )}
-                    <button
-                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className="flow-icon-button"
-                        aria-label={isSidebarCollapsed ? '展開側邊欄' : '收合側邊欄'}
-                    >
-                        {isSidebarCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-                    </button>
+            <aside className={`editorial-sidebar ${isSidebarCollapsed ? 'is-collapsed' : ''}`}>
+                <div className="editorial-sidebar-head">
+                    {!isSidebarCollapsed && <button type="button" className="editorial-wordmark" onClick={() => navigate('/')} aria-label="回到收件匣">M<span>.</span>COLLECT</button>}
+                    <button type="button" className="editorial-collapse-button" onClick={() => setIsSidebarCollapsed((value) => !value)} aria-label={isSidebarCollapsed ? '展開側邊欄' : '收合側邊欄'}>{isSidebarCollapsed ? <ChevronRight size={19} /> : <ChevronLeft size={19} />}</button>
                 </div>
-
-                <SidebarSearch collapsed={isSidebarCollapsed} onExpand={() => setIsSidebarCollapsed(false)} />
-
-                <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar py-4">
-                    <SidebarItem
-                        icon={Home}
-                        label="收件匣"
-                        active={location.pathname === '/'}
-                        onClick={() => navigate('/')}
-                        collapsed={isSidebarCollapsed}
-                    />
-
-                    <SidebarItem
-                        icon={Search}
-                        label="記憶搜尋"
-                        active={location.pathname === '/search'}
-                        onClick={() => navigate('/search')}
-                        collapsed={isSidebarCollapsed}
-                    />
-                    <SidebarItem
-                        icon={LayoutGrid}
-                        label="所有貼文"
-                        active={location.pathname === '/view-all' || location.pathname.startsWith('/collection/')}
-                        onClick={() => navigate('/view-all')}
-                        collapsed={isSidebarCollapsed}
-                    />
-                    <SidebarItem icon={BarChart3} label="分析數據" active={location.pathname === '/insight'} onClick={() => navigate('/insight')} collapsed={isSidebarCollapsed} />
-
-                    <SidebarItem
-                        icon={Target}
-                        label="Topics"
-                        active={location.pathname === '/topics'}
-                        onClick={() => navigate('/topics')}
-                        collapsed={isSidebarCollapsed}
-                    />
-                    <SidebarItem
-                        icon={FolderGit2}
-                        label="Projects"
-                        active={location.pathname === '/projects'}
-                        onClick={() => navigate('/projects')}
-                        collapsed={isSidebarCollapsed}
-                    />
-                    <SidebarItem icon={Library} label="收藏夾" active={location.pathname === '/library' || location.pathname.startsWith('/collection/')} onClick={() => setIsCollectionsExpanded(value => !value)} hasSubmenu expanded={isCollectionsExpanded} collapsed={isSidebarCollapsed} />
-                    <AnimatePresence>
-                        {isCollectionsExpanded && !isSidebarCollapsed && <Motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="ml-5 overflow-hidden border-l border-black/10 pl-2">
-                            {activeCollections.map(collection => <button key={collection.id} type="button" onClick={() => navigate(`/collection/${collection.id}`)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm ${location.pathname === `/collection/${collection.id}` ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent)]' : 'text-[#615d59] hover:bg-black/5'}`}><Folder size={14} /><span className="truncate">{collection.name}</span></button>)}
-                            {!activeCollections.length && <p className="px-3 py-2 text-xs text-[#615d59]">尚無收藏夾</p>}
-                            <button type="button" onClick={createFolder} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[var(--accent)] hover:bg-[var(--accent-soft)]"><Plus size={14} />新增資料夾</button>
-                            <button type="button" onClick={() => navigate('/library')} className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-[#615d59] hover:bg-black/5"><FolderOpen size={14} />資料夾管理</button>
-                        </Motion.div>}
-                    </AnimatePresence>
-
-                </nav>
-
-                <div className="p-4 mt-auto">
-                    {user ? (
-                        <div className={`flow-panel p-2 flex items-center gap-2 group ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                            <div className="w-8 h-8 rounded-full bg-black/5 flex items-center justify-center text-[#615d59] border border-black/10 flex-shrink-0">
-                                <UserIcon size={16} />
-                            </div>
-                            {!isSidebarCollapsed && (
-                                <>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-[rgba(0,0,0,0.95)] truncate">
-                                            {user.email?.split('@')[0]}
-                                        </p>
-                                        <p className="text-[10px] text-[#615d59] truncate opacity-70">
-                                            {user.email}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="p-1 text-[#615d59] hover:text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                                        title="登出"
-                                    >
-                                        <LogOut size={14} />
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => navigate('/login')}
-                            className={`notion-btn-primary w-full flex items-center justify-center gap-2 py-2 ${isSidebarCollapsed ? 'px-0' : ''}`}
-                            title={isSidebarCollapsed ? "登入" : ""}
-                        >
-                            <LogIn size={16} />
-                            {!isSidebarCollapsed && <span>登入</span>}
-                        </button>
-                    )}
-                </div>
+                {!isSidebarCollapsed && <p className="editorial-workspace-label">Kangjunxuan 的工作區</p>}
+                {!isSidebarCollapsed && <div className="editorial-search-wrap"><SidebarSearch collapsed={false} onExpand={() => {}} /></div>}
+                {renderNavigation(isSidebarCollapsed)}
+                <div className="editorial-account"><div className="editorial-avatar"><UserIcon size={15} /></div>{!isSidebarCollapsed && <div className="editorial-account-copy"><strong>{user?.email?.split('@')[0] || '訪客'}</strong><span>{user?.email || '尚未登入'}</span></div>}{!isSidebarCollapsed && user && <button type="button" className="editorial-logout" onClick={handleLogout} title="登出"><LogOut size={15} /></button>}{!isSidebarCollapsed && !user && <button type="button" className="editorial-login" onClick={() => navigate('/login')}><LogIn size={15} />登入</button>}</div>
             </aside>
-
-            {/* Main Content */}
-            <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden relative bg-background pb-[env(safe-area-inset-bottom)]">
-                <AnimatePresence mode="wait" initial={false}>
-                    <Motion.div
-                        key={location.pathname}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -5 }}
-                        transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                        className="w-full p-3 sm:p-5 md:p-8"
-                    >
-                        {children}
-                    </Motion.div>
-                </AnimatePresence>
-
-                {/* Floating Task Center Toggle */}
-                <button
-                    onClick={() => dispatch(toggleTaskCenter())}
-                    className="fixed bottom-4 right-4 sm:bottom-8 sm:right-8 w-12 h-12 bg-surface-raised text-[rgba(0,0,0,0.95)] border notion-whisper-border rounded-[0.9rem] shadow-deep flex items-center justify-center z-[60] group transition-transform duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 active:translate-y-0 active:scale-95"
-                    aria-label={tasks.length > 0 ? `${tasks.length} 個任務處理中` : '開啟任務中心'}
-                >
-                    <Activity size={20} className={tasks.length > 0 ? 'animate-pulse text-[#dd5b00]' : 'text-[#615d59]'} />
-
-                    {/* Badge */}
-                    <AnimatePresence>
-                        {tasks.length > 0 && (
-                            <Motion.div
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                exit={{ scale: 0, opacity: 0 }}
-                                className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-destructive text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center px-1"
-                            >
-                                {tasks.length}
-                            </Motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* Tooltip */}
-                    <div className="absolute right-full mr-4 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-deep hidden sm:block">
-                        {tasks.length > 0 ? `${tasks.length} 個任務處理中` : '任務中心'}
-                    </div>
-                </button>
-
+            <main ref={mainRef} className="editorial-main">
+                <div className="editorial-page-frame">{children}</div>
+                <button type="button" className="editorial-task-toggle" onClick={() => dispatch(toggleTaskCenter())} aria-label={tasks.length > 0 ? `${tasks.length} 個任務處理中` : '開啟任務中心'}><Activity size={20} />{tasks.length > 0 && <span>{tasks.length}</span>}</button>
                 <TaskCenter />
             </main>
             <NotificationContainer />

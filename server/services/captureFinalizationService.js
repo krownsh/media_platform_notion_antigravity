@@ -9,6 +9,25 @@ function normalizeCommentTimestamp(value) {
     return Number.isNaN(timestamp.getTime()) ? new Date().toISOString() : timestamp.toISOString();
 }
 
+function nonEmptyText(value) {
+    return typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+}
+
+export function requiredCaptureTitle(data, originalUrl) {
+    const explicit = nonEmptyText(data.title);
+    if (explicit) return explicit.slice(0, 500);
+    const firstContentLine = nonEmptyText(data.content).split(/(?<=[。！？.!?])\s|\n/)[0]?.trim();
+    if (firstContentLine && firstContentLine.length >= 2) return firstContentLine.slice(0, 180);
+    const filename = nonEmptyText(data.full_json?.storage?.original_filename || data.fullJson?.storage?.original_filename);
+    if (filename) return filename.slice(0, 500);
+    try {
+        const parsed = new URL(originalUrl);
+        return parsed.protocol === 'storage:' ? '圖片上傳來源' : `來源 · ${parsed.hostname.replace(/^www\./, '')}`;
+    } catch {
+        return '已保存來源';
+    }
+}
+
 export function normalizeCapturePlatform(platform) {
     const supportedPlatforms = new Set([
         'instagram', 'facebook', 'twitter', 'threads', 'generic', 'notion', 'youtube', 'github', 'image'
@@ -48,6 +67,7 @@ export async function finalizeCapture(
 
     const originalUrl = data.original_url || data.originalUrl || data.url;
     if (!originalUrl) throw new Error('Capture is missing original_url');
+    const title = requiredCaptureTitle(data, originalUrl);
 
     const { data: finalized, error } = await supabaseClient
         .rpc('finalize_collection_capture', {
@@ -58,7 +78,7 @@ export async function finalizeCapture(
             p_post: {
                 platform: normalizeCapturePlatform(data.platform),
                 original_url: originalUrl,
-                title: data.title || null,
+                title,
                 author_name: data.author || data.author_name || null,
                 author_id: data.authorHandle || data.author_id || null,
                 author_avatar_url: null,

@@ -108,6 +108,38 @@ async function maybeRows(query) {
     return data || [];
 }
 
+// The post detail screen needs the source evidence and accepted context, but
+// not the search-only retrieval terms.  Keep this separate from the indexing
+// loader so opening one post does not pay for an unused query.
+export async function loadOwnerLibraryPostDetail({ userId, postId, supabaseClient = defaultSupabase }) {
+    const [postResult, revisions] = await Promise.all([
+        supabaseClient
+            .from('collection_posts').select('id, user_id, platform, original_url, title, author_name, content, created_at, posted_at')
+            .eq('id', postId).eq('user_id', userId).maybeSingle(),
+        maybeRows(supabaseClient.from('collection_source_revisions')
+            .select('id, post_id, capture_quality, source_payload').eq('user_id', userId).eq('post_id', postId)
+            .order('created_at', { ascending: false }).limit(1))
+    ]);
+    const { data: post, error: postError } = postResult;
+    if (postError || !post) throw new Error(`Search post lookup failed: ${postError?.message || 'not found'}`);
+    const sourceRevision = revisions[0] || null;
+    if (!sourceRevision) return { post, sourceRevision: null, learningNote: null, topicLinks: [], topicRevisions: [], projectReferences: [], proposals: [] };
+
+    const revisionId = sourceRevision.id;
+    const [learningNotes, topicLinks, topicRevisions, projectReferences, reviewPackets] = await Promise.all([
+        maybeRows(supabaseClient.from('owner_post_learning_notes').select('note_status, content').eq('user_id', userId).eq('source_revision_id', revisionId)),
+        maybeRows(supabaseClient.from('owner_topic_source_links').select('topic_id, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
+        maybeRows(supabaseClient.from('owner_topic_revisions').select('topic_id, summary, claims, open_questions, owner_topics (label)').eq('user_id', userId).eq('source_revision_id', revisionId)),
+        maybeRows(supabaseClient.from('owner_topic_project_references').select('topic_id, rationale, owner_topics (label), owner_project_catalog (title, description, reference)').eq('user_id', userId).eq('source_revision_id', revisionId).eq('status', 'active')),
+        maybeRows(supabaseClient.from('owner_review_packets').select('id').eq('user_id', userId).eq('source_revision_id', revisionId))
+    ]);
+    const packetIds = reviewPackets.map(packet => packet.id).filter(Boolean);
+    const proposals = packetIds.length
+        ? await maybeRows(supabaseClient.from('owner_review_proposals').select('proposal_type, payload, status').eq('user_id', userId).in('packet_id', packetIds))
+        : [];
+    return { post, sourceRevision, learningNote: learningNotes[0] || null, topicLinks, topicRevisions, projectReferences, proposals };
+}
+
 export async function loadOwnerSearchInputs({ userId, postId, sourceRevisionId = null, supabaseClient = defaultSupabase }) {
     const { data: post, error: postError } = await supabaseClient
         .from('collection_posts').select('id, user_id, platform, original_url, title, author_name, content, created_at, posted_at')

@@ -1,11 +1,24 @@
 import express from 'express';
-import { loadOwnerSearchInputs } from '../services/ownerSearchService.js';
+import { supabase as defaultSupabase } from '../supabaseClient.js';
 import { loadPostCaseFileManifest } from '../services/localMediaKnowledgeService.js';
 import { describeLocalPostRecord } from '../services/localMediaKnowledgeStatusService.js';
 import { createOrRetryLocalPostCaseFile } from '../services/localMediaKnowledgeWorkflowService.js';
 
+async function loadSourceRevisionForLocalRecord({ userId, postId, supabaseClient = defaultSupabase }) {
+    const { data, error } = await supabaseClient
+        .from('collection_source_revisions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('post_id', postId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+    if (error) throw new Error(`Source revision lookup failed: ${error.message}`);
+    return { sourceRevision: data || null };
+}
+
 export function createLocalMediaKnowledgeRouter({
-    loadPost = loadOwnerSearchInputs,
+    loadPost = loadSourceRevisionForLocalRecord,
     loadManifest = loadPostCaseFileManifest,
     createOrRetry = createOrRetryLocalPostCaseFile
 } = {}) {

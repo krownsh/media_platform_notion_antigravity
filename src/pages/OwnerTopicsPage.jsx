@@ -1,26 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BookOpenText, Plus, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, BookOpenText, Link2, Plus, RefreshCw, ScrollText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { createOwnerTopic, listOwnerTopics } from '../api/ownerKnowledgeApi';
+import './OwnerTopicsPage.css';
+import './OwnerTopicsPageActions.css';
 
-export default function OwnerTopicsPage() {
-    const [topics, setTopics] = useState([]);
-    const [label, setLabel] = useState('');
-    const [error, setError] = useState(null);
-    const [busy, setBusy] = useState(false);
-    const load = useCallback(async () => {
-        setBusy(true); setError(null);
-        try { const owner = await listOwnerTopics(); setTopics(owner.topics || []); } catch (e) { setError(e.message); } finally { setBusy(false); }
-    }, []);
-    useEffect(() => { load(); }, [load]);
-    const create = async event => {
-        event.preventDefault(); setBusy(true); setError(null);
-        try { await createOwnerTopic(label); setLabel(''); await load(); } catch (e) { setError(e.message); setBusy(false); }
-    };
-    return <div className="flow-page max-w-5xl px-1 sm:px-2">
-        <header className="mb-8 flex items-end justify-between gap-4 pt-5 sm:pt-8 md:pt-12"><div><p className="flow-kicker mb-2">獨立知識</p><h1 className="text-3xl font-bold tracking-[-0.05em] sm:text-[2.25rem]">Topics</h1><p className="mt-3 text-sm leading-6 text-[#615d59]">每個 Topic 累積已接受的來源與可追溯知識 revision；它不需要綁定任何 repo。</p></div><button onClick={load} disabled={busy} className="flow-icon-button border notion-whisper-border"><RefreshCw size={16} className={busy ? 'animate-spin' : ''} /></button></header>
-        {error && <p role="alert" className="mb-5 text-sm text-[var(--destructive)]">{error}</p>}
-        <form onSubmit={create} className="flow-panel flex flex-col gap-3 p-5 sm:flex-row"><label className="flex-1 text-sm font-medium">手動建立 Topic<input value={label} onChange={e => setLabel(e.target.value)} required maxLength="120" placeholder="例如：UI UX" className="notion-input mt-2 w-full" /></label><button disabled={busy} className="notion-btn-primary inline-flex self-end gap-2"><Plus size={16} />建立</button></form>
-        <section className="mt-7 grid gap-4 md:grid-cols-2">{topics.map(topic => { const revisions = topic.owner_topic_revisions || []; const links = topic.owner_topic_source_links || []; const references = topic.owner_topic_project_references || []; return <article key={topic.id} className="flow-panel p-5"><div className="flex items-start justify-between gap-3"><div><BookOpenText size={18} className="text-[var(--accent)]" /><h2 className="mt-3 text-lg font-bold">{topic.label}</h2></div><span className="text-xs text-[#615d59]">{topic.status}</span></div><p className="mt-3 text-sm text-[#615d59]">{links.length} 個來源連結 · {revisions.length} 個知識 revision · {references.length} 個專案參考</p>{revisions[0] ? <p className="mt-4 border-t notion-whisper-border pt-4 text-sm leading-6">{revisions[0].summary}</p> : <p className="mt-4 text-sm text-[#615d59]">尚未有已接受的知識摘要；來源仍會保留為可追溯連結。</p>}</article>; })}</section>
-        {!busy && !topics.length && <p className="mt-8 text-sm text-[#615d59]">還沒有正式 Topics。可在與 Agent 討論貼文後接受 Topic 候選，或在上方手動建立。</p>}
-    </div>;
-}
+function TopicLedgerRow({ topic, index, onOpen }) { const revisions = topic.owner_topic_revisions || []; const links = topic.owner_topic_source_links || []; const references = topic.owner_topic_project_references || []; const summary = revisions[0]?.summary; return <button type="button" className="topic-ledger-row" onClick={() => onOpen(topic.id)} aria-label={`開啟 Topic「${topic.label}」`}><span className="topic-ledger-index">{String(index + 1).padStart(2, '0')}</span><div className="topic-ledger-name"><div><BookOpenText size={18} /><span>{topic.status || 'active'}</span></div><h2>{topic.label}</h2></div><div className="topic-ledger-stats"><span><b>{links.length}</b>來源連結</span><span><b>{revisions.length}</b>知識 revision</span><span><b>{references.length}</b>專案參考</span></div><div className="topic-ledger-summary">{summary ? <p>{summary}</p> : <p className="is-empty">尚未有已接受的知識摘要；來源仍保持可追溯。</p>}</div><span className="topic-ledger-mark" aria-hidden="true"><ArrowUpRight size={18} /></span></button>; }
+
+export default function OwnerTopicsPage() { const navigate = useNavigate(); const [topics, setTopics] = useState([]); const [label, setLabel] = useState(''); const [error, setError] = useState(null); const [busy, setBusy] = useState(false); const load = useCallback(async () => { setBusy(true); setError(null); try { const owner = await listOwnerTopics(); setTopics(owner.topics || []); } catch (e) { setError(e.message); } finally { setBusy(false); } }, []); useEffect(() => { load(); }, [load]); const create = async (event) => { event.preventDefault(); setBusy(true); setError(null); try { await createOwnerTopic(label); setLabel(''); await load(); } catch (e) { setError(e.message); setBusy(false); } }; return <div className="topics-ledger-page"><header className="topics-ledger-header"><div><p>KNOWLEDGE / TOPICS</p><h1>主題台帳</h1><strong>跨來源累積的獨立知識；只有 Owner 接受的內容才會沉澱進來。</strong></div><button type="button" onClick={load} disabled={busy} aria-label="重新整理 Topics"><RefreshCw size={17} className={busy ? 'is-spinning' : ''} /><span>{busy ? '更新中' : '重新整理'}</span></button></header>{error && <p role="alert" className="topics-ledger-error">無法讀取 Topics：{error}</p>}<section className="topics-create"><div><p>NEW TOPIC</p><h2>建立新的知識容器</h2><span>先給它一個清楚的名稱；來源與 revision 會在接受後持續累積。</span></div><form onSubmit={create}><label><span>Topic 名稱</span><input value={label} onChange={(event) => setLabel(event.target.value)} required maxLength="120" placeholder="例如：UI UX" /></label><button disabled={busy}><Plus size={16} />建立 Topic</button></form></section><section className="topics-ledger"><header><div><p>OWNER-ACCEPTED KNOWLEDGE</p><h2>現有主題</h2></div><span>{busy ? '整理中…' : `${topics.length} 個`}</span></header>{!busy && !topics.length ? <div className="topics-ledger-empty"><ScrollText size={30} /><h3>還沒有正式 Topics</h3><p>可在這裡手動建立，或在與 Agent 討論來源後接受 Topic 候選。</p></div> : <div className="topics-ledger-list">{topics.map((topic, index) => <TopicLedgerRow key={topic.id} topic={topic} index={index} onOpen={(topicId) => navigate(`/topics/${topicId}`)} />)}</div>}</section><footer className="topics-ledger-note"><Link2 size={15} /><span>每個 Topic 都可以連結到來源與專案，但不需要依附於特定 repo。</span></footer></div>; }

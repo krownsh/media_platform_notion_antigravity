@@ -37,10 +37,10 @@ export async function listOwnerTopics({ userId, topicId = null, supabaseClient =
         .from('owner_topics')
         .select(`
             id, label, normalized_label, status, created_at, updated_at,
-            owner_topic_source_links (id, source_revision_id, created_at),
-            owner_topic_revisions (id, revision_number, summary, claims, open_questions, source_revision_id, created_at),
+            owner_topic_source_links (id, source_revision_id, created_at, collection_source_revisions (post_id, collection_posts (id, title, author_name, platform, original_url, created_at))),
+            owner_topic_revisions (id, revision_number, summary, claims, open_questions, source_revision_id, created_at, collection_source_revisions (post_id, collection_posts (id, title, author_name, platform, original_url, created_at))),
             owner_topic_project_references (
-                id, rationale, status, source_revision_id, created_at,
+                id, rationale, status, source_revision_id, created_at, collection_source_revisions (post_id, collection_posts (id, title, author_name, platform, original_url, created_at)),
                 owner_project_catalog (id, title, project_kind, reference, status)
             )
         `)

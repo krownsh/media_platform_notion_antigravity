@@ -216,7 +216,10 @@ Media Knowledge/Posts/Inbox/YYYY-MM-DD｜暫定：<source-title>｜<post-id-8>.m
 # after the Owner accepts the primary folder and semantic title
 Media Knowledge/Posts/<accepted-primary-folder>/YYYY-MM-DD｜<accepted-semantic-title>｜<post-id-8>.md
 
-# publishable content draft ready for Owner review and publication
+# agent creation brief (创作母卷) ready for downstream specialized agents
+Media Knowledge/Drafts/YYYY-MM-DD｜創作母卷：<accepted-semantic-title>｜Brief｜<post-id-8>.md
+
+# publishable content draft ready for Owner review and publication (legacy/single-platform)
 Media Knowledge/Drafts/YYYY-MM-DD｜<accepted-semantic-title>｜<platform>｜<post-id-8>.md
 ```
 
@@ -342,13 +345,33 @@ migrations, backup/readback proof, services to restart, smoke test, and
 forward recovery. Do not push, migrate, restart, overwrite, or delete without
 direct Owner approval.
 
-### Content rewrites and publishable drafts
+### Content rewrites, agent briefs, and publishable drafts
 
-When the Owner explicitly requests rewriting a post (e.g. for Threads, X, or newsletters), follow the **Dual-Storage Contract**:
-1. **Source preservation (Post Case File):** Keep the full rewrite context, rationale, and draft in the post case file under `## 你的自由筆記` to guarantee full provenance.
-2. **Publishable Draft (`Media Knowledge/Drafts/`):** Persist a clean, standalone Markdown draft free of system logs and AI clichés (using `humanizer-zh` where applicable) directly in `Media Knowledge/Drafts/`.
-3. **Draft frontmatter:** Each draft must include `schema_version: 1`, `note_kind: media-publishable-draft`, `source_post_id`, `source_case_file` (wikilink to the post case file), `target_platform`, `publish_status: draft_ready` (or `published`), and `created_at`.
-4. **Draft lifecycle:** A draft is never created automatically without explicit Owner intent. Published drafts may update `publish_status: published` or archive to `Media Knowledge/Drafts/Published/`.
+When the Owner explicitly requests rewriting a post (e.g. for Threads, X, or Instagram), recognize that a general-purpose ingestion/review agent should not attempt to write the final platform prose directly. Instead, follow the **Agent Creation Brief Contract (創作母卷規範)**:
+
+1. **Role Separation (角色邊界):** The general workflow agent acts as an intelligence curator and brief author. It extracts clean, de-noised source evidence and records the Owner's strategic takeaways and discussion points. Downstream specialized agents (e.g., Grok Bot for X, Threads Storyteller, Instagram Carousel Designer) consume this brief to generate platform-native copy matching their fine-tuned voices and platform rules.
+2. **Agent Brief Structure (`Media Knowledge/Drafts/YYYY-MM-DD｜創作母卷：...｜Brief｜<id>.md`):**
+   - **Frontmatter:** `schema_version: 2`, `note_kind: media-agent-brief`, `source_post_id`, `source_url` (原始貼文真實網址), `source_platform`, `captured_at` (擷取時間), `domain_theme` (宏觀領域主題，如科技、股票、商業、學習、自媒體經營), `core_topic` (關聯之 Topic), `core_angle`, `status: ready_for_agents`, `created_at`, `updated_at`. (注意：無需標記 `target_agents`，保持通用性供任何下游 Agent 自由調閱)。
+   - **Section 1: 來源資訊與宏觀主題 (Provenance & Theme):** 明確附帶來源網址、平台、發布/擷取時間，以及明確標註此內容所屬的宏觀領域（如【科技】、【股票】、【學習】、【商業】），讓下游 Agent 一眼判定自身專業領域是否相符。
+   - **Section 2: Owner 核心觀點與戰略意圖 (The Soul):** The non-negotiable core argument, personal positioning, and the strict **Refusal List (禁令清單)** forbidding clichés.
+   - **Section 3: 乾淨提煉的事實彈藥庫 (De-noised Evidence):** Structured data, verified cases, and core arguments free from social media fluff.
+   - **Section 4: 派發給各平台 Agent 的專屬改寫指引 (Dispatch Instructions):** Platform-specific guidance for X (Thread hooks/structure), Threads (first-person dialogue), and Instagram (carousel slide breakdowns).
+3. **Source preservation (Post Case File):** Keep the full brief context and rationale in the post case file under `## 你的自由筆記` to guarantee full provenance.
+4. **雙軌資料庫結案契約 (Dual-Sync Database Contract & DoD):**
+   前端畫面（Web UI `/topics` 與 `/topics/:topicId`）與下游 Agent API（`/api/agent/drafts`）依賴真實資料庫。為防止 Agent 僅修改本機 Markdown 而遺漏資料庫寫入，**嚴格遵循以下真實架構契約與檢核清單**：
+   - **主題主表**：`public.owner_topics`（欄位：`user_id`, `label`, `normalized_label`, `status`）。
+   - **主題來源關聯表（前端唯一依賴）**：`public.owner_topic_source_links`。
+     - ⚠️ **外鍵強約束鐵律**：本表必須帶有合法的 `source_revision_id` 與 `origin_proposal_id`（必須關聯至有效的 `owner_review_proposals`），絕對禁止插入 null 否則會觸發 not-null 異常導致前端顯示 0 筆來源。
+   - **草稿母卷表**：`public.content_assets` 與 `public.content_revisions`（提供 `/api/agent/drafts` 調閱）。
+   - **一鍵全量同步指令**：每次建立或修改本地 Brief、Post 歸檔、或更新 Topic 關聯後，**必須在終端執行單一主控腳本**：
+     ```bash
+     node server/scripts/sync_dual_records.js
+     ```
+   - **結案前強制檢核表 (Definition of Done)**：
+     - [ ] 1. 本機 Post Case File 已移出 Inbox，寫入正確目錄，狀態更新為 `classified` / `accepted`。
+     - [ ] 2. 本機 Brief 母卷（若有要求產出）已寫入 `Media Knowledge/Drafts/`。
+     - [ ] 3. 本機 Topic Markdown 檔案已更新關聯表格。
+     - [ ] 4. 【強制閉環】執行 `node server/scripts/sync_dual_records.js` 且確認無拋錯，確保 Web UI 前端與 API 能即時看見最新來源與母卷。未執行此步驟禁止向 Owner 回報結案。
 
 ## 6. Library retrieval
 

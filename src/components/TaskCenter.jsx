@@ -7,6 +7,7 @@ import { addPostByUrl, addTask, removeTask, updateTaskStatus } from '../features
 import { RotateCcw } from 'lucide-react';
 import { API_BASE_URL } from '../api/config';
 import { supabase } from '../api/supabaseClient';
+import './TaskCenter.css';
 
 const TaskCenter = () => {
     const dispatch = useDispatch();
@@ -122,10 +123,10 @@ const TaskCenter = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-                        className="fixed right-0 top-0 h-full w-full max-w-[100vw] sm:max-w-[30rem] bg-surface-raised shadow-deep z-[101] flex flex-col border-l notion-whisper-border"
+                        className="editorial-task-center fixed right-0 top-0 h-full w-full max-w-[100vw] sm:max-w-[30rem] bg-surface-raised shadow-deep z-[101] flex flex-col border-l notion-whisper-border"
                     >
                         {/* Header */}
-                        <div className="px-5 py-5 sm:px-6 sm:py-6 border-b notion-whisper-border flex items-center justify-between bg-surface-raised sticky top-0 z-10 gap-3">
+                        <div className="editorial-task-center-header px-5 py-5 sm:px-6 sm:py-6 border-b notion-whisper-border flex items-center justify-between bg-surface-raised sticky top-0 z-10 gap-3">
                             <div>
                                 <p className="flow-kicker mb-1.5">背景處理</p>
                                 <h2 className="text-xl sm:text-2xl font-bold tracking-[-0.04em] text-[rgba(0,0,0,0.95)]">任務中心</h2>
@@ -143,7 +144,7 @@ const TaskCenter = () => {
                         </div>
 
                         {/* Task List */}
-                        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3" aria-live="polite">
+                        <div className="editorial-task-center-list flex-1 overflow-y-auto p-4 sm:p-5 space-y-3" aria-live="polite">
                             {tasks.length === 0 ? (
                                 <div className={`${durableCaptures.length > 0 ? 'py-5' : 'h-full min-h-[18rem]'} flex flex-col items-center justify-center text-[#615d59] gap-4 text-center px-8`}>
                                     <div className="w-14 h-14 rounded-[1rem] bg-[var(--accent-soft)] text-[var(--accent)] flex items-center justify-center">
@@ -162,7 +163,7 @@ const TaskCenter = () => {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                                        className={`p-4 rounded-[0.85rem] border transition-[border-color,box-shadow,background-color] duration-200 ${task.status === 'failed'
+                                        className={`editorial-task-center-item p-4 rounded-[0.85rem] border transition-[border-color,box-shadow,background-color] duration-200 ${task.status === 'failed'
                                             ? 'bg-destructive/5 border-destructive/25'
                                             : 'bg-surface border-[var(--border-subtle)] hover:border-[var(--accent)] hover:shadow-soft-card'
                                             }`}
@@ -297,7 +298,7 @@ const TaskCenter = () => {
                         </div>
 
                         {/* Footer (Optional info) */}
-                        <div className="px-5 py-4 sm:px-6 border-t notion-whisper-border bg-[var(--surface)]">
+                        <div className="editorial-task-center-footer px-5 py-4 sm:px-6 border-t notion-whisper-border bg-[var(--surface)]">
                             <p className="text-xs leading-5 text-[#615d59]">
                                 任務紀錄保存在伺服器；重新整理頁面後仍可在此查看狀態、重試次數與失敗原因。
                             </p>

@@ -1,0 +1,3 @@
+.capture-queue-cover img { transition: transform 280ms cubic-bezier(.16, 1, .3, 1); }
+.capture-queue-card:hover .capture-queue-cover.has-image img { transform: scale(1.08); }
+.capture-queue-cover p { border-color: #151515; padding: 4px 6px; background: #151515; color: #fff; }

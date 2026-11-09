@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../api/config';
 
 import { motion as Motion } from 'framer-motion';
 import { Mail, Lock, User, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import './AuthPages.css';
 
 const SignupPage = () => {
     const [email, setEmail] = useState('');
@@ -66,24 +67,24 @@ const SignupPage = () => {
     };
 
     return (
-        <div className="min-h-[100dvh] flex items-start sm:items-center justify-center bg-background relative overflow-hidden px-4 py-8 sm:py-0">
-            <div className="absolute top-0 inset-x-0 h-40 bg-[var(--accent-soft)] opacity-50 pointer-events-none" />
+        <div className="editorial-auth-page">
+            <div className="editorial-auth-mark" aria-hidden="true">M<span>.</span>COLLECT</div>
 
             <Motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-md p-0 sm:p-6 relative z-10"
+                className="editorial-auth-motion"
             >
-                <div className="flow-surface p-6 sm:p-9 shadow-deep">
+                <div className="editorial-auth-panel">
                     <div className="mb-8 sm:mb-10">
-                        <p className="flow-kicker mb-2">私人工作區</p>
-                        <h1 className="text-3xl font-bold text-[rgba(0,0,0,0.95)] tracking-[-0.05em]">建立帳號</h1>
-                        <p className="mt-3 text-sm leading-6 text-[#615d59]">開始建立可以持續回應你需求的知識脈絡。</p>
+                        <p className="editorial-auth-kicker">PRIVATE WORKSPACE / NEW</p>
+                        <h1>建立你的<br />來源工作台</h1>
+                        <p>開始建立可以持續回應你需求的知識脈絡。</p>
                     </div>
 
                     {error && (
-                        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/25 rounded-[0.75rem] flex items-start gap-3 text-destructive text-sm">
+                        <div className="editorial-auth-error">
                             <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <span>{error}</span>
                         </div>
@@ -107,16 +108,15 @@ const SignupPage = () => {
                             </Link>
                         </div>
                     ) : (
-                        <form onSubmit={handleSignup} className="space-y-6">
+                        <form onSubmit={handleSignup} className="editorial-auth-form">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">電子郵件</label>
+                                <label>電子郵件</label>
                                 <div className="relative group">
                                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
-                                    <input
+                                    <input className="editorial-auth-input"
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="name@example.com"
                                         required
                                     />
@@ -124,14 +124,13 @@ const SignupPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">密碼</label>
+                                <label>密碼</label>
                                 <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
-                                    <input
+                                    <input className="editorial-auth-input"
                                         type="password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="建立密碼"
                                         required
                                     />
@@ -139,14 +138,13 @@ const SignupPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[rgba(0,0,0,0.95)]/80 ml-1">確認密碼</label>
+                                <label>確認密碼</label>
                                 <div className="relative group">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#615d59] group-focus-within:text-[var(--accent)] transition-colors" />
-                                    <input
+                                    <input className="editorial-auth-input"
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="notion-input w-full py-3.5 pl-12 pr-4 text-[rgba(0,0,0,0.95)] placeholder-muted-foreground/70"
                                         placeholder="確認您的密碼"
                                         required
                                     />
@@ -156,7 +154,7 @@ const SignupPage = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="notion-btn-primary w-full font-medium py-3.5 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+                                className="editorial-auth-submit"
                             >
                                 {loading ? (
                                     <>
@@ -171,9 +169,9 @@ const SignupPage = () => {
                     )}
 
                     {!success && (
-                        <div className="mt-8 text-center text-[#615d59] text-sm">
+                        <div className="editorial-auth-switch">
                             已經有帳號了嗎？{' '}
-                            <Link to="/login" className="touch-target-link text-[var(--accent)] hover:text-[var(--accent-hover)] font-medium transition-colors">
+                            <Link to="/login">
                                 登入
                             </Link>
                         </div>

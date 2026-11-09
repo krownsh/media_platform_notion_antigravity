@@ -21,6 +21,8 @@ import { reviewRouter } from './routes/reviewRoutes.js';
 import { ownerKnowledgeRouter } from './routes/ownerKnowledgeRoutes.js';
 import { ownerLibraryRouter } from './routes/ownerLibraryRoutes.js';
 import { localMediaKnowledgeRouter } from './routes/localMediaKnowledgeRoutes.js';
+import agentRouter from './routes/agentRoutes.js';
+
 
 
 const app = express();
@@ -202,6 +204,8 @@ app.use('/api/review', requireSupabaseJwt, reviewRouter);
 app.use('/api/owner-knowledge', requireSupabaseJwt, ownerKnowledgeRouter);
 app.use('/api/owner-library', requireSupabaseJwt, ownerLibraryRouter);
 app.use('/api/local-records', requireSupabaseJwt, localMediaKnowledgeRouter);
+app.use('/api/agent', agentRouter);
+
 
 
 app.get('/api/activity', requireSupabaseJwt, async (req, res) => {
@@ -314,16 +318,26 @@ app.get('/api/posts', async (req, res) => {
     }
 
     try {
-        const { data: posts, error: postsError } = await supabase
+        const requestedLimit = Number.parseInt(req.query.limit, 10);
+        const limit = Number.isInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 48) : 24;
+        const requestedOffset = Number.parseInt(req.query.offset, 10);
+        const offset = Number.isInteger(requestedOffset) ? Math.max(requestedOffset, 0) : 0;
+        const collectionId = typeof req.query.collectionId === 'string' && req.query.collectionId.trim() ? req.query.collectionId.trim() : null;
+        const platform = typeof req.query.platform === 'string' && req.query.platform.trim() ? req.query.platform.trim() : null;
+        let postsQuery = supabase
             .from('collection_posts')
             .select(`
-                *,
-                collection_post_media (*),
-                collection_post_comments (*),
-                collection_user_annotations (*)
-            `)
+                id, platform, title, author_name, author_id, content, posted_at,
+                original_url, created_at, collection_id, source_domains,
+                collection_post_media (id, type, url)
+            `, { count: 'exact' })
             .eq('user_id', userId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(offset, offset + limit - 1);
+        if (collectionId) postsQuery = postsQuery.eq('collection_id', collectionId);
+        if (platform) postsQuery = postsQuery.eq('platform', platform);
+        const { data: posts, error: postsError, count: total } = await postsQuery;
 
         if (postsError) throw postsError;
 
@@ -332,7 +346,7 @@ app.get('/api/posts', async (req, res) => {
         // Fetch collections
         const { data: collections, error: collectionsError } = await supabase
             .from('collection_collections')
-            .select('*')
+            .select('*, collection_posts(count)')
             .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
@@ -355,16 +369,11 @@ app.get('/api/posts', async (req, res) => {
             postedAt: post.posted_at,
             originalUrl: post.platform === 'image' ? null : post.original_url,
             createdAt: post.created_at,
-            fullJson: post.full_json,
             collectionId: post.collection_id,
             sourceDomains: Array.isArray(post.source_domains) ? post.source_domains : [],
             images: post.collection_post_media?.filter(m => m.type === 'image' && m.url).map(m => m.url) || [],
-            comments: post.collection_post_comments?.map(c => ({
-                user: c.author_name,
-                text: c.content,
-                postedAt: c.commented_at
-            })) || [],
-            annotations: post.collection_user_annotations || [],
+            comments: [],
+            annotations: [],
             analysis: null,
             workflow: null,
             parallelTracks: [],
@@ -374,7 +383,16 @@ app.get('/api/posts', async (req, res) => {
             };
         });
 
-        res.json({ posts: formattedPosts, collections: collections || [] });
+        const formattedCollections = (collections || []).map((collection) => {
+            const relation = Array.isArray(collection.collection_posts) ? collection.collection_posts[0] : collection.collection_posts;
+            const { collection_posts: _countRelation, ...rest } = collection;
+            return { ...rest, postCount: relation?.count || 0 };
+        });
+        res.json({
+            posts: formattedPosts,
+            collections: formattedCollections,
+            page: { offset, limit, total: total || 0, hasMore: offset + formattedPosts.length < (total || 0), nextOffset: offset + formattedPosts.length }
+        });
     } catch (error) {
         console.error('Error fetching posts:', error);
         res.status(500).json({ error: 'Failed to fetch posts' });

@@ -41,9 +41,10 @@ import {
 } from '../features/reviewSlice';
 
 
-// Worker Saga: Fetch all posts AND collections
-function* handleFetchPosts() {
+// Worker Saga: Fetch a lightweight page of posts and collection metadata.
+function* handleFetchPosts(action) {
   try {
+    const { offset = 0, limit = 24, append = false, collectionId = '', platform = '', listKey = collectionId ? `collection:${collectionId}` : 'all' } = action.payload || {};
     // 1. Ensure user is authenticated
     const { data: { session } } = yield call(() => supabase.auth.getSession());
     const user = session?.user;
@@ -56,8 +57,11 @@ function* handleFetchPosts() {
     }
 
     // 2. Call Backend API
-    console.log('[Saga] Fetching posts from backend...');
-    const response = yield call(fetch, `${API_BASE_URL}/api/posts`, {
+    const params = new URLSearchParams({ offset: String(offset), limit: String(limit) });
+    if (collectionId) params.set('collectionId', collectionId);
+    if (platform) params.set('platform', platform);
+    console.log('[Saga] Fetching post page from backend...', { offset, limit, collectionId });
+    const response = yield call(fetch, `${API_BASE_URL}/api/posts?${params.toString()}`, {
       headers: {
         'Authorization': `Bearer ${session.access_token}`
       }
@@ -68,11 +72,14 @@ function* handleFetchPosts() {
     }
 
     const data = yield response.json();
-    console.log('[Saga] Fetched posts:', data.posts?.length);
+    console.log('[Saga] Fetched post page:', data.posts?.length, data.page);
 
     yield put(fetchPostsSuccess({
       posts: data.posts || [],
-      collections: data.collections || []
+      collections: data.collections || [],
+      page: data.page || {},
+      append,
+      listKey
     }));
   } catch (error) {
     console.error('[Saga] Fetch Posts Error:', error);

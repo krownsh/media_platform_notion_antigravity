@@ -1,86 +1,27 @@
-# Agent 工作流唯一引導（現行）
+# Agent 工作流唯一引導
 
-所有 collection 貼文擷取、候選審核、Topic／Project 關聯、Library 查找、POC
-討論與本機 post case file 工作，一律先載入並遵循：
+所有來源擷取、脫水、跨來源比較、知識彙整、Topic／Project、Library 查找、POC 與可選內容創作，一律載入：
+`hermes/skills/owner-guided-media-workflow/SKILL.md`
 
-```text
-hermes/skills/owner-guided-media-workflow/SKILL.md
-```
+這是唯一正式行為規範；my-mediacrawl-skill 只做相容轉接。舊 Hermes、Cron、Vault、Knowledge Space、taxonomy 或 handoff 文件不得覆蓋此規範。Skill 的目標能力不代表已部署；實際 API、資料庫與環境能力須另外驗證。不可為了符合新版流程而略過既有後端限制。
 
-這是唯一正式工作流。`my-mediacrawl-skill` 只保留為相容入口，沒有獨立規格；
-任何舊 Hermes、Cron、舊 Vault、Knowledge Space、舊 taxonomy 或舊 handoff
-文件與此衝突時，均不得作為現行行為依據。Agent 必須讓 Owner 看見「目前階段、
-為什麼現在在這裡、唯一下一步」，並遵守 raw evidence → candidate → explicit
-Owner acceptance 的邊界。
+## 核心方向
 
-# 系統代理人 (System Agents) 與職責定義
+知識彙整、Owner 的可信度／投入／融合判斷為主線，內容創作為可選支線。收藏不是認同；AI 預處理可自動準備與保存為候選；正式理解需可追溯的 Owner 明確決定。自然語言明確接受可作為決策證據，不重複要求儀式性確認。AI 新增推論不能冒充 Owner 的觀點。
 
-本文件定義了系統中各個邏輯模組的「代理人 (Agent)」角色。開發時請依照這些角色的職責邊界進行程式碼模組化設計。
+開始、接手、卡住或階段切換時交代目前階段、原因與下一步；一般討論不固定重複模板。支援單篇、多篇、Topic 與 Project 範圍。所有 Agent 使用共同紀錄。
 
-## 1. Schema Agent (資料庫架構師)
-* **職責**：負責 Supabase 資料庫的所有設計與變更。
-* **輸入**：前端儲存需求、業務邏輯描述。
-* **輸出**：標準 SQL (PostgreSQL)，包含 Tables, Relations (Foreign Keys), Functions, RLS policies。
-* **規則**：
-    * 所有表格必須包含 `created_at`, `updated_at`。
-    * 所有使用者資料表需透過 `user_id` (uuid) 綁定 `auth.users`。
-    * JSONB 欄位需在註解中詳細說明預期結構。
+## 模組責任
 
-## 2. Platform Router / Orchestrator Agent (調度中心)
-* **職責**：資料獲取流程的總指揮。決定何時使用 API，何時使用爬蟲，並處理錯誤回退 (Fallback)。
-* **邏輯流程**：
-    1.  解析 URL 識別平台 (IG/FB/Threads/X)。
-    2.  優先呼叫 **API Agent**。
-    3.  若 API 回傳成功且資料完整 -> 結束。
-    4.  若 API 失敗 (403/Rate Limit) 或資料不全 (缺留言/媒體) -> 呼叫 **Crawler Agent**。
-    5.  整合資料 -> 呼叫 AI Analysis Agent -> 通知 Schema Agent 存檔。
+- Backend／Schema：共同狀態、使用者隔離、版本、idempotency、稽核、排程與失敗重試。使用者資料以 user_id 綁定 auth.users；表格包含 created_at／updated_at，JSONB 結構附註解。
+- Capture／Parser：依平台使用現有 crawler，保存原始證據與來源版本，揭露缺漏及巢狀長文狀態。現況 crawler-only；不得宣稱官方 API-first、官方 API fallback 或未驗證的瀏覽器能力。
+- Preprocessing Worker／LLM adapter：目標為脫水、主張與條件抽取、相關來源比較和分級。供應商可替換；不能用固定 100 字摘要與 hashtags 代替知識準備。背景自動化需真實 worker 支援。
+- Discussion／Synthesis Agent：研究、反駁、融合候選，記錄 Owner 判斷及未解問題，透過支援的 API 保存；不自行採納模型結論。
+- Frontend：來源／脫水／差異可對照，進度與等待原因可見，人工決策可接續；不保管服務密鑰或直接繞過審核寫入正式資料。
+- Project／Verification：提出具體驗證與投入取捨；執行需要對應授權，結果回饋知識。
+- Content Output：依要求重用來源與知識產出文章、Prompt、圖片或影片；創作與發布分開，不能阻塞知識主線。
+- Local Projection：依已設定的 Vault 同步，保護手寫內容與歷史；同步狀態與知識完成狀態分開。
 
-## 3. Platform API Agents (官方渠道專員)
-* **成員**：`InstagramApiAgent`, `FacebookApiAgent`, `ThreadsApiAgent`, `TwitterApiAgent`
-* **職責**：處理官方 API 的認證 (Token)、請求與限流 (Rate Limiting)。
-* **輸出**：`UnifiedPostObject` (統一貼文物件) 或 `PartialData` (部分資料)。
-* **特點**：若遇到私人貼文或權限不足，需明確回報錯誤代碼給 Orchestrator 以觸發爬蟲。
+## 變更與驗證
 
-## 4. Crawler Agent (爬蟲特工)
-* **職責**：操作 Headless Browser (Puppeteer/Playwright) 模擬真人行為。
-* **輸入**：URL, Platform Type, Options (是否登入/Cookie)。
-* **能力**：
-    * **Stealth Mode**：設定 User-Agent (優先使用 Mobile UA 以獲得輕量版頁面)，規避簡單的反爬蟲偵測。
-    * **Screenshot**：擷取全頁長截圖 (`fullPage: true`)。
-    * **Interaction**：自動點擊「顯示更多留言」、「展開內容」。
-* **輸出**：
-    * Raw HTML / DOM Elements
-    * Screenshot Image (Buffer or Uploaded URL)
-
-## 5. Parser Agent (多版本解析員)
-* **職責**：從 HTML/JSON 中清洗出標準資料。
-* **策略**：
-    * **Mobile Parser (優先)**：針對 `m.facebook.com` 或 Mobile View 結構解析，通常較穩定。
-    * **Desktop Parser (備援)**：針對標準網頁結構解析。
-* **容錯**：若主 Parser 失敗，自動切換備援 Parser。
-
-## 6. AI Analysis Agent (智慧分析師)
-* **職責**：處理所有 LLM 相關任務。
-* **任務**：
-    * `summarize`: 產生 100 字內短摘要。
-    * `tagging`: 根據內文產生 3-5 個 Hashtags。
-    * `insight`: 根據留言情緒與內文，提出 2 個延伸思考點。
-* **設計**：需設計成 Interface，方便未來替換或新增 LLM 供應商。
-
-## 7. UI/UX Agent (前端互動設計師)
-* **職責**：React 前端實作與使用者體驗。
-* **重點**：
-    * **Drag & Drop**：確保拖拉卡片時的動畫流暢度 (Framer Motion)。
-    * **Visual Feedback**：在爬蟲執行期間 (可能需 5-10 秒)，需提供明確的進度條或狀態提示 (例如：「正在啟動瀏覽器...」、「正在截圖...」)。
-    * **Responsive**：確保在桌面與行動裝置上皆可瀏覽。
-
-## 8. Content Rewriter Agent (再創作寫手)
-* **職責**：將收藏的貼文重組為新內容。
-* **輸入**：原始貼文內容 + 使用者選擇的風格 (e.g., "Viral Tweet", "Professional LinkedIn").
-* **輸出**：新的貼文草稿 (Draft)。
-* **API 介面**：預留 `shareToPlatform(platform, content)` 介面。
-
-## 9. 擷取路由現況（2026-09-08 補充）
-* **目前有效契約**：貼文擷取採 crawler-only；`server/services/orchestrator.js` 直接依平台使用 crawler，並無官方 API 優先、失敗再 fallback 的正式 runtime 路徑。
-* **API Agent 定義**：官方 API 相關 service／角色為未接線的預留設計，不得據此假設 production 已有 API token、限流或 fallback 保護。
-* **後續變更**：若要重新啟用 API-first，必須另行提出可測試的接線、憑證、限流、fallback 與文件同步計畫；在此之前，文件與維運均以 crawler-only 為準。
+對齊 Skill 時同步檢查入口 metadata、相容入口及相關契約測試。用真實情境驗證行為，不以文件關鍵字通過冒充 runtime 驗收。禁止把文件更新當成背景服務、資料遷移、模型接線或部署授權。實作時尊重既有工作樹、使用者資料與已確認的行為邊界。

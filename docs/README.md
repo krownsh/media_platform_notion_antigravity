@@ -2,6 +2,7 @@
 
 ## Active operation
 
+- [Knowledge preparation loop — implementation plan and agent handoff](plans/2026-11-09-knowledge-preparation-loop-implementation-plan.md)
 - [Knowledge Action Vault master plan](knowledge_action_vault_master_plan.md)
 - [Crawler and capture pipeline](process_crawler_pipeline.md)
 - [n8n capture setup](n8n_capture_setup.md)
